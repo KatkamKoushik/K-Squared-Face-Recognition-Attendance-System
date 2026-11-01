@@ -17,6 +17,12 @@ class CandidateProposalItem(BaseModel):
     sightings_count: int = 0
     requires_manual_attention: bool = False
     uncertainty_reason: Optional[str] = None
+    frame_id: Optional[str] = None
+    detection_id: Optional[str] = None
+    match_threshold: Optional[float] = None
+    model_version: Optional[str] = None
+    quality_score: Optional[float] = None
+    is_simulated: bool = False
 
 
 class UnknownFaceItem(BaseModel):

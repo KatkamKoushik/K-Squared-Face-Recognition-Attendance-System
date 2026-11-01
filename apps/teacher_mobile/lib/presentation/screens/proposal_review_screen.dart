@@ -15,6 +15,7 @@ class ProposalReviewScreen extends ConsumerWidget {
     final theme = Theme.of(context);
     final sessionState = ref.watch(sessionProvider);
     final candidates = sessionState.candidates;
+    final unassigned = sessionState.unassignedObservations;
     final conductedUnits = sessionState.conductedUnitsCount;
 
     // Canonical Metric summaries
@@ -22,6 +23,8 @@ class ProposalReviewScreen extends ConsumerWidget {
     final reviewCount = candidates.where((c) => c.evidenceState == EvidenceState.review).length;
     final recaptureCount = candidates.where((c) => c.evidenceState == EvidenceState.recaptureRequired).length;
     final unknownCount = candidates.where((c) => c.evidenceState == EvidenceState.unknown).length;
+
+    final isSimulatedData = candidates.any((c) => c.isSimulated);
 
     return Scaffold(
       appBar: AppBar(
@@ -44,6 +47,30 @@ class ProposalReviewScreen extends ConsumerWidget {
       body: SafeArea(
         child: Column(
           children: [
+            // P0.8 DEMO / SIMULATED DATA Indicator Banner
+            if (isSimulatedData)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                color: Colors.amber.shade100,
+                child: Row(
+                  children: [
+                    Icon(Icons.warning_amber_rounded, size: 16, color: Colors.amber.shade900),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'DEMO / SIMULATED DATA — NOT VERIFIED BIOMETRICS',
+                        style: TextStyle(
+                          color: Colors.amber.shade900,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             // Top Overview Bar
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -85,109 +112,241 @@ class ProposalReviewScreen extends ConsumerWidget {
 
             // Candidates List
             Expanded(
-              child: ListView.separated(
+              child: ListView(
                 padding: const EdgeInsets.all(16),
-                itemCount: candidates.length,
-                separatorBuilder: (context, index) => const SizedBox(height: 12),
-                itemBuilder: (context, index) {
-                  final candidate = candidates[index];
-                  final isPresent = candidate.unitAttendance.values.any((s) => s == AttendanceStatus.presentConfirmed);
+                children: [
+                  // Roster Candidates Section Header
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Enrolled Roster Proposals (${candidates.length})',
+                          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                        ),
+                        if (isSimulatedData)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.amber.shade50,
+                              borderRadius: BorderRadius.circular(4),
+                              border: Border.all(color: Colors.amber.shade300),
+                            ),
+                            child: const Text(
+                              'SIMULATED DATA',
+                              style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.orange),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
 
-                  return Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
+                  ...candidates.map((candidate) {
+                    final isPresent = candidate.unitAttendance.values.any((s) => s == AttendanceStatus.presentConfirmed);
+
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 12.0),
+                      child: Card(
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              CircleAvatar(
-                                radius: 20,
-                                backgroundColor: isPresent
-                                    ? AppTheme.statusMatched.withValues(alpha: 0.15)
-                                    : AppTheme.borderLight,
-                                child: Text(
-                                  candidate.fullName.substring(0, 1),
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    color: isPresent ? AppTheme.statusMatched : AppTheme.textMutedLight,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(candidate.fullName, style: theme.textTheme.titleLarge?.copyWith(fontSize: 16)),
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      candidate.rollNumber,
-                                      style: const TextStyle(
-                                        fontFamily: 'monospace',
-                                        fontSize: 13,
-                                        color: AppTheme.textMutedLight,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              EvidenceStatusChip(state: candidate.evidenceState, compact: true),
-                            ],
-                          ),
-
-                          if (candidate.uncertaintyReason != null) ...[
-                            const SizedBox(height: 10),
-                            Container(
-                              padding: const EdgeInsets.all(10),
-                              decoration: BoxDecoration(
-                                color: AppTheme.backgroundLight,
-                                borderRadius: BorderRadius.circular(6),
-                                border: Border.all(color: AppTheme.borderLight),
-                              ),
-                              child: Row(
+                              Row(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  const Icon(Icons.info_outline, size: 16, color: AppTheme.textMutedLight),
-                                  const SizedBox(width: 8),
-                                  Expanded(
+                                  CircleAvatar(
+                                    radius: 20,
+                                    backgroundColor: isPresent
+                                        ? AppTheme.statusMatched.withValues(alpha: 0.15)
+                                        : AppTheme.borderLight,
                                     child: Text(
-                                      candidate.uncertaintyReason!,
-                                      style: const TextStyle(fontSize: 12, color: AppTheme.textMutedLight),
+                                      candidate.fullName.substring(0, 1),
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        color: isPresent ? AppTheme.statusMatched : AppTheme.textMutedLight,
+                                      ),
                                     ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(candidate.fullName, style: theme.textTheme.titleLarge?.copyWith(fontSize: 16)),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          candidate.rollNumber,
+                                          style: const TextStyle(
+                                            fontFamily: 'monospace',
+                                            fontSize: 13,
+                                            color: AppTheme.textMutedLight,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  EvidenceStatusChip(state: candidate.evidenceState, compact: true),
+                                ],
+                              ),
+
+                              // P0.8 Evidence Provenance Block
+                              if (candidate.sightingsCount > 0) ...[
+                                const SizedBox(height: 10),
+                                Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: AppTheme.backgroundLight,
+                                    borderRadius: BorderRadius.circular(6),
+                                    border: Border.all(color: AppTheme.borderLight),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'PROVENANCE: Frame ${candidate.frameId ?? "N/A"} • Detection ${candidate.detectionId ?? "N/A"}',
+                                        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppTheme.textMutedLight),
+                                      ),
+                                      const SizedBox(height: 3),
+                                      Text(
+                                        'Similarity: ${((candidate.highestSimilarityScore ?? 0.0) * 100).toInt()}% (Threshold: ${((candidate.matchThreshold ?? 0.70) * 100).toInt()}%) • Quality: ${((candidate.qualityScore ?? 1.0) * 100).toInt()}%',
+                                        style: const TextStyle(fontSize: 11, color: AppTheme.primaryNavy, fontWeight: FontWeight.w600),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        'Model Lineage: ${candidate.modelVersion ?? "sface_128d_v1"}',
+                                        style: const TextStyle(fontSize: 10, color: AppTheme.textMutedLight),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ] else ...[
+                                const SizedBox(height: 10),
+                                Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: Colors.orange.shade50,
+                                    borderRadius: BorderRadius.circular(6),
+                                    border: Border.all(color: Colors.orange.shade200),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Icon(Icons.videocam_off_outlined, size: 16, color: Colors.orange.shade800),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          'NO CAMERA SIGHTING — Awaiting manual faculty roll-call.',
+                                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.orange.shade900),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+
+                              if (candidate.uncertaintyReason != null && candidate.uncertaintyReason != 'NO_CAMERA_SIGHTING') ...[
+                                const SizedBox(height: 8),
+                                Text(
+                                  candidate.uncertaintyReason!,
+                                  style: const TextStyle(fontSize: 11, color: AppTheme.textMutedLight, fontStyle: FontStyle.italic),
+                                ),
+                              ],
+
+                              const SizedBox(height: 12),
+                              const Divider(height: 1),
+                              const SizedBox(height: 8),
+
+                              // Quick Action Row
+                              Row(
+                                children: [
+                                  if (candidate.isSimulated)
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: Colors.grey.shade200,
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: const Text('MOCK DATA', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold)),
+                                    ),
+                                  const Spacer(),
+                                  TextButton(
+                                    onPressed: () {
+                                      _showAdjudicationSheet(context, ref, candidate, conductedUnits);
+                                    },
+                                    child: const Text('Adjudicate / Edit'),
                                   ),
                                 ],
                               ),
-                            ),
-                          ],
-
-                          const SizedBox(height: 14),
-                          const Divider(height: 1),
-                          const SizedBox(height: 10),
-
-                          // Quick Action Row
-                          Row(
-                            children: [
-                              if (candidate.highestSimilarityScore != null)
-                                Text(
-                                  'Similarity: ${(candidate.highestSimilarityScore! * 100).toInt()}%',
-                                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
-                                ),
-                              const Spacer(),
-                              TextButton(
-                                onPressed: () {
-                                  _showAdjudicationSheet(context, ref, candidate, conductedUnits);
-                                },
-                                child: const Text('Adjudicate / Edit'),
-                              ),
                             ],
                           ),
-                        ],
+                        ),
+                      ),
+                    );
+                  }),
+
+                  // P0.8 Unassigned Face Observations Section
+                  if (unassigned.isNotEmpty) ...[
+                    const SizedBox(height: 16),
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8.0),
+                      child: Text(
+                        'Unassigned Classroom Observations (${unassigned.length})',
+                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppTheme.textMainLight),
                       ),
                     ),
-                  );
-                },
+                    const Text(
+                      'Detected face crops with quality or similarity below threshold. Kept unassigned per P0.8 Consistency Gate.',
+                      style: TextStyle(fontSize: 11, color: AppTheme.textMutedLight),
+                    ),
+                    const SizedBox(height: 10),
+                    ...unassigned.map((obs) => Card(
+                      color: AppTheme.surfaceLight,
+                      margin: const EdgeInsets.only(bottom: 10),
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: Colors.red.shade50,
+                                    borderRadius: BorderRadius.circular(4),
+                                    border: Border.all(color: Colors.red.shade200),
+                                  ),
+                                  child: Text(
+                                    obs.issueReason,
+                                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.red.shade800),
+                                  ),
+                                ),
+                                const Spacer(),
+                                Text(
+                                  'Frame: ${obs.frameId}',
+                                  style: const TextStyle(fontSize: 10, color: AppTheme.textMutedLight),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              obs.description,
+                              style: const TextStyle(fontSize: 12, color: AppTheme.textMutedLight),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Quality: ${(obs.qualityScore * 100).toInt()}% • Unlinked Observation (No Roster Sighting)',
+                              style: const TextStyle(fontSize: 10, color: AppTheme.textMutedLight),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )),
+                  ],
+                ],
               ),
             ),
 

@@ -12,6 +12,7 @@ class SessionWorkflowState {
   final List<Map<String, String>> capturedFrames;
   final SessionState state;
   final List<CandidateProposalItem> candidates;
+  final List<UnassignedFaceObservation> unassignedObservations;
   final CommitReceiptResponse? receipt;
   final String? errorMessage;
 
@@ -23,6 +24,7 @@ class SessionWorkflowState {
     this.capturedFrames = const [],
     this.state = SessionState.draft,
     this.candidates = const [],
+    this.unassignedObservations = const [],
     this.receipt,
     this.errorMessage,
   });
@@ -35,6 +37,7 @@ class SessionWorkflowState {
     List<Map<String, String>>? capturedFrames,
     SessionState? state,
     List<CandidateProposalItem>? candidates,
+    List<UnassignedFaceObservation>? unassignedObservations,
     CommitReceiptResponse? receipt,
     String? errorMessage,
   }) {
@@ -46,6 +49,7 @@ class SessionWorkflowState {
       capturedFrames: capturedFrames ?? this.capturedFrames,
       state: state ?? this.state,
       candidates: candidates ?? this.candidates,
+      unassignedObservations: unassignedObservations ?? this.unassignedObservations,
       receipt: receipt ?? this.receipt,
       errorMessage: errorMessage ?? this.errorMessage,
     );
@@ -119,6 +123,7 @@ class SessionNotifier extends Notifier<SessionWorkflowState> {
     state = state.copyWith(
       state: SessionState.inReview,
       candidates: candidates,
+      unassignedObservations: MockTeacherData.getUnassignedObservations(),
     );
   }
 

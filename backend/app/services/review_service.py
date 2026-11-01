@@ -92,7 +92,8 @@ class ReviewService:
             sightings = sightings_by_student.get(student_id, [])
 
             if sightings:
-                highest_sim = max((s.similarity_score or 0.0) for s in sightings)
+                best_sighting = max(sightings, key=lambda s: s.similarity_score or 0.0)
+                highest_sim = best_sighting.similarity_score or 0.0
                 has_margin_issue = any((s.score_margin or 1.0) < 0.08 for s in sightings)
 
                 if has_margin_issue:
@@ -119,11 +120,17 @@ class ReviewService:
                         sightings_count=len(sightings),
                         requires_manual_attention=requires_manual,
                         uncertainty_reason=reason,
+                        frame_id=best_sighting.frame_id,
+                        detection_id=best_sighting.id,
+                        match_threshold=0.70,
+                        model_version=best_sighting.model_artifact_hash,
+                        quality_score=round(best_sighting.quality_score, 4) if best_sighting.quality_score is not None else None,
+                        is_simulated=best_sighting.model_artifact_hash == "baseline_mock" or "mock" in best_sighting.model_artifact_hash.lower(),
                     )
                 )
             else:
-                # FRS Invariant: Insufficient/unknown evidence must NEVER automatically become confirmed absent.
-                # Requires explicit human faculty adjudication.
+                # FRS P0.8 Invariant: Zero sightings must produce UNKNOWN / NO_CAMERA_SIGHTING, never automatic absence.
+                # Blur/quality explanations must NEVER be attributed to an unsighted student.
                 candidate_proposals.append(
                     CandidateProposalItem(
                         student_id=student_id,
@@ -135,6 +142,12 @@ class ReviewService:
                         sightings_count=0,
                         requires_manual_attention=True,
                         uncertainty_reason="NO_CAMERA_SIGHTING",
+                        frame_id=None,
+                        detection_id=None,
+                        match_threshold=None,
+                        model_version=None,
+                        quality_score=None,
+                        is_simulated=False,
                     )
                 )
 
