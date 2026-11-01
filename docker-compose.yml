@@ -1,0 +1,69 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: frs-k2-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: frs_k2
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres_dev_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d frs_k2"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend-api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: frs-k2-backend-api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres_dev_password@postgres:5432/frs_k2
+      SECRET_KEY: dev_insecure_secret_key_change_in_production_min_32_bytes_len
+      ENVIRONMENT: development
+      PORT: 8000
+    ports:
+      - "8000:8000"
+
+  vision-worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.worker
+    container_name: frs-k2-vision-worker
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      backend-api:
+        condition: service_started
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres_dev_password@postgres:5432/frs_k2
+      ENVIRONMENT: development
+
+  admin-console:
+    build:
+      context: ./apps/admin_console
+      dockerfile: Dockerfile
+    container_name: frs-k2-admin-console
+    restart: unless-stopped
+    depends_on:
+      - backend-api
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000/api/v1
+      NODE_ENV: production
+      PORT: 3000
+    ports:
+      - "3000:3000"
+
+volumes:
+  postgres_data:
+    driver: local

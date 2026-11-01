@@ -1,0 +1,140 @@
+# ==============================================================================
+# FRS V7.1 K² Monorepo Root .gitignore
+# ==============================================================================
+
+# OS & Editor Artifacts
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+*.swo
+*~
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# Environment Variables & Secrets (Keep .env.example)
+.env
+.env*.local
+.env.development
+.env.test
+.env.production
+*.pem
+*.key
+*.cert
+*.p12
+
+# ==============================================================================
+# Node.js / Next.js (apps/admin_console)
+# ==============================================================================
+node_modules/
+.pnpm-store/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Next.js build outputs
+apps/admin_console/.next/
+apps/admin_console/out/
+apps/admin_console/build/
+apps/admin_console/dist/
+.turbo/
+*.tsbuildinfo
+
+# ==============================================================================
+# Flutter / Dart (apps/teacher_mobile)
+# ==============================================================================
+**/doc/api/
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+/build/
+**/build/
+*.dill
+*.sfiles
+
+# Android specific (Flutter)
+**/android/**/gradle-wrapper.jar
+**/android/.gradle
+**/android/captures/
+**/android/gradlew
+**/android/gradlew.bat
+**/android/local.properties
+**/android/**/GeneratedPluginRegistrant.java
+
+# iOS / macOS specific (Flutter)
+**/ios/**/Pods/
+**/ios/.symlinks/
+**/ios/Flutter/Flutter.framework
+**/ios/Flutter/Flutter.podspec
+**/ios/Flutter/Generated.xcconfig
+**/ios/Flutter/app.flx
+**/ios/Flutter/app.zip
+**/ios/Flutter/flutter_assets/
+**/ios/ServiceDefinitions.json
+**/ios/Runner/GeneratedPluginRegistrant.h
+**/ios/Runner/GeneratedPluginRegistrant.m
+
+# ==============================================================================
+# Python / FastAPI (backend/)
+# ==============================================================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Testing & Coverage (Python)
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.hypothesis/
+.tox/
+.nox/
+
+# ==============================================================================
+# Temporary / Scratch
+# ==============================================================================
+tmp/
+temp/
+scratch/
+test.txt
+
+# ==============================================================================
+# Excluded Internal Planning Documents & Master Checklists
+# ==============================================================================
+*Master_Project_Handbook*
+*85_Prompt_Shot_Plan*
+docs/FRS_V7_1_K2_Master_Project_Handbook_85_Prompt_Shot_Plan.md
+FRS_V7_1_K2_Extracted_Aligned_Engineering_Checklist.md
+mobile_apps_and_websites_exhaustive_master_checklist.md
+
+

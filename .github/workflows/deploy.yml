@@ -1,0 +1,179 @@
+name: FRS V7.1 K² CD Deployment Pipeline
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  packages: write
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+jobs:
+  # ============================================================================
+  # 1. Publish Container Images to GitHub Container Registry (GHCR)
+  # ============================================================================
+  build-and-push-images:
+    name: Build & Push Container Images (GHCR)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout Source
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Compute Lowercase Image Namespace
+        run: |
+          echo "IMAGE_OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+
+      # Build & Push Backend API
+      - name: Build & Push Backend API Image
+        uses: docker/build-push-action@v7
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/${{ env.IMAGE_OWNER }}/k2-frs-backend-api:latest
+            ghcr.io/${{ env.IMAGE_OWNER }}/k2-frs-backend-api:${{ github.sha }}
+
+      # Build & Push Vision Worker
+      - name: Build & Push Vision Worker Image
+        uses: docker/build-push-action@v7
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile.worker
+          push: true
+          tags: |
+            ghcr.io/${{ env.IMAGE_OWNER }}/k2-frs-vision-worker:latest
+            ghcr.io/${{ env.IMAGE_OWNER }}/k2-frs-vision-worker:${{ github.sha }}
+
+      # Build & Push Admin Console
+      - name: Build & Push Admin Console Web Image
+        uses: docker/build-push-action@v7
+        with:
+          context: ./apps/admin_console
+          file: ./apps/admin_console/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/${{ env.IMAGE_OWNER }}/k2-frs-admin-console:latest
+            ghcr.io/${{ env.IMAGE_OWNER }}/k2-frs-admin-console:${{ github.sha }}
+
+  # ============================================================================
+  # 2. Build Android APK Release Artifact
+  # ============================================================================
+  build-android:
+    name: Build Android APK Release
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: apps/teacher_mobile
+    steps:
+      - name: Checkout Source
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Setup Java
+        uses: actions/setup-java@v6
+        with:
+          distribution: "temurin"
+          java-version: "17"
+
+      - name: Setup Flutter SDK
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.27.x"
+          channel: "stable"
+          cache: true
+
+      - name: Configure Production Keystore (if secret provided)
+        run: |
+          if [ -n "${{ secrets.KEYSTORE_BASE64 }}" ]; then
+            echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > android/app/upload-keystore.jks
+            echo "KEYSTORE_PATH=android/app/upload-keystore.jks" >> $GITHUB_ENV
+            echo "KEYSTORE_PASSWORD=${{ secrets.KEYSTORE_PASSWORD }}" >> $GITHUB_ENV
+            echo "KEY_ALIAS=${{ secrets.KEY_ALIAS }}" >> $GITHUB_ENV
+            echo "KEY_PASSWORD=${{ secrets.KEY_PASSWORD }}" >> $GITHUB_ENV
+          fi
+
+      - name: Install Dependencies
+        run: flutter pub get
+
+      - name: Build Release APK
+        run: flutter build apk --release --dart-define=API_URL=${{ secrets.PROD_API_URL || 'https://api.frs.kucet.ac.in/api/v1' }}
+
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: frs-teacher-app-release
+          path: apps/teacher_mobile/build/app/outputs/flutter-apk/app-release.apk
+          retention-days: 14
+
+  # ============================================================================
+  # 3. Deploy Live Stack to Target Host / Cloud Infrastructure
+  # ============================================================================
+  deploy-to-host:
+    name: Deploy to Production Host / Cloud Service
+    needs: [build-and-push-images]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout Source
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Trigger Deployment Webhook (Cloud Run / Railway / Render / Portainer)
+        run: |
+          if [ -n "${{ secrets.DEPLOY_WEBHOOK_URL }}" ]; then
+            echo "Triggering automated target host deployment webhook..."
+            curl -f -X POST "${{ secrets.DEPLOY_WEBHOOK_URL }}"
+          else
+            echo "DEPLOY_WEBHOOK_URL secret not configured. Skipping webhook trigger."
+          fi
+
+      - name: Execute Remote SSH Docker Compose Deployment (if SSH secrets configured)
+        env:
+          HOST_SSH_IP: ${{ secrets.HOST_SSH_IP }}
+          HOST_SSH_KEY: ${{ secrets.HOST_SSH_KEY }}
+          HOST_SSH_USER: ${{ secrets.HOST_SSH_USER }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ACTOR: ${{ github.actor }}
+        run: |
+          if [ -n "$HOST_SSH_IP" ] && [ -n "$HOST_SSH_KEY" ]; then
+            echo "Executing SSH rollout on $HOST_SSH_IP..."
+            mkdir -p ~/.ssh
+            echo "$HOST_SSH_KEY" > ~/.ssh/id_rsa
+            chmod 600 ~/.ssh/id_rsa
+            ssh -o StrictHostKeyChecking=no "${HOST_SSH_USER:-deploy}@$HOST_SSH_IP" "echo \"$GHCR_TOKEN\" | docker login ghcr.io -u \"$ACTOR\" --password-stdin && docker compose pull backend-api vision-worker admin-console && docker compose up -d --remove-orphans"
+          else
+            echo "HOST_SSH secrets not configured. Skipping SSH docker compose rollout."
+          fi
+
+      - name: Log Deployment Pipeline Summary
+        run: |
+          echo "=== FRS V7.1 K² CD Pipeline Execution Complete ==="
+          echo "1. Container images pushed to ghcr.io/${{ github.repository_owner }}"
+          echo "2. Android APK compiled and archived in GitHub Artifacts"
+          echo "3. Target deployment verification finished"

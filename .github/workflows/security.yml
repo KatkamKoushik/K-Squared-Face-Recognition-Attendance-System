@@ -1,0 +1,90 @@
+name: FRS V7.1 K² Security & Supply Chain Audit
+
+on:
+  schedule:
+    - cron: '0 0 * * 0'  # Weekly on Sunday 00:00 UTC
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'backend/pyproject.toml'
+      - 'apps/admin_console/package.json'
+      - 'apps/admin_console/package-lock.json'
+      - 'apps/teacher_mobile/pubspec.yaml'
+      - '.github/workflows/**'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ============================================================================
+  # 1. Dependency Vulnerability Audit (Checklist Section 15 & Tier B)
+  # ============================================================================
+  dependency-audit:
+    name: Dependency Vulnerability Audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout Source
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: apps/admin_console/package-lock.json
+
+      - name: Audit Admin Console Dependencies
+        run: |
+          cd apps/admin_console
+          npm audit --audit-level=high || echo "::warning::High-level npm advisories detected in admin console."
+
+      - name: Setup Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Audit Backend Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pip-audit
+          pip-audit --desc || echo "::warning::Advisories reported by pip-audit."
+
+  # ============================================================================
+  # 2. Secret & Sensitive Pattern Scan (Checklist Section 16 & Tier A)
+  # ============================================================================
+  secret-scan:
+    name: Secret & Sensitive Pattern Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout Source
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Scan Repository for Sensitive Private Keys & Credentials
+        run: |
+          echo "Scanning tracked files for private keys, AWS tokens, or exposed secrets..."
+          # Scan for RSA/ED25519 private keys excluding workflow configs and examples
+          if grep -rn --exclude-dir={.git,node_modules,.next,build} --exclude="*.example" --exclude="*.yml" --exclude="*.md" "BEGIN OPENSSH PRIVATE KEY\|BEGIN RSA PRIVATE KEY\|BEGIN PRIVATE KEY" .; then
+            echo "::error::CRITICAL: Private cryptographic key detected in source tree!"
+            exit 1
+          fi
+
+          # Scan for accidental AWS/Stripe tokens
+          if grep -rn --exclude-dir={.git,node_modules,.next,build} --exclude="*.example" --exclude="*.yml" --exclude="*.md" "AKIA[0-9A-Z]\{16\}\|sk_live_[0-9a-zA-Z]\{24\}" .; then
+            echo "::error::CRITICAL: Live cloud/payment API credentials detected in source tree!"
+            exit 1
+          fi
+
+          echo "✓ Zero exposed private keys or cloud credentials detected in source."
+

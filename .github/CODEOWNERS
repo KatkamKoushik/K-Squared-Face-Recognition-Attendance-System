@@ -1,0 +1,15 @@
+# FRS V7.1 K² — Code Ownership & Review Boundaries
+# Conforms to Checklist Section 3 (Repository and source-control hygiene)
+
+# Default ownership across the entire monorepo
+* @KatkamKoushik
+
+# Subsystem Ownership Boundaries
+/backend/                 @KatkamKoushik
+/apps/teacher_mobile/     @KatkamKoushik
+/apps/admin_console/      @KatkamKoushik
+/packages/contracts/      @KatkamKoushik
+/.github/workflows/       @KatkamKoushik
+/wiki/                    @KatkamKoushik
+/docs/                    @KatkamKoushik
+

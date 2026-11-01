@@ -1,0 +1,1305 @@
+Complete Software Project Engineering Master Checklist
+Purpose: A single, consolidated engineering inventory for designing, building, securing, releasing, operating, and eventually retiring software. It covers web, backend, mobile, APIs, data platforms, AI/ML, SaaS, enterprise systems, and open-source projects.
+
+How to use it: Copy this Markdown into a repository, project tracker, or documentation system. Mark every item N/A only with a reason. A checkbox alone is not evidence of readiness: attach a test, configuration, owner, dashboard, runbook, policy, or other verification evidence. Priorities must be assigned for the specific system and its threat model.
+Standard fields for every control
+- [ ] Requirement
+  - Priority: P0 / P1 / P2 / P3
+  - Owner:
+  - Status: Not started / In progress / Complete / N/A
+  - Acceptance criteria:
+  - Verification / evidence:
+  - Exception and expiry (if any):
+  - Last reviewed:
+Priority guide: P0 = release blocker or unacceptable critical risk; P1 = required for this production deployment; P2 = maturity, efficiency, or scale improvement; P3 = conditional on product, architecture, jurisdiction, or customer requirements. Set actual priorities with an accountable owner; do not assume every item has the same priority.
+1. Product definition, goals, and scope
+- [ ] Define problem statement and target users
+- [ ] Define user personas, jobs-to-be-done, and primary workflows
+- [ ] Document functional requirements and acceptance criteria
+- [ ] Document non-functional requirements
+- [ ] Define supported platforms, browsers, devices, and environments
+- [ ] Define supported regions, languages, time zones, and currencies
+- [ ] Define usage assumptions, traffic forecasts, and growth scenarios
+- [ ] Define availability, latency, durability, and recovery expectations
+- [ ] Define privacy, security, safety, and compliance constraints
+- [ ] Define data classification and business criticality
+- [ ] Define explicit out-of-scope items
+- [ ] Identify dependencies, stakeholders, and accountable decision-makers
+- [ ] Maintain a risk register with owners and mitigation plans
+- [ ] Define success metrics and how they will be measured
+- [ ] Define launch criteria, rollback criteria, and exit criteria
+- [ ] Identify abuse cases and misuse scenarios
+- [ ] Document assumptions and validate high-risk assumptions early
+- [ ] Establish requirements traceability for safety- or compliance-critical functions
+2. Architecture, boundaries, and design decisions
+- [ ] Document high-level architecture and component boundaries
+- [ ] Document data-flow diagrams and trust boundaries
+- [ ] Document deployment topology and external dependencies
+- [ ] Record architecture decision records (ADRs) for material choices
+- [ ] Define module, service, and domain boundaries
+- [ ] Define synchronous versus asynchronous communication boundaries
+- [ ] Define consistency, availability, and durability trade-offs
+- [ ] Define service ownership and support ownership
+- [ ] Define failure domains and isolation boundaries
+- [ ] Define tenancy model and tenant boundary enforcement
+- [ ] Define API and event contracts between components
+- [ ] Avoid circular dependencies and uncontrolled shared state
+- [ ] Define architecture review criteria for risky changes
+- [ ] Review for single points of failure
+- [ ] Review for hidden coupling and shared-resource contention
+- [ ] Document capacity assumptions and scaling limits
+- [ ] Document vendor lock-in and exit risks
+- [ ] Review accessibility, localization, privacy, and security at design time
+- [ ] Maintain current diagrams as architecture changes
+3. Repository and source-control hygiene
+- [ ] Use a clear and consistent repository structure
+- [ ] Include README and local-development instructions
+- [ ] Include license and copyright notices as appropriate
+- [ ] Use branch naming and commit conventions where useful
+- [ ] Protect default and release branches
+- [ ] Require reviews for sensitive code and configuration
+- [ ] Require status checks before merging
+- [ ] Restrict force pushes and deletion of protected branches
+- [ ] Use CODEOWNERS or equivalent ownership rules where useful
+- [ ] Use pull-request templates and issue templates
+- [ ] Keep generated artifacts and secrets out of source control
+- [ ] Define generated-file policy
+- [ ] Define monorepo or multi-repo conventions if applicable
+- [ ] Track technical debt explicitly
+- [ ] Track security-sensitive files and ownership
+- [ ] Configure repository access with least privilege
+- [ ] Audit repository collaborators and deploy keys periodically
+- [ ] Enable repository audit logging where available
+- [ ] Define archival policy for abandoned repositories
+4. Languages, frameworks, code quality, and maintainability
+- [ ] Standardize supported language and runtime versions
+- [ ] Pin toolchain versions where reproducibility requires it
+- [ ] Enable strict typing where available and practical
+- [ ] Configure formatters and linters
+- [ ] Enforce consistent error-handling conventions
+- [ ] Define logging and exception-handling conventions
+- [ ] Avoid swallowing errors silently
+- [ ] Separate business logic from transport and framework code
+- [ ] Define module visibility and public interface rules
+- [ ] Detect circular imports and dependencies
+- [ ] Detect dead code and unused exports
+- [ ] Monitor complexity and maintainability hotspots
+- [ ] Use code review checklists for risk-sensitive changes
+- [ ] Document non-obvious algorithms and invariants
+- [ ] Avoid hard-coded secrets, environment-specific values, and magic constants
+- [ ] Validate input at system boundaries
+- [ ] Use safe resource cleanup and lifecycle management
+- [ ] Review concurrency, race conditions, and shared mutable state
+- [ ] Apply static analysis appropriate to each language
+- [ ] Keep framework and runtime support within maintained versions
+- [ ] Maintain upgrade plans for language runtimes and frameworks
+5. Dependency management and software supply chain
+Dependency lifecycle
+- [ ] Use Dependabot, Renovate, or an equivalent updater
+- [ ] Automate dependency update pull requests
+- [ ] Set update schedules and grouping rules
+- [ ] Pin versions where reproducibility or risk requires it
+- [ ] Commit lockfiles for applicable ecosystems
+- [ ] Use deterministic/frozen installs in CI
+- [ ] Track direct and transitive dependencies
+- [ ] Detect abandoned, deprecated, or unmaintained packages
+- [ ] Detect duplicate and unnecessary dependencies
+- [ ] Review new dependencies before adoption
+- [ ] Define trusted package registries and namespace controls
+- [ ] Protect against dependency confusion and typosquatting
+- [ ] Verify package integrity and provenance where supported
+- [ ] Establish dependency upgrade SLAs by severity
+- [ ] Test major upgrades and maintain migration notes
+- [ ] Define end-of-life handling for runtimes and packages
+Vulnerabilities, SBOM, and provenance
+- [ ] Run npm audit or ecosystem-equivalent checks
+- [ ] Run pip-audit or ecosystem-equivalent checks
+- [ ] Run OSV-Scanner or equivalent vulnerability checks
+- [ ] Scan operating-system packages and container images
+- [ ] Perform software composition analysis (SCA)
+- [ ] Generate SBOM in SPDX or CycloneDX format where appropriate
+- [ ] Generate and retain SBOMs for released artifacts
+- [ ] Produce build provenance attestations where supported
+- [ ] Sign artifacts and verify signatures where appropriate
+- [ ] Maintain vulnerability severity and exploitability triage rules
+- [ ] Create actionable issues for confirmed findings
+- [ ] Document accepted risks, compensating controls, owner, and expiry
+- [ ] Prevent unresolved prohibited vulnerabilities from release
+- [ ] Track remediation age and vulnerability SLA compliance
+- [ ] Scan CI actions/plugins and build tooling
+- [ ] Scan infrastructure-as-code dependencies
+- [ ] Maintain a software component inventory
+- [ ] Prepare a process for urgent zero-day response
+6. Identity, authentication, and account lifecycle
+- [ ] Select and document identity architecture
+- [ ] Implement OAuth 2.0/OIDC correctly when applicable
+- [ ] Validate token issuer, audience, signature, expiry, and claims
+- [ ] Use established libraries rather than custom cryptography
+- [ ] Use secure password hashing such as Argon2id where passwords are used
+- [ ] Enforce sensible password and credential policies
+- [ ] Support secure password reset and account recovery
+- [ ] Verify email or other contact channels where required
+- [ ] Protect against account enumeration
+- [ ] Rate-limit login, recovery, and verification endpoints
+- [ ] Detect brute force and credential stuffing
+- [ ] Support MFA for privileged or sensitive access
+- [ ] Evaluate passkeys/WebAuthn where appropriate
+- [ ] Support SSO where required
+- [ ] Define session creation, renewal, expiry, and revocation rules
+- [ ] Rotate refresh tokens and detect reuse where applicable
+- [ ] Revoke sessions after credential changes or compromise
+- [ ] Set secure cookie attributes: Secure, HttpOnly, and appropriate SameSite
+- [ ] Use CSRF defenses for cookie-authenticated actions where applicable
+- [ ] Require reauthentication for sensitive actions where justified
+- [ ] Implement logout on current device and all devices if needed
+- [ ] Audit authentication successes, failures, and security events
+- [ ] Define account lockout/recovery behavior without enabling easy denial of service
+- [ ] Support identity-provider outage behavior and recovery
+- [ ] Define user deletion, suspension, and reactivation behavior
+- [ ] Implement machine-to-machine authentication separately from human login
+- [ ] Manage API keys with scoped permissions, expiry, rotation, and revocation
+7. Authorization, tenancy, and privileged access
+- [ ] Choose and document RBAC, ABAC, or another policy model
+- [ ] Default to deny unless permission is explicitly granted
+- [ ] Enforce authorization server-side on every protected operation
+- [ ] Check object/resource-level permissions, not only endpoint access
+- [ ] Check function-level and administrative permissions
+- [ ] Verify ownership and tenant boundaries for reads and writes
+- [ ] Test insecure direct object reference (IDOR/BOLA) cases
+- [ ] Prevent cross-tenant access through IDs, exports, caches, queues, and search
+- [ ] Separate tenant data in logs, analytics, backups, and AI context where required
+- [ ] Define role inheritance and conflict resolution
+- [ ] Keep administrative and operational roles separate
+- [ ] Scope permissions to the minimum required action and resource
+- [ ] Handle permission revocation and stale sessions/tokens
+- [ ] Test privilege escalation paths
+- [ ] Audit privileged actions and permission changes
+- [ ] Implement impersonation with explicit authorization, reason, expiry, and audit trail
+- [ ] Review service-to-service authorization independently of user authorization
+- [ ] Periodically review role and permission assignments
+- [ ] Document break-glass access and post-use review
+8. Secrets, keys, certificates, and cloud IAM
+- [ ] Use a managed secret store or vault
+- [ ] Never commit secrets or expose them in logs
+- [ ] Use separate credentials for development, test, staging, and production
+- [ ] Prefer workload identity and short-lived credentials over static keys
+- [ ] Apply least-privilege IAM policies
+- [ ] Separate build, deploy, runtime, and human administrative roles
+- [ ] Restrict CI credentials and token permissions
+- [ ] Rotate secrets and keys according to risk and provider requirements
+- [ ] Define revocation and emergency rotation procedures
+- [ ] Audit secret access
+- [ ] Scan repositories and CI artifacts for secrets
+- [ ] Manage TLS certificates and automated renewal
+- [ ] Define key ownership, rotation, backup, and recovery procedures
+- [ ] Use KMS/HSM capabilities when risk or requirements justify them
+- [ ] Separate encryption keys by environment and purpose where appropriate
+- [ ] Restrict cloud metadata endpoint access where applicable
+- [ ] Review public exposure of cloud resources
+- [ ] Review IAM policies and service-account permissions periodically
+- [ ] Document break-glass credentials and securely test recovery
+- [ ] Ensure secret revocation propagates to active workloads
+9. Application security engineering
+- [ ] Perform threat modeling for material features and trust boundaries
+- [ ] Maintain an attack-surface inventory
+- [ ] Follow secure coding standards
+- [ ] Review OWASP Top 10 and OWASP API Security risks as applicable
+- [ ] Prevent SQL/command injection through parameterization and safe APIs
+- [ ] Prevent XSS with contextual output encoding and safe rendering
+- [ ] Prevent CSRF where relevant
+- [ ] Prevent SSRF and restrict server-side outbound requests
+- [ ] Prevent path traversal and unsafe archive extraction
+- [ ] Validate uploads, file types, sizes, and content
+- [ ] Protect against request smuggling and parser disagreement where relevant
+- [ ] Set safe security headers
+- [ ] Configure TLS securely
+- [ ] Apply rate limits and abuse controls
+- [ ] Limit payload sizes, decompression, parsing, and computational cost
+- [ ] Use secure randomness and vetted cryptographic libraries
+- [ ] Define encryption at rest and in transit requirements
+- [ ] Redact credentials, tokens, payment data, and sensitive PII from telemetry
+- [ ] Run SAST, DAST, SCA, secret scanning, and IaC scanning as appropriate
+- [ ] Perform penetration testing based on risk and release scope
+- [ ] Fuzz parsers, protocols, and exposed interfaces where useful
+- [ ] Define responsible disclosure and security contact procedures
+- [ ] Document security exceptions with compensating controls and expiry
+- [ ] Maintain a security incident response playbook
+10. Frontend and browser application engineering
+Product quality and user experience
+- [ ] Define component and design-system conventions
+- [ ] Implement loading, empty, success, error, and retry states
+- [ ] Validate forms on client and server
+- [ ] Prevent duplicate submissions for consequential actions
+- [ ] Provide useful errors without exposing internal details
+- [ ] Handle offline, slow network, and interrupted requests where applicable
+- [ ] Preserve user work during recoverable failures
+- [ ] Test responsive layouts and supported viewports
+- [ ] Test supported browsers and assistive technologies
+- [ ] Add visual regression tests where worthwhile
+- [ ] Keep user-visible errors linked to support/debugging context safely
+Performance
+- [ ] Track LCP, INP, and CLS
+- [ ] Track FCP and TTFB where useful
+- [ ] Set Core Web Vitals targets and performance budgets
+- [ ] Measure real-user performance as well as synthetic tests
+- [ ] Track initial JavaScript and CSS payload sizes
+- [ ] Apply code splitting and lazy loading where beneficial
+- [ ] Optimize images, fonts, and media
+- [ ] Remove unused code and expensive third-party scripts
+- [ ] Cache static assets with versioned filenames
+- [ ] Test slow devices, CPU throttling, and slow networks
+- [ ] Monitor hydration and rendering performance
+- [ ] Test for memory leaks and long-running page degradation
+Browser security
+- [ ] Configure Content Security Policy
+- [ ] Set HSTS and appropriate security headers
+- [ ] Configure CORS narrowly
+- [ ] Protect cookies and browser storage
+- [ ] Assess third-party scripts and tag managers
+- [ ] Use Subresource Integrity where applicable
+- [ ] Validate postMessage origins and payloads
+- [ ] Protect against clickjacking and unsafe framing
+- [ ] Validate redirect and deep-link destinations
+- [ ] Prevent client-side secrets from being bundled
+- [ ] Avoid logging sensitive data to browser consoles or telemetry
+11. Web rendering, SEO, and distribution
+- [ ] Choose SSR, SSG, ISR, CSR, or hybrid rendering intentionally
+- [ ] Verify server/client hydration consistency
+- [ ] Define canonical URL behavior
+- [ ] Generate environment-aware robots.txt
+- [ ] Generate sitemap.xml and sitemap indexes as needed
+- [ ] Include only canonical, indexable URLs in sitemaps
+- [ ] Implement structured data/Schema.org where applicable
+- [ ] Validate structured data in CI or release checks
+- [ ] Generate Open Graph and social preview metadata
+- [ ] Handle title, description, language, and robots metadata per route
+- [ ] Implement hreflang relationships for localized pages when applicable
+- [ ] Avoid indexing staging, private, or duplicate pages
+- [ ] Define redirect, trailing slash, and URL normalization rules
+- [ ] Handle 404 and 410 responses correctly
+- [ ] Ensure important content is crawlable
+- [ ] Track SPA route transitions without corrupting analytics
+- [ ] Monitor crawl errors, indexing coverage, and broken links
+- [ ] Test link previews and social card rendering
+- [ ] Establish an SEO migration plan for URL or domain changes
+12. Backend application engineering
+- [ ] Define service boundaries and runtime configuration
+- [ ] Validate request data at the boundary
+- [ ] Use consistent response and error formats
+- [ ] Set request, connection, and operation timeouts
+- [ ] Propagate cancellation and deadlines
+- [ ] Apply rate limiting and quotas
+- [ ] Set request and response size limits
+- [ ] Handle retries with backoff and jitter where safe
+- [ ] Use circuit breakers and bulkheads when justified
+- [ ] Implement graceful shutdown and connection draining
+- [ ] Implement health, readiness, and liveness endpoints appropriately
+- [ ] Avoid blocking work on request-critical paths unnecessarily
+- [ ] Ensure background jobs are idempotent or deduplicated
+- [ ] Bound concurrency and queues
+- [ ] Handle partial failures and external dependency timeouts
+- [ ] Track p50, p95, and p99 latency
+- [ ] Track throughput, saturation, and errors
+- [ ] Profile CPU, memory, allocation, and I/O hotspots
+- [ ] Detect N+1 queries and inefficient serialization
+- [ ] Document runtime and resource limits
+- [ ] Test graceful degradation under dependency failure
+13. API design, gateways, and integrations
+- [ ] Maintain an API inventory and owner list
+- [ ] Publish OpenAPI/GraphQL schema/protocol definitions as applicable
+- [ ] Define versioning and backward-compatibility rules
+- [ ] Validate request and response schemas
+- [ ] Use appropriate HTTP status codes and error semantics
+- [ ] Implement pagination, filtering, sorting, and field selection consistently
+- [ ] Use idempotency keys for retryable state-changing operations
+- [ ] Define API authentication, authorization, and quotas
+- [ ] Apply per-client throttles and abuse detection
+- [ ] Test contract compatibility in CI
+- [ ] Track API latency, errors, and usage by endpoint/client
+- [ ] Document deprecation, migration, and sunset timelines
+- [ ] Secure webhook signatures and timestamp/replay checks
+- [ ] Track webhook delivery, retries, and failures
+- [ ] Provide webhook replay tools with access controls
+- [ ] Define external service timeout and retry policies
+- [ ] Respect provider quotas and rate limits
+- [ ] Maintain sandbox/test credentials for integrations
+- [ ] Implement fallback or queued processing for provider outages where appropriate
+- [ ] Keep provider credentials out of source code and logs
+14. Database design, transactions, and operations
+- [ ] Review data model and normalization/denormalization choices
+- [ ] Define primary keys, foreign keys, unique constraints, and check constraints
+- [ ] Add indexes for measured query patterns
+- [ ] Review query plans for critical queries
+- [ ] Prevent SQL injection
+- [ ] Define transaction boundaries and isolation requirements
+- [ ] Test concurrent updates and race conditions
+- [ ] Define optimistic/pessimistic locking where needed
+- [ ] Configure connection pools and pool saturation alerts
+- [ ] Monitor query latency, slow queries, locks, deadlocks, and replication lag
+- [ ] Define database access roles by service and environment
+- [ ] Encrypt data at rest and in transit where supported/required
+- [ ] Protect sensitive columns and database exports
+- [ ] Define retention, archival, and deletion behavior
+- [ ] Define tenant scoping at query and schema layers as appropriate
+- [ ] Document consistency and uniqueness invariants
+- [ ] Test large data volumes and realistic query distributions
+- [ ] Define read replica and failover behavior where applicable
+- [ ] Test backups and restores
+15. Schema migrations and data changes
+- [ ] Version all schema changes
+- [ ] Review migrations as production code
+- [ ] Test migration from supported starting versions
+- [ ] Use expand-and-contract patterns for incompatible changes
+- [ ] Avoid long locks and table rewrites during peak usage where possible
+- [ ] Estimate migration runtime and storage requirements
+- [ ] Define migration timeout and failure recovery behavior
+- [ ] Separate schema rollout from application rollout when needed
+- [ ] Verify compatibility between old and new application versions
+- [ ] Define rollback versus forward-fix strategy
+- [ ] Back up or snapshot before high-risk transformations
+- [ ] Reconcile record counts and invariants after migration
+- [ ] Make backfills resumable and rate-limited
+- [ ] Monitor migration progress and errors
+- [ ] Document irreversible migrations
+- [ ] Test data migrations on production-like copies
+- [ ] Define rollback triggers and owner approval
+16. Caching, queues, schedulers, and asynchronous work
+- [ ] Document cache key, TTL, invalidation, and consistency policy
+- [ ] Avoid cross-tenant cache leakage
+- [ ] Prevent cache stampedes and uncontrolled cache misses
+- [ ] Bound cache memory and eviction behavior
+- [ ] Measure hit ratio, latency, evictions, and errors
+- [ ] Define queue delivery semantics and ordering requirements
+- [ ] Handle duplicate delivery and idempotency
+- [ ] Implement retry limits, backoff, and dead-letter queues
+- [ ] Detect poison messages and stuck jobs
+- [ ] Monitor queue depth, age, lag, and processing latency
+- [ ] Define concurrency and worker autoscaling limits
+- [ ] Make scheduled jobs idempotent and observable
+- [ ] Define missed-schedule and duplicate-schedule behavior
+- [ ] Support safe replay and reprocessing
+- [ ] Version event/message schemas
+- [ ] Protect message payloads and queue permissions
+- [ ] Define retention and deletion policies for queued data
+- [ ] Handle backpressure and producer throttling
+- [ ] Test worker restart and broker outage recovery
+- [ ] Use transactional outbox/inbox patterns where consistency requires them
+17. Data engineering, pipelines, and analytics storage
+- [ ] Define data owners, sources, destinations, and lineage
+- [ ] Define schemas and schema evolution rules
+- [ ] Use data contracts between pipeline stages
+- [ ] Validate completeness, validity, freshness, and uniqueness
+- [ ] Detect duplicate, missing, late, and out-of-order events
+- [ ] Make ingestion retryable and idempotent
+- [ ] Support replay and backfill operations
+- [ ] Quarantine invalid records with controlled access
+- [ ] Monitor pipeline duration, lag, cost, and failure rate
+- [ ] Reconcile source and destination totals
+- [ ] Document event-time versus processing-time semantics
+- [ ] Define partitioning, retention, compaction, and archival policies
+- [ ] Control access to data lakes, warehouses, and analytical stores
+- [ ] Mask or tokenize sensitive fields in analytics
+- [ ] Test transformations and metric definitions
+- [ ] Version data models and transformation code
+- [ ] Track lineage for deletion and correction requests
+- [ ] Define ownership for data quality incidents
+- [ ] Protect production data in test environments
+- [ ] Validate disaster recovery and reconstruction paths
+18. Machine learning model lifecycle
+- [ ] Define model purpose, users, limitations, and failure consequences
+- [ ] Maintain versioned datasets and model artifacts
+- [ ] Track training code, parameters, seeds, and environment
+- [ ] Maintain reproducible experiments where feasible
+- [ ] Track evaluation datasets and baseline metrics
+- [ ] Evaluate across relevant segments and edge cases
+- [ ] Track false positives, false negatives, calibration, and uncertainty where relevant
+- [ ] Monitor input data quality and feature drift
+- [ ] Monitor data drift, concept drift, and model performance where ground truth exists
+- [ ] Track prediction and confidence distributions
+- [ ] Record model version for each prediction where feasible
+- [ ] Define approval and promotion gates for models
+- [ ] Use shadow/canary rollout where risk warrants it
+- [ ] Support rollback to an approved model version
+- [ ] Track inference latency, throughput, CPU, GPU, VRAM, and memory
+- [ ] Track cold starts, model load time, and queueing latency
+- [ ] Set inference concurrency and resource limits
+- [ ] Track cost per prediction/request
+- [ ] Define retraining triggers and review requirements
+- [ ] Test training-serving skew
+- [ ] Document model limitations and intended-use boundaries
+- [ ] Define human review for high-impact or low-confidence outcomes where needed
+- [ ] Keep a model registry and release history
+- [ ] Test model artifact integrity and access controls
+19. LLM, RAG, and agentic AI systems
+Prompts and model routing
+- [ ] Version prompts and system instructions as code
+- [ ] Test prompts against regression datasets
+- [ ] Track model, provider, parameters, and prompt version
+- [ ] Define model routing, fallback, and provider outage behavior
+- [ ] Set token, latency, and cost budgets
+- [ ] Budget context windows and prioritize context
+- [ ] Summarize or compact long conversation history safely
+- [ ] Handle truncation and context overflow explicitly
+- [ ] Validate structured outputs against runtime schemas
+- [ ] Validate tool arguments before execution
+Retrieval and vector search
+- [ ] Document ingestion, parsing, chunking, and metadata strategy
+- [ ] Evaluate chunk size and overlap
+- [ ] Define source permissions and access-aware retrieval
+- [ ] Use hybrid search where appropriate
+- [ ] Evaluate reranking where appropriate
+- [ ] Tune vector index and similarity metric for the embedding model
+- [ ] Measure retrieval recall and relevance
+- [ ] Track source citations and provenance
+- [ ] Filter unauthorized documents before context construction
+- [ ] Version embedding models and dimensions
+- [ ] Define re-embedding and index migration process
+- [ ] Support index rebuilds, backfills, and rollback
+- [ ] Delete vectors and derived chunks when source data must be removed
+- [ ] Monitor vector query latency, index size, and cost
+- [ ] Test retrieval under sparse, ambiguous, and adversarial queries
+Agent execution safety
+- [ ] Assign a distinct identity and permissions to each agent/workflow
+- [ ] Run untrusted code in isolated, resource-limited sandboxes where applicable
+- [ ] Restrict filesystem, network, and secret access
+- [ ] Set maximum steps, tool calls, wall-clock time, and spending
+- [ ] Detect runaway loops and repeated failed actions
+- [ ] Require approval for destructive or high-impact actions
+- [ ] Separate planning from privileged execution
+- [ ] Enforce authorization at the tool/server boundary
+- [ ] Validate outputs before executing database writes, commands, or external communications
+- [ ] Make actions idempotent where possible
+- [ ] Provide stop, cancel, and kill-switch controls
+- [ ] Define fallback to deterministic code or human review
+- [ ] Log model/prompt version, tool call, outcome, and actor without leaking secrets
+- [ ] Test prompt injection, indirect prompt injection, and retrieval poisoning
+- [ ] Test data exfiltration and cross-tenant context leakage
+- [ ] Evaluate jailbreaks and unsafe output paths
+- [ ] Test system prompt leakage protections without relying on secrecy alone
+- [ ] Use moderation and policy checks where relevant
+- [ ] Evaluate hallucination, faithfulness, context relevance, and task success
+- [ ] Monitor quality and failure rates on production traffic using privacy-safe methods
+- [ ] Define retention and access rules for conversation data
+- [ ] Define escalation and incident response for AI failures
+- [ ] Review provider data retention, training, and regional processing terms
+20. Native mobile engineering
+Runtime and lifecycle
+- [ ] Handle foreground, background, inactive, and suspended states
+- [ ] Preserve and restore navigation and user state correctly
+- [ ] Handle low-memory warnings and process termination
+- [ ] Test app startup, resume, and cold/warm launch performance
+- [ ] Handle interruptions such as calls, permission dialogs, and OS task switching
+- [ ] Manage background work within platform constraints
+- [ ] Test network handoffs, airplane mode, and connectivity loss
+- [ ] Test battery use, memory, CPU, thermal behavior, FPS, and jank
+- [ ] Test low-end and older supported devices
+- [ ] Test OS version compatibility and device fragmentation
+- [ ] Handle orientation, window resizing, and foldables where applicable
+Permissions, notifications, and secure storage
+- [ ] Request permissions in context and explain purpose
+- [ ] Provide graceful behavior when permissions are denied or revoked
+- [ ] Minimize requested device permissions
+- [ ] Use platform secure storage for tokens and credentials
+- [ ] Integrate biometric authentication using platform APIs where appropriate
+- [ ] Validate deep links and universal/app links
+- [ ] Register, refresh, and invalidate push tokens
+- [ ] Handle APNs/FCM failures and notification permission changes
+- [ ] Handle notification actions securely
+- [ ] Handle silent/background notification limits correctly
+- [ ] Prevent sensitive content from leaking into notifications or app switcher previews where needed
+- [ ] Assess screenshot/screen recording restrictions for sensitive screens
+- [ ] Protect local databases, caches, files, and backups
+- [ ] Define root/jailbreak risk response proportionate to threat model
+Mobile delivery and monetization
+- [ ] Configure signing keys and certificate custody
+- [ ] Automate build, signing, and store submission where appropriate
+- [ ] Validate privacy manifests and store declarations as applicable
+- [ ] Stage releases and monitor crash-free sessions
+- [ ] Define rollout halt and rollback/mitigation procedures
+- [ ] Validate OTA updates against platform policies and compatibility constraints
+- [ ] Implement in-app purchase and subscription verification server-side if applicable
+- [ ] Verify store receipts and signed transactions
+- [ ] Handle billing retry, refund, restore purchase, and entitlement reconciliation
+- [ ] Secure purchase webhooks and make processing idempotent
+- [ ] Test app update, uninstall/reinstall, and account migration paths
+- [ ] Track crashes, ANRs, startup time, and release health
+21. Desktop, browser extension, IoT, and device-specific software
+- [ ] Identify platform threat model and update mechanism
+- [ ] Sign installers, binaries, and updates where supported
+- [ ] Verify update signatures and prevent downgrade attacks where relevant
+- [ ] Protect local configuration, credentials, caches, and user data
+- [ ] Define permissions and sandbox boundaries
+- [ ] Test installation, upgrade, repair, and uninstall paths
+- [ ] Test auto-update failure and rollback paths
+- [ ] Handle offline behavior and intermittent connectivity
+- [ ] Define secure device identity and provisioning for IoT
+- [ ] Define device revocation and lost-device handling
+- [ ] Authenticate and authorize device-to-cloud messages
+- [ ] Encrypt sensitive device communications
+- [ ] Define firmware signing and secure update procedures where applicable
+- [ ] Maintain a supported-device matrix and end-of-support policy
+- [ ] Test resource-constrained environments where applicable
+22. Accessibility and inclusive design
+- [ ] Set an accessibility conformance target appropriate to the product
+- [ ] Use semantic structure and accessible names
+- [ ] Ensure complete keyboard operation
+- [ ] Ensure visible and logical focus order
+- [ ] Test screen readers on supported platforms
+- [ ] Provide accessible labels, descriptions, and instructions for inputs
+- [ ] Associate errors with fields and announce relevant status changes
+- [ ] Meet contrast and non-color-only information requirements
+- [ ] Support text resizing and zoom
+- [ ] Respect reduced-motion preferences
+- [ ] Provide captions/transcripts for meaningful audio/video
+- [ ] Ensure dialogs, menus, tables, charts, and custom controls are accessible
+- [ ] Test accessible authentication and timeout flows
+- [ ] Test mobile accessibility and dynamic type
+- [ ] Run automated accessibility checks in CI where available
+- [ ] Conduct manual expert and user testing for critical journeys
+- [ ] Track accessibility defects and prevent regressions
+- [ ] Publish an accessibility statement or contact path where appropriate
+23. Internationalization and localization
+- [ ] Use next-intl, i18next, or an equivalent localization system where needed
+- [ ] Support locale-aware routing and locale detection
+- [ ] Store translation files separately from application logic
+- [ ] Detect missing, unused, malformed, and duplicate translation keys
+- [ ] Use locale-aware date, time, number, and currency formatting
+- [ ] Handle pluralization and locale-specific grammatical forms
+- [ ] Store timestamps consistently and render in the selected timezone
+- [ ] Avoid hard-coded text in UI and error paths
+- [ ] Support text expansion, variable-length strings, and font coverage
+- [ ] Support Unicode and appropriate text normalization
+- [ ] Prepare layout for RTL and bidirectional text
+- [ ] Test locale-aware sorting, search, and input
+- [ ] Localize validation errors, emails, notifications, and documents
+- [ ] Define translation ownership and review workflow
+- [ ] Define fallback locale behavior
+- [ ] Test localized SEO metadata and hreflang where applicable
+- [ ] Test non-default locales in CI or release QA
+- [ ] Review culturally sensitive content and formatting
+24. Testing strategy and quality assurance
+Test design
+- [ ] Unit tests for important business logic
+- [ ] Integration tests for component boundaries
+- [ ] API and protocol tests
+- [ ] Consumer/provider contract tests
+- [ ] End-to-end tests for critical user journeys
+- [ ] Component and rendering tests
+- [ ] Database integration and transaction tests
+- [ ] Authentication and authorization tests
+- [ ] Tenant isolation tests
+- [ ] Data validation and migration tests
+- [ ] Regression tests for fixed defects
+- [ ] Property-based testing where useful
+- [ ] Fuzz testing for parsers and exposed protocols where useful
+- [ ] Mutation testing for critical modules where justified
+- [ ] Visual regression tests where useful
+- [ ] Accessibility tests
+- [ ] Cross-browser/device/platform tests
+- [ ] Load, stress, spike, and soak tests as applicable
+- [ ] Fault injection and chaos tests based on risk
+- [ ] Backup and restore tests
+- [ ] Disaster recovery and failover tests
+Test system quality
+- [ ] Define test pyramid and ownership
+- [ ] Define coverage measures for critical code paths
+- [ ] Avoid using code coverage as the sole quality gate
+- [ ] Track flaky tests and quarantine policy
+- [ ] Make test data reproducible and isolated
+- [ ] Mask production data in test environments
+- [ ] Use realistic load shapes and datasets
+- [ ] Test boundary values, empty input, malformed input, and large payloads
+- [ ] Test concurrent requests and duplicate operations
+- [ ] Test retries, timeouts, and partial dependency failures
+- [ ] Test migrations across supported versions
+- [ ] Verify negative security cases, not only successful flows
+- [ ] Publish test reports and failure artifacts safely
+- [ ] Define a process for investigating ignored/skipped tests
+- [ ] Set quality gates for build, security, functionality, and performance
+25. CI/CD and release engineering
+Continuous integration
+- [ ] Run CI on every relevant pull request and protected-branch change
+- [ ] Install dependencies reproducibly
+- [ ] Run format, lint, type, unit, and integration checks
+- [ ] Build production artifacts in CI
+- [ ] Run API, contract, and end-to-end checks as appropriate
+- [ ] Run security, secret, dependency, and IaC scans
+- [ ] Validate database migrations
+- [ ] Check performance and accessibility budgets where applicable
+- [ ] Publish test results, coverage, and build status
+- [ ] Require status checks and reviews for protected branches
+- [ ] Track CI duration, failure rate, and flaky tests
+- [ ] Cache build outputs safely and invalidate correctly
+- [ ] Avoid exposing secrets to untrusted fork pull requests
+Delivery and deployment
+- [ ] Separate build from deployment where practical
+- [ ] Promote the same immutable artifact across environments
+- [ ] Manage environment-specific configuration separately
+- [ ] Use deployment approvals for high-risk production changes where needed
+- [ ] Automate deployment health checks
+- [ ] Run post-deployment smoke tests
+- [ ] Use rolling, canary, or blue-green deployments where appropriate
+- [ ] Use feature flags and kill switches where useful
+- [ ] Define deployment pause and rollback triggers
+- [ ] Ensure rollback artifacts remain available
+- [ ] Verify schema compatibility during rollout and rollback
+- [ ] Record deployment actor, artifact digest, and change reference
+- [ ] Generate release notes and tags
+- [ ] Notify relevant teams of releases and failures
+- [ ] Define emergency patch process
+- [ ] Test rollback and release halt procedures
+26. Build integrity, artifacts, and release provenance
+- [ ] Use isolated and trusted CI runners
+- [ ] Minimize and scope CI permissions
+- [ ] Pin third-party CI actions and build plugins where appropriate
+- [ ] Protect release tags and signing credentials
+- [ ] Record source revision and artifact digest
+- [ ] Generate provenance attestations where feasible
+- [ ] Verify artifacts before deployment
+- [ ] Sign artifacts and releases where appropriate
+- [ ] Restrict artifact registry access
+- [ ] Scan artifacts and container images before release
+- [ ] Retain released artifacts for rollback and audit needs
+- [ ] Define reproducible-build expectations for critical components
+- [ ] Protect caches from poisoning or untrusted writes
+- [ ] Ensure build secrets are not baked into images or artifacts
+- [ ] Document response to suspected build pipeline compromise
+27. Infrastructure as Code and environment management
+- [ ] Define infrastructure through version-controlled IaC where suitable
+- [ ] Review and approve infrastructure plans
+- [ ] Lint and validate infrastructure code
+- [ ] Scan IaC for security misconfiguration
+- [ ] Detect configuration drift
+- [ ] Separate development, staging, and production environments
+- [ ] Establish environment parity where practical
+- [ ] Automate environment creation and teardown
+- [ ] Define resource naming, tagging, and ownership conventions
+- [ ] Restrict state-file access and encrypt state
+- [ ] Protect state locking and backup procedures
+- [ ] Manage configuration changes through review
+- [ ] Test infrastructure changes before production
+- [ ] Define import and recovery procedures for IaC state
+- [ ] Set resource quotas, budgets, and guardrails
+- [ ] Inventory manually created resources
+- [ ] Document provider and module version strategy
+- [ ] Test disaster recovery of critical infrastructure definitions
+28. Containers, orchestration, and runtime platform
+- [ ] Use minimal and maintained base images
+- [ ] Use multi-stage builds where appropriate
+- [ ] Run as non-root where possible
+- [ ] Drop unnecessary Linux capabilities
+- [ ] Set CPU, memory, process, and disk limits
+- [ ] Scan and sign container images where appropriate
+- [ ] Do not bake secrets into images
+- [ ] Define image provenance and retention
+- [ ] Configure health/readiness/liveness probes correctly
+- [ ] Set graceful termination and connection-drain periods
+- [ ] Configure autoscaling and scale-down behavior
+- [ ] Define disruption budgets and placement constraints where applicable
+- [ ] Restrict workload-to-workload network access
+- [ ] Apply admission policies and runtime protection where justified
+- [ ] Restrict privileged containers and host mounts
+- [ ] Manage Kubernetes RBAC and secrets securely if using Kubernetes
+- [ ] Monitor restarts, evictions, scheduling failures, and resource pressure
+- [ ] Test node and cluster upgrades
+- [ ] Define cluster recovery and version support policies
+- [ ] Review service mesh overhead and failure modes if used
+29. Networking, DNS, CDN, edge, and real-time connections
+- [ ] Define network segmentation and trust zones
+- [ ] Minimize public exposure of internal services
+- [ ] Restrict egress where appropriate
+- [ ] Configure DNS ownership, TTLs, and failover
+- [ ] Automate TLS certificate issuance and renewal
+- [ ] Configure load balancers and health checks
+- [ ] Evaluate HTTP/2 and HTTP/3 support where appropriate
+- [ ] Define CDN cache keys and cache-control rules
+- [ ] Avoid caching private or tenant-specific responses publicly
+- [ ] Define stale-while-revalidate and stale-if-error behavior where appropriate
+- [ ] Automate controlled cache invalidation/purging
+- [ ] Configure WAF and DDoS protection based on threat model
+- [ ] Rate-limit abusive traffic at suitable layers
+- [ ] Configure bot protections without blocking legitimate users unnecessarily
+- [ ] Define edge-function limits and fallback paths
+- [ ] Test geographic routing and residency constraints
+- [ ] For WebSockets: handle heartbeats, reconnects, backoff, and connection limits
+- [ ] For SSE/streaming: handle proxies, buffering, heartbeats, and client disconnects
+- [ ] Define connection draining during deploys
+- [ ] Monitor connection count, duration, errors, and saturation
+- [ ] Test packet loss, high latency, and connection interruption
+- [ ] Document outbound network dependencies
+30. Storage, files, media, and content delivery
+- [ ] Classify object and file data by sensitivity
+- [ ] Restrict bucket/container access by least privilege
+- [ ] Block unintended public access
+- [ ] Use signed URLs with short expiry where appropriate
+- [ ] Validate upload size, type, content, and ownership
+- [ ] Scan uploaded files for malware where warranted
+- [ ] Store files outside executable/public paths as appropriate
+- [ ] Protect against path traversal and archive bombs
+- [ ] Define checksum/integrity validation
+- [ ] Encrypt stored data where required
+- [ ] Define versioning, retention, lifecycle, and archival policies
+- [ ] Handle partial uploads, retries, and resumability
+- [ ] Define media transcoding and thumbnail failure recovery
+- [ ] Keep metadata and access control synchronized with file operations
+- [ ] Enforce deletion across replicas, derivatives, and caches as required
+- [ ] Monitor storage capacity, request costs, and error rates
+- [ ] Test recovery and large-scale export paths
+31. Observability: logs, metrics, traces, and profiling
+Instrumentation
+- [ ] Adopt OpenTelemetry or an equivalent instrumentation strategy
+- [ ] Use structured logs
+- [ ] Propagate request, trace, and correlation IDs
+- [ ] Instrument request latency, throughput, errors, and saturation
+- [ ] Use histograms for latency distributions
+- [ ] Instrument database, cache, queue, and external dependency calls
+- [ ] Instrument critical business operations where appropriate
+- [ ] Collect distributed traces across service boundaries
+- [ ] Define trace sampling and cardinality controls
+- [ ] Avoid unbounded metric labels
+- [ ] Redact secrets and sensitive fields before export
+- [ ] Set log, metric, and trace retention policies
+- [ ] Control access to observability data
+- [ ] Validate telemetry during CI or integration tests
+Dashboards and application metrics
+- [ ] Backend p50/p95/p99 latency
+- [ ] Request throughput and error rate
+- [ ] Endpoint-level latency and error metrics
+- [ ] Database latency, connections, locks, and replication lag
+- [ ] Cache hit/miss ratio and eviction metrics
+- [ ] Queue depth, age, lag, retries, and dead letters
+- [ ] CPU, memory, disk, network, GPU, and VRAM where relevant
+- [ ] Container restarts and health
+- [ ] Frontend exceptions and Core Web Vitals
+- [ ] Mobile crash-free sessions and ANRs where applicable
+- [ ] ML inference latency, model error, drift, and prediction distribution where relevant
+- [ ] Product usage, activation, retention, and conversion where appropriate
+- [ ] Cloud cost and quota utilization
+- [ ] Maintain dashboards with owners and documented interpretations
+Monitoring and alerting
+- [ ] Define actionable alerts with severity and ownership
+- [ ] Route alerts to responsible teams
+- [ ] Set thresholds based on SLOs and observed baselines
+- [ ] Deduplicate and group alerts
+- [ ] Avoid alerting on symptoms that have no action path
+- [ ] Link alerts to runbooks
+- [ ] Monitor certificate expiry and scheduled job failures
+- [ ] Use synthetic checks for critical paths
+- [ ] Monitor from outside the production environment
+- [ ] Test alert delivery and escalation
+- [ ] Review alert noise and missed incidents periodically
+32. SRE, reliability, performance, and capacity
+- [ ] Define SLIs and SLOs for critical services
+- [ ] Define SLAs only where a contractual commitment is intended
+- [ ] Establish error budgets and release policies where useful
+- [ ] Define availability and latency targets
+- [ ] Load test expected peak and growth scenarios
+- [ ] Stress test limits and overload behavior
+- [ ] Run soak tests for leaks and long-duration degradation
+- [ ] Test burst and spike traffic
+- [ ] Identify bottlenecks and saturation points
+- [ ] Define graceful degradation and load shedding
+- [ ] Test retry storms and cascading failure scenarios
+- [ ] Apply timeouts consistently across dependency chains
+- [ ] Bound queues and concurrent work
+- [ ] Test dependency outages and slow responses
+- [ ] Define capacity forecasts and scaling triggers
+- [ ] Track performance regressions per release
+- [ ] Maintain critical dependency maps
+- [ ] Review single points of failure
+- [ ] Conduct failure-mode and effects analysis where appropriate
+- [ ] Use chaos engineering only with defined hypotheses and blast-radius controls
+- [ ] Track MTTD, MTTA, MTTR, change failure rate, and deployment frequency where useful
+- [ ] Review SLOs and error budgets on a regular cadence
+33. Incident response and production operations
+- [ ] Define incident severity levels
+- [ ] Define incident commander and responder roles
+- [ ] Maintain on-call schedules and escalation paths
+- [ ] Maintain runbooks for common failure modes
+- [ ] Define customer and internal communication templates
+- [ ] Maintain status page/communications process where needed
+- [ ] Preserve relevant logs, traces, and evidence during incidents
+- [ ] Define access and approval procedures for emergency changes
+- [ ] Record incident timeline, impact, and mitigation
+- [ ] Conduct blameless post-incident reviews
+- [ ] Track corrective actions to completion
+- [ ] Test critical alert paths
+- [ ] Practice dependency outage and recovery scenarios
+- [ ] Define security incident handling separately where needed
+- [ ] Define legal/privacy escalation paths for data incidents
+- [ ] Track recurring incident patterns
+- [ ] Publish operational ownership and support expectations
+- [ ] Review runbooks after code or architecture changes
+34. Backup, restore, disaster recovery, and continuity
+- [ ] Inventory systems and data requiring backup
+- [ ] Define backup frequency and retention
+- [ ] Encrypt backups and restrict access
+- [ ] Keep recovery copies isolated from common compromise paths
+- [ ] Define RPO and RTO per critical service
+- [ ] Test point-in-time recovery where supported
+- [ ] Test restore to a clean environment
+- [ ] Verify integrity and completeness after restore
+- [ ] Back up required keys and configuration securely
+- [ ] Document ordering and dependencies for recovery
+- [ ] Define recovery ownership and communications
+- [ ] Practice failover, failback, and reconciliation
+- [ ] Test regional outage scenarios where relevant
+- [ ] Validate backup deletion and legal retention requirements
+- [ ] Monitor backup completion and restore readiness
+- [ ] Define business continuity procedures if software is unavailable
+- [ ] Document degraded/manual operating modes where applicable
+35. Product analytics, experimentation, and feature management
+- [ ] Choose PostHog, Amplitude, or an appropriate analytics platform where needed
+- [ ] Define an event taxonomy and naming conventions
+- [ ] Define event owners and a schema registry/documentation
+- [ ] Track DAU, WAU, and MAU when relevant
+- [ ] Track activation, time to value, and onboarding completion
+- [ ] Track feature discovery and usage
+- [ ] Track retention cohorts and churn
+- [ ] Track funnel conversion and abandonment
+- [ ] Track sessions and task completion where meaningful
+- [ ] Validate analytics events in test environments
+- [ ] Prevent duplicate events and identity fragmentation
+- [ ] Distinguish anonymous and authenticated identity safely
+- [ ] Respect consent and privacy requirements
+- [ ] Minimize PII and sensitive event properties
+- [ ] Configure retention and user deletion propagation
+- [ ] Define experiment hypotheses and success metrics
+- [ ] Guard against sample-ratio mismatch and instrumentation errors
+- [ ] Avoid shipping experiments that violate safety or privacy constraints
+- [ ] Track feature flag owners, expiry, and cleanup
+- [ ] Provide kill switches for high-risk features
+- [ ] Separate operational telemetry from product analytics where appropriate
+36. Billing, payments, subscriptions, and financial correctness
+- [ ] Use authoritative server-side pricing and entitlement checks
+- [ ] Use a supported payment provider rather than storing payment credentials unnecessarily
+- [ ] Minimize PCI DSS scope where possible
+- [ ] Verify payment webhooks and signatures
+- [ ] Make payment processing idempotent
+- [ ] Prevent duplicate charges and duplicate refunds
+- [ ] Reconcile payment provider events with internal state
+- [ ] Model subscription states and allowed transitions
+- [ ] Handle trial, renewal, past-due, grace, cancellation, refund, and downgrade states
+- [ ] Handle proration and plan changes consistently
+- [ ] Verify mobile in-app purchases server-side where applicable
+- [ ] Handle store receipt/transaction validation and notifications
+- [ ] Define invoice, tax, currency, and rounding behavior
+- [ ] Keep billing history and audit trails
+- [ ] Define failed payment and dunning workflows
+- [ ] Reconcile usage meters with invoices
+- [ ] Make entitlement updates resilient to duplicate/out-of-order events
+- [ ] Define dispute, chargeback, and fraud processes
+- [ ] Protect against price tampering and client-side entitlement forgery
+- [ ] Test refunds, reversals, and provider outages
+- [ ] Define financial reporting and reconciliation controls
+37. FinOps, usage metering, and resource cost controls
+- [ ] Define budgets by account, product, environment, and team
+- [ ] Track cloud spend and forecast variance
+- [ ] Tag resources with owner, environment, service, and cost center
+- [ ] Attribute costs to tenants or workloads when feasible
+- [ ] Track cost per request, active user, transaction, or inference where useful
+- [ ] Meter billable events with defined semantics
+- [ ] Make usage ingestion idempotent and auditable
+- [ ] Reconcile metering totals with source systems
+- [ ] Define hard and soft usage limits
+- [ ] Implement quota enforcement and overage behavior
+- [ ] Protect against accidental infinite workloads and spending spikes
+- [ ] Set budget alerts and provider quota alerts
+- [ ] Define safe kill switches with explicit safeguards
+- [ ] Avoid automatically disabling critical or safety-related infrastructure without controlled policy
+- [ ] Optimize idle resources, storage lifecycle, log retention, and data transfer
+- [ ] Measure GPU/model inference and third-party API costs
+- [ ] Track cache effectiveness and autoscaling waste
+- [ ] Review reserved capacity and commitment purchases carefully
+- [ ] Include cost checks in architecture and launch reviews
+- [ ] Track cost anomalies and responsible owners
+38. Privacy, data protection, and data subject rights
+- [ ] Maintain a data inventory and classification scheme
+- [ ] Document purposes and legal bases where required
+- [ ] Collect only necessary data
+- [ ] Define retention and deletion schedules
+- [ ] Define user access, correction, export, and deletion workflows where applicable
+- [ ] Propagate deletion to replicas, indexes, caches, analytics, backups, and derived data according to policy
+- [ ] Explain limits for immutable backups and legal retention where applicable
+- [ ] Handle consent and preference records where required
+- [ ] Restrict sensitive data in logs, traces, analytics, and support tools
+- [ ] Encrypt sensitive information in transit and at rest as appropriate
+- [ ] Restrict employee and vendor access
+- [ ] Maintain audit trails for sensitive data access
+- [ ] Define privacy review for new features and vendors
+- [ ] Conduct DPIAs/PIAs where required or warranted
+- [ ] Maintain records of processing where applicable
+- [ ] Define data breach detection, escalation, and notification procedures
+- [ ] Review international transfer mechanisms and data residency requirements
+- [ ] Define data localization controls for databases, backups, logs, and AI providers as required
+- [ ] Maintain subprocessors/vendor data handling inventory
+- [ ] Review regional legal requirements with qualified counsel
+- [ ] Avoid claiming compliance solely because a tool or policy exists
+39. Compliance, assurance, and industry-specific controls
+- [ ] Identify applicable jurisdictions, sectors, contracts, and standards
+- [ ] Map requirements to concrete technical and organizational controls
+- [ ] Maintain control owners and evidence collection cadence
+- [ ] Maintain access reviews and change/deployment evidence
+- [ ] Track vulnerability remediation and exceptions
+- [ ] Prepare for SOC 2 or ISO 27001 assessment if required
+- [ ] Establish policies and evidence workflows for applicable assurance audits
+- [ ] Use BAAs and PHI safeguards if handling regulated health information where required
+- [ ] Assess HIPAA applicability with qualified compliance support where relevant
+- [ ] Assess PCI DSS scope if handling payment card data
+- [ ] Use hosted payment fields/tokens to reduce scope where possible
+- [ ] Assess GDPR, UK GDPR, CCPA/CPRA, India DPDP, and other applicable privacy laws with qualified counsel
+- [ ] Assess accessibility laws and procurement requirements
+- [ ] Assess export controls, sanctions, and sector rules where relevant
+- [ ] Maintain incident notification timelines by jurisdiction/contract
+- [ ] Maintain audit evidence retention and integrity
+- [ ] Define compliance change monitoring
+- [ ] Avoid treating a certification as a substitute for runtime security
+40. Legal, intellectual property, licensing, and open-source governance
+- [ ] Maintain an accurate license file and copyright notices
+- [ ] Inventory direct and transitive dependency licenses
+- [ ] Automate license policy scanning
+- [ ] Review copyleft and reciprocal-license obligations before distribution
+- [ ] Review attribution and notice requirements
+- [ ] Track third-party assets, fonts, models, datasets, and documentation licenses
+- [ ] Review rights to distribute model weights and training datasets where applicable
+- [ ] Define AI-generated code review and provenance policy
+- [ ] Require human review for generated code and security-sensitive changes
+- [ ] Avoid pasting unlicensed proprietary code into public tools
+- [ ] Use CLA/DCO processes if required by project governance
+- [ ] Document contributor ownership and rights
+- [ ] Publish CONTRIBUTING.md, CODE_OF_CONDUCT.md, and SECURITY.md where appropriate
+- [ ] Publish issue and pull request templates
+- [ ] Define maintainer permissions and succession planning
+- [ ] Apply semantic versioning where appropriate
+- [ ] Maintain changelog and release notes
+- [ ] Define support windows and deprecation policy
+- [ ] Publish API stability guarantees
+- [ ] Provide installation, quickstart, API, configuration, migration, and troubleshooting documentation
+- [ ] Track external issues, pull requests, adoption signals, and community health when relevant
+- [ ] Define security disclosure and embargo procedures
+- [ ] Ensure external contributions pass CI, license, and security checks
+41. Documentation, developer experience, and contributor productivity
+- [ ] Provide a quickstart that works from a clean machine
+- [ ] Document prerequisites and supported tool versions
+- [ ] Provide a sample environment file without secrets
+- [ ] Validate configuration at startup and show safe error messages
+- [ ] Provide a one-command setup/test/lint workflow where practical
+- [ ] Provide reproducible development environments where useful
+- [ ] Provide seeded test data and safe reset routines
+- [ ] Document local services and mock integrations
+- [ ] Document architecture and key decisions
+- [ ] Document APIs, events, schemas, and configuration variables
+- [ ] Document deployment, rollback, backup, and recovery procedures
+- [ ] Document known limitations and troubleshooting steps
+- [ ] Keep docs synchronized with product versions
+- [ ] Run link checking and documentation builds in CI
+- [ ] Review examples for correctness and security
+- [ ] Establish code review guidelines
+- [ ] Establish onboarding and ownership guides
+- [ ] Make error messages actionable for developers and operators
+- [ ] Track developer environment setup failures and build friction
+- [ ] Keep test suites fast enough to be used routinely
+42. Configuration, feature flags, and operational controls
+- [ ] Define typed configuration schemas
+- [ ] Validate required configuration at startup
+- [ ] Fail safely on invalid security-sensitive settings
+- [ ] Separate secrets from ordinary configuration
+- [ ] Separate configuration by environment
+- [ ] Version and audit high-impact configuration changes
+- [ ] Restrict who can change production configuration
+- [ ] Use feature flags for gradual rollout where appropriate
+- [ ] Define flag owner, purpose, expiry, and cleanup task
+- [ ] Test both flag-enabled and flag-disabled paths when needed
+- [ ] Provide kill switches for high-risk capabilities
+- [ ] Define default behavior when flag/config services are unavailable
+- [ ] Prevent stale flags from accumulating indefinitely
+- [ ] Document emergency override procedures
+- [ ] Avoid exposing internal-only flags to unauthorized users
+43. Notifications, email, SMS, and communication systems
+- [ ] Define message templates and localization
+- [ ] Validate recipients and suppress invalid addresses
+- [ ] Use provider APIs securely
+- [ ] Keep provider credentials in a secret store
+- [ ] Handle rate limits, retries, and provider outages
+- [ ] Make retryable sends idempotent where possible
+- [ ] Track delivery, bounce, complaint, and suppression events
+- [ ] Implement unsubscribe and consent preferences where required
+- [ ] Respect transactional versus marketing communication rules
+- [ ] Prevent notification storms and duplicate messages
+- [ ] Avoid sending sensitive data unnecessarily in messages
+- [ ] Validate deep links and action URLs in notifications
+- [ ] Define sender domain authentication such as SPF, DKIM, and DMARC for email where appropriate
+- [ ] Monitor deliverability and provider reputation
+- [ ] Define retention and access policies for message content
+- [ ] Provide user-level notification preferences
+44. Search, indexing, and discovery systems
+- [ ] Define indexing sources and field mappings
+- [ ] Enforce authorization before returning search results
+- [ ] Prevent cross-tenant and private-content leakage
+- [ ] Define ranking and relevance evaluation
+- [ ] Support typo tolerance and language-aware analysis where needed
+- [ ] Track zero-result searches and poor-result feedback
+- [ ] Define indexing delay and freshness targets
+- [ ] Make indexing retries idempotent
+- [ ] Handle deletes and permission changes in indexes
+- [ ] Version index mappings and analyzer configuration
+- [ ] Test reindexing and alias/index cutover
+- [ ] Monitor index size, query latency, and failure rate
+- [ ] Protect search endpoints against expensive queries and abuse
+- [ ] Define fallback behavior when search is unavailable
+- [ ] For vector search, also apply the RAG controls in Section 19
+45. Admin consoles, moderation, abuse, and trust and safety
+- [ ] Separate admin interface from normal user workflows where appropriate
+- [ ] Enforce server-side admin permissions
+- [ ] Require MFA and stronger controls for privileged operations
+- [ ] Audit admin access, exports, impersonation, and data changes
+- [ ] Limit bulk actions and require confirmation for destructive operations
+- [ ] Support reversible actions or compensating workflows when feasible
+- [ ] Define abuse reporting and triage
+- [ ] Define spam, fraud, bot, and rate-abuse detection
+- [ ] Implement quotas and throttles per user, tenant, IP, or API key as appropriate
+- [ ] Define moderation policy and escalation for user-generated content where relevant
+- [ ] Support evidence preservation and appeals where appropriate
+- [ ] Protect moderators/support users from unnecessary sensitive exposure
+- [ ] Define account suspension and reinstatement rules
+- [ ] Track abuse metrics without collecting unnecessary personal data
+- [ ] Test that blocked users cannot bypass controls through alternate endpoints
+- [ ] Define emergency response for active abuse campaigns
+46. Customer support, tenancy operations, and enterprise readiness
+- [ ] Define support channels and response expectations
+- [ ] Provide safe diagnostic information and request IDs to customers
+- [ ] Define support access and temporary elevation procedures
+- [ ] Audit support access to customer data
+- [ ] Provide tenant administration and user management where required
+- [ ] Support organization ownership transfer where appropriate
+- [ ] Provide export and offboarding capabilities
+- [ ] Define customer-visible status and incident communications
+- [ ] Maintain a known-issues and service-status process
+- [ ] Define SLA reporting where contractually required
+- [ ] Support SSO, SCIM, audit logs, and role controls where enterprise customers require them
+- [ ] Define data residency and retention options where contracted
+- [ ] Document tenant quotas, limits, and fair-use rules
+- [ ] Ensure one tenant cannot exhaust shared resources without controls
+- [ ] Test high-volume and high-cardinality tenants
+- [ ] Define customer configuration validation and rollback
+- [ ] Provide migration assistance and customer data portability where appropriate
+47. Vendor and third-party service management
+- [ ] Maintain a vendor and subprocessors inventory
+- [ ] Record purpose, data processed, criticality, and owner for each vendor
+- [ ] Review vendor security posture and relevant assurance reports
+- [ ] Review privacy, retention, training use, region, and subprocessors terms
+- [ ] Define access and credential scope per vendor
+- [ ] Monitor rate limits, quotas, latency, availability, and cost
+- [ ] Define retry, timeout, fallback, and outage behavior
+- [ ] Avoid making unnecessary product-critical assumptions about one vendor
+- [ ] Define data export and migration/exit procedures
+- [ ] Test critical vendor failover or replacement where feasible
+- [ ] Track vendor API version changes and deprecations
+- [ ] Define contract renewal and termination reminders
+- [ ] Revoke credentials and delete data when vendors are retired
+- [ ] Document vendor-specific incident notification procedures
+48. Cost, quotas, and abuse-resistant resource allocation
+- [ ] Define per-user, tenant, project, and API key quotas
+- [ ] Bound CPU, memory, concurrency, file size, token count, and job duration
+- [ ] Limit expensive search, export, and report operations
+- [ ] Protect against denial of wallet and denial of service
+- [ ] Apply request budgets and deadlines across service chains
+- [ ] Use fair scheduling or per-tenant resource isolation where needed
+- [ ] Monitor queue depth and pending work age
+- [ ] Set alerting thresholds before hard limits are reached
+- [ ] Define behavior when quotas are exceeded
+- [ ] Make quota enforcement consistent across UI, API, background jobs, and agents
+- [ ] Prevent users from bypassing limits with multiple credentials where relevant
+- [ ] Track cost by feature and workload
+- [ ] Add runaway-cost detection and carefully designed circuit breakers
+- [ ] Test budget exhaustion and recovery workflows
+49. Compatibility, upgrades, migrations, and deprecation
+- [ ] Define supported client, runtime, database, and platform versions
+- [ ] Test upgrades from supported versions
+- [ ] Maintain compatibility tests for public interfaces
+- [ ] Document breaking changes prominently
+- [ ] Provide migration scripts and guides
+- [ ] Use deprecation warnings and headers where relevant
+- [ ] Publish dates and support windows for breaking changes
+- [ ] Support staged migrations when data volume or downtime requires it
+- [ ] Monitor use of deprecated APIs/features before removal
+- [ ] Define rollback or forward-fix strategy for upgrades
+- [ ] Keep data formats versioned where necessary
+- [ ] Test downgrade limitations explicitly
+- [ ] Define end-of-life notice and customer communication plans
+- [ ] Avoid silently removing customer data or capabilities
+50. Data export, deletion, offboarding, and system retirement
+- [ ] Provide authenticated machine-readable exports where appropriate
+- [ ] Define export formats, pagination, integrity, and completeness guarantees
+- [ ] Protect exports against unauthorized access and link leakage
+- [ ] Define export expiry and deletion behavior
+- [ ] Provide tenant/user offboarding flows
+- [ ] Verify deletion across primary stores, replicas, search indexes, caches, and derived datasets as required
+- [ ] Document backup retention constraints and eventual deletion behavior
+- [ ] Preserve data subject rights and legal holds where applicable
+- [ ] Revoke user, service, and vendor credentials during retirement
+- [ ] Migrate or archive required audit records safely
+- [ ] Decommission infrastructure in a controlled order
+- [ ] Remove DNS, certificates, secrets, and public endpoints after shutdown
+- [ ] Confirm storage and backups are handled per retention policy
+- [ ] Document customer communication and export deadlines
+- [ ] Maintain a vendor exit playbook
+- [ ] Verify retired systems are no longer receiving traffic or processing data
+51. Open-source operations and community health (if applicable)
+- [ ] Publish a clear README and quickstart
+- [ ] Publish license and contribution terms
+- [ ] Publish CONTRIBUTING.md, CODE_OF_CONDUCT.md, and SECURITY.md
+- [ ] Provide issue, bug, and feature request templates
+- [ ] Provide pull-request template and review expectations
+- [ ] Use semantic versioning where appropriate
+- [ ] Maintain changelog and release notes
+- [ ] Document stable and experimental APIs
+- [ ] Document support and deprecation windows
+- [ ] Automate tests and checks for external pull requests
+- [ ] Restrict untrusted workflow permissions
+- [ ] Scan contributions for secrets and license issues
+- [ ] Define CLA/DCO if required by governance
+- [ ] Document governance, maintainers, and decision-making where appropriate
+- [ ] Provide examples, tutorials, API docs, and troubleshooting guides
+- [ ] Track issue/PR response times and contributor friction
+- [ ] Track adoption signals when useful without treating stars as quality proof
+- [ ] Plan maintainer succession and bus-factor reduction
+- [ ] Define security disclosure and coordinated release process
+- [ ] Publish reproducible artifacts and package metadata where possible
+52. Quality gates, engineering metrics, and evidence
+- [ ] Define release-blocking checks and owners
+- [ ] Track CI pass rate and build duration
+- [ ] Track test reliability and flaky test rate
+- [ ] Track coverage for critical code paths
+- [ ] Track mutation score only where justified
+- [ ] Track performance-budget compliance
+- [ ] Track vulnerability remediation time
+- [ ] Track change failure rate and recovery time
+- [ ] Track deployment frequency and lead time where useful
+- [ ] Track escaped defects and production error rates
+- [ ] Track SLO compliance and error-budget consumption
+- [ ] Track accessibility and localization regression rates where relevant
+- [ ] Track incident corrective actions to closure
+- [ ] Track backup restore test success
+- [ ] Track documentation freshness for public and operational interfaces
+- [ ] Maintain evidence links for security, compliance, and readiness claims
+- [ ] Review metrics for perverse incentives and gaming
+- [ ] Use metrics to prioritize risk reduction, not replace expert judgment
+53. Production readiness review
+- [ ] Product requirements and known limitations are approved
+- [ ] Threat model and security review are complete for relevant risks
+- [ ] Authentication, authorization, and tenant isolation are tested
+- [ ] Data classification, retention, and deletion are defined
+- [ ] Dependency and artifact scans meet release policy
+- [ ] CI quality gates pass
+- [ ] Load and performance tests meet target requirements
+- [ ] SLOs, dashboards, and alert routes are in place
+- [ ] Runbooks and incident ownership are documented
+- [ ] Backups and restoration have been tested
+- [ ] Migration and rollback plans are tested or rehearsed
+- [ ] Secrets, IAM, and production access are reviewed
+- [ ] Privacy, legal, and regulatory applicability is assessed
+- [ ] Capacity and cost estimates are reviewed
+- [ ] External vendor failure behavior is known
+- [ ] Accessibility and localization criteria are met where applicable
+- [ ] Support, escalation, and customer communication paths are ready
+- [ ] Launch, pause, rollback, and kill-switch criteria are defined
+- [ ] Remaining risks have named owners and explicit acceptance
+54. Release and post-release verification
+- [ ] Confirm the released artifact matches the approved commit/build
+- [ ] Verify signatures, provenance, and artifact digest where used
+- [ ] Verify deployed configuration and secrets without exposing values
+- [ ] Run smoke tests against production
+- [ ] Verify critical user journeys end to end
+- [ ] Verify error rate, latency, throughput, and saturation after deployment
+- [ ] Verify authentication and authorization on critical routes
+- [ ] Verify background jobs and queues are progressing
+- [ ] Verify data migrations and reconciliation checks
+- [ ] Verify analytics event delivery and correctness where applicable
+- [ ] Monitor rollout and define stop conditions
+- [ ] Confirm rollback or mitigation path remains available
+- [ ] Communicate release status to stakeholders
+- [ ] Record incidents and unexpected behavior
+- [ ] Remove temporary access and release credentials when no longer needed
+- [ ] Create follow-up work for deferred risks and operational gaps
+55. Definition of done for each feature
+- [ ] Requirements and acceptance criteria are documented
+- [ ] Applicable threat and abuse cases have been considered
+- [ ] Server-side validation and authorization are implemented
+- [ ] Error handling and edge cases are addressed
+- [ ] Unit and relevant integration/contract tests pass
+- [ ] Critical end-to-end paths are tested
+- [ ] Regression, accessibility, localization, and performance tests are added where relevant
+- [ ] Logs, metrics, and traces cover important operational behavior
+- [ ] Sensitive data is not leaked through logs, analytics, errors, or URLs
+- [ ] Database/data migration and rollback implications are addressed
+- [ ] Documentation, examples, and changelog are updated as appropriate
+- [ ] Feature flags have owners and cleanup plans where used
+- [ ] Privacy, retention, and deletion behavior are understood
+- [ ] Support and operational ownership are clear
+- [ ] Acceptance evidence is attached to the work item
+Conditional technology and domain add-on checklist
+Apply only those relevant to the product; add more domain-specific controls where applicable.
+A. SaaS and multi-tenant platforms
+- [ ] Tenant isolation at API, database, cache, storage, search, queue, logs, and AI context layers
+- [ ] Tenant provisioning and deprovisioning
+- [ ] Tenant-specific quotas and resource limits
+- [ ] Tenant configuration validation and audit history
+- [ ] Tenant-aware backups, exports, and deletion
+- [ ] Tenant billing, usage metering, and reconciliation
+- [ ] Noisy-neighbor controls
+- [ ] Tenant migration between plans, regions, or storage models
+B. Financial, payment, or high-integrity systems
+- [ ] Strong audit trail for material transactions
+- [ ] Idempotent financial operations and duplicate prevention
+- [ ] Ledger/reconciliation invariants where applicable
+- [ ] Separation of duties for approvals and reversals
+- [ ] Fraud and anomaly monitoring
+- [ ] Tamper-evident records where required
+- [ ] Explicit rounding, decimal precision, currency, and time semantics
+- [ ] Recovery and reconciliation procedures after partial failure
+C. Healthcare or other sensitive-data products
+- [ ] Determine applicable legal and contractual requirements with qualified experts
+- [ ] Apply least-privilege access and detailed audit logging
+- [ ] Restrict exports, support access, and secondary use
+- [ ] Validate retention, consent, correction, and deletion obligations
+- [ ] Protect data in non-production environments
+- [ ] Document incident and breach escalation paths
+D. Generative AI products
+- [ ] Prompt injection and indirect injection testing
+- [ ] Tool authorization and execution sandboxing
+- [ ] Hallucination and citation-quality evaluation
+- [ ] Model/provider data-retention review
+- [ ] Cost and token budgets
+- [ ] User-visible uncertainty and escalation design where needed
+- [ ] Model/prompt regression evaluations
+- [ ] Abuse monitoring and output policy checks
+E. Public APIs and developer platforms
+- [ ] API keys with scoped permissions and rotation
+- [ ] Quotas, rate limits, and tenant isolation
+- [ ] Versioning and backward-compatibility tests
+- [ ] Developer portal and runnable examples
+- [ ] Sandbox and test credentials
+- [ ] Usage dashboards and error diagnostics
+- [ ] Deprecation notices and migration support
+F. Open-source libraries and frameworks
+- [ ] Stable API policy and compatibility tests
+- [ ] Support matrix for runtimes/platforms
+- [ ] Reproducible package builds where possible
+- [ ] Automated release publication
+- [ ] Contribution and security policies
+- [ ] License and provenance checks
+- [ ] Migration notes for breaking changes
+G. Regulated or geographically distributed deployments
+- [ ] Data residency requirements for primary data, logs, backups, telemetry, and model providers
+- [ ] Cross-border transfer and contractual safeguards where required
+- [ ] Regional availability and failover design
+- [ ] Region-specific key management and access controls
+- [ ] Regional deletion and retention enforcement
+- [ ] Jurisdiction-specific incident notification process
+Suggested project tracking fields
+Use these as columns in a spreadsheet or project tracker:
+
+ID | Pillar | Requirement | Applies? | Priority | Owner | Status | Acceptance Criteria | Verification Evidence | Risk | Target Date | Exception Expiry | Last Reviewed
+Final rule
+This is a broad master inventory, not a universal certification or a guarantee that a project is production-ready. Tailor it to the actual architecture, threat model, data sensitivity, usage, deployment model, business continuity needs, and laws/contracts that apply. An item should be marked complete only when its acceptance criteria have been verified; mark it N/A only with a documented rationale and approver.
