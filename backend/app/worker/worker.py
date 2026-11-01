@@ -34,15 +34,19 @@ class VisionWorker:
 
         for job in jobs:
             try:
-                self.execute_job(db, job)
-                QueueService.complete_job(db, job.id, self.worker_id, success=True)
+                self.process_job(db, job)
                 processed_count += 1
             except Exception as e:
-                QueueService.complete_job(
-                    db, job.id, self.worker_id, success=False, error_message=str(e)
+                QueueService.record_job_failure(
+                    db, job.id, error_message=str(e), retryable=True
                 )
 
         return processed_count
+
+    def process_job(self, db: Session, job: VisionJob):
+        """Processes a single vision job through the state machine pipeline."""
+        self.execute_job(db, job)
+        QueueService.complete_job(db, job.id, self.worker_id, success=True)
 
     def execute_job(self, db: Session, job: VisionJob):
         """Executes full pipeline for one classroom frame."""

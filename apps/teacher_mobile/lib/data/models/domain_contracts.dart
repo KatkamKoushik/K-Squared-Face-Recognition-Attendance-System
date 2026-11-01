@@ -215,7 +215,7 @@ extension AttendanceStatusWireExtension on AttendanceStatus {
     }
   }
 
-  static AttendanceStatus fromWire(String? value) {
+  static AttendanceStatus? fromWire(String? value) {
     switch (value?.toUpperCase()) {
       case 'PRESENT_CONFIRMED':
       case 'PRESENT':
@@ -224,8 +224,10 @@ extension AttendanceStatusWireExtension on AttendanceStatus {
         return AttendanceStatus.excused;
       case 'ABSENT_CONFIRMED':
       case 'ABSENT':
-      default:
         return AttendanceStatus.absentConfirmed;
+      default:
+        // P0.5 Guardrail: Null, missing, or unknown values must NEVER default to absent.
+        return null;
     }
   }
 }
@@ -275,7 +277,7 @@ class CandidateProposalItem {
   final String studentId;
   final String rollNumber;
   final String fullName;
-  final AttendanceStatus proposalStatus;
+  final AttendanceStatus? proposalStatus;
   final EvidenceState evidenceState;
   final double? highestSimilarityScore;
   final int sightingsCount;
@@ -287,7 +289,7 @@ class CandidateProposalItem {
     required this.studentId,
     required this.rollNumber,
     required this.fullName,
-    required this.proposalStatus,
+    this.proposalStatus,
     required this.evidenceState,
     this.highestSimilarityScore,
     this.sightingsCount = 0,
@@ -340,7 +342,7 @@ class CandidateProposalItem {
     'student_id': studentId,
     'roll_number': rollNumber,
     'full_name': fullName,
-    'proposal_status': proposalStatus.toWire(),
+    'proposal_status': proposalStatus?.toWire(),
     'evidence_state': evidenceState.toWire(),
     'highest_similarity_score': highestSimilarityScore,
     'sightings_count': sightingsCount,

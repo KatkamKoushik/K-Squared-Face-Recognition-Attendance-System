@@ -112,3 +112,29 @@ class QueueService:
         job.lease_expires_at = None
         db.flush()
         return job
+
+    @staticmethod
+    def record_job_failure(
+        db: Session,
+        job_id: str,
+        error_message: str,
+        retryable: bool = True,
+    ) -> VisionJob:
+        """
+        Records a job processing failure with bounded retry counting.
+        Transitions to TERMINAL_FAILURE if attempt_count >= max_attempts or retryable is False.
+        """
+        stmt = select(VisionJob).where(VisionJob.id == job_id)
+        job = db.execute(stmt).scalar_one_or_none()
+        if not job:
+            raise ValueError(f"Job {job_id} not found")
+
+        if not retryable or job.attempt_count >= job.max_attempts:
+            job.status = JobState.TERMINAL_FAILURE
+        else:
+            job.status = JobState.RETRYABLE_FAILURE
+
+        job.error_message = error_message
+        job.lease_expires_at = None
+        db.flush()
+        return job

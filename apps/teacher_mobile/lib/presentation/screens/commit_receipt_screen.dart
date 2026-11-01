@@ -205,7 +205,7 @@ class _CommitReceiptScreenState extends ConsumerState<CommitReceiptScreen> {
                                 ),
                               ),
                               Text(
-                                candidate.proposalStatus.name,
+                                candidate.proposalStatus?.name ?? 'unresolved',
                                 style: const TextStyle(fontSize: 11, color: AppTheme.textMutedLight),
                               ),
                             ],
