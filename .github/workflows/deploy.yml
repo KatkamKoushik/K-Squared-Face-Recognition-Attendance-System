@@ -123,7 +123,7 @@ jobs:
         run: flutter build apk --release --dart-define=API_URL=${{ secrets.PROD_API_URL || 'https://api.frs.kucet.ac.in/api/v1' }}
 
       - name: Upload APK Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: frs-teacher-app-release
           path: apps/teacher_mobile/build/app/outputs/flutter-apk/app-release.apk
