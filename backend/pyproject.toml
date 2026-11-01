@@ -1,0 +1,52 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "frs-backend"
+version = "7.1.0"
+description = "FRS V7.1 K² — Classroom Photo Attendance System Backend & Control Plane"
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [
+    { name = "KUCET Engineering Team" }
+]
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.32.0",
+    "pydantic>=2.9.0",
+    "pydantic-settings>=2.5.0",
+    "email-validator>=2.2.0",
+    "sqlalchemy>=2.0.35",
+    "asyncpg>=0.30.0",
+    "aiosqlite>=0.20.0",
+    "alembic>=1.13.0",
+    "psycopg2-binary>=2.9.9",
+    "pyjwt[crypto]>=2.9.0",
+    "passlib[bcrypt]>=1.7.4",
+    "python-multipart>=0.0.12",
+    "pillow>=10.4.0",
+    "numpy>=1.26.0",
+    "httpx>=0.27.2"
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3.0",
+    "pytest-asyncio>=0.24.0",
+    "pytest-cov>=5.0.0",
+    "pytest-playwright>=0.5.0",
+    "ruff>=0.6.0"
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["app*"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+markers = [
+    "playwright: marks tests as Playwright E2E browser tests (deselect with -m 'not playwright')"
+]

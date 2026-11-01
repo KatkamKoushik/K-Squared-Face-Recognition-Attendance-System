@@ -1,0 +1,53 @@
+# FRS V7.1 K² — Automated Dependency Lifecycle & Vulnerability Management
+# Conforms to Checklist Section 5 (Dependency management and software supply chain)
+
+version: 2
+updates:
+  # 1. Backend Control Plane (Python / Pip)
+  - package-ecosystem: "pip"
+    directory: "/backend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 10
+    groups:
+      dependencies:
+        patterns:
+          - "*"
+
+  # 2. Admin Web Console (Next.js / Node.js)
+  - package-ecosystem: "npm"
+    directory: "/apps/admin_console"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 10
+    groups:
+      dependencies:
+        patterns:
+          - "*"
+
+  # 3. Shared Contracts (TypeScript / Node.js)
+  - package-ecosystem: "npm"
+    directory: "/packages/contracts"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+
+  # 4. Teacher Mobile App (Dart / Flutter Pub)
+  - package-ecosystem: "pub"
+    directory: "/apps/teacher_mobile"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+
+  # 5. GitHub Actions Workflows (CI/CD)
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+
