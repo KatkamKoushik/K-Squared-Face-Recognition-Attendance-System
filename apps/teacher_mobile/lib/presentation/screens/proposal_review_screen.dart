@@ -25,7 +25,7 @@ class ProposalReviewScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Attendance Proposal Review'),
+        title: const Text('Review Proposals'),
         actions: [
           IconButton(
             icon: const Icon(Icons.fact_check_outlined),

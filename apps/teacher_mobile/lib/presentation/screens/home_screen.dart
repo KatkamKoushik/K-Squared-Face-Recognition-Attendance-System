@@ -16,7 +16,7 @@ class HomeScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('FRS Attendance — Faculty Portal'),
+        title: const Text('KUCET Faculty Portal'),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -64,9 +64,17 @@ class HomeScreen extends ConsumerWidget {
                               MockTeacherData.facultyName,
                               style: theme.textTheme.titleLarge,
                             ),
+                            const SizedBox(height: 2),
+                            Text(
+                              MockTeacherData.facultyDesignation,
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: AppTheme.primaryNavy,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                             const SizedBox(height: 4),
                             Text(
-                              'Department of Computer Science & Engineering\nKUCET Campus',
+                              '${MockTeacherData.departmentName}\n${MockTeacherData.collegeName}',
                               style: theme.textTheme.bodyMedium,
                             ),
                           ],
@@ -82,10 +90,13 @@ class HomeScreen extends ConsumerWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      'Assigned Subject Offerings',
-                      style: theme.textTheme.headlineMedium?.copyWith(fontSize: 20),
+                    Expanded(
+                      child: Text(
+                        'Assigned Subject Offerings',
+                        style: theme.textTheme.headlineMedium?.copyWith(fontSize: 18),
+                      ),
                     ),
+                    const SizedBox(width: 8),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
@@ -172,15 +183,23 @@ class HomeScreen extends ConsumerWidget {
                             const SizedBox(height: 16),
                             const Divider(height: 1),
                             const SizedBox(height: 14),
-                            Row(
+                            Wrap(
+                              alignment: WrapAlignment.spaceBetween,
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              spacing: 8,
+                              runSpacing: 10,
                               children: [
-                                const Icon(Icons.people_outline, size: 18, color: AppTheme.textMutedLight),
-                                const SizedBox(width: 6),
-                                Text(
-                                  '${offering['enrolledCount'] ?? 42} Enrolled Students',
-                                  style: theme.textTheme.bodyMedium,
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(Icons.people_outline, size: 18, color: AppTheme.textMutedLight),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      '${offering['enrolledCount'] ?? 42} Enrolled Students',
+                                      style: theme.textTheme.bodyMedium,
+                                    ),
+                                  ],
                                 ),
-                                const Spacer(),
                                 ElevatedButton.icon(
                                   icon: const Icon(Icons.camera_alt_outlined, size: 18),
                                   label: const Text('Start Session'),

@@ -260,3 +260,15 @@ def enroll_student(
 ):
     enrollment = AcademicService.enroll_student(db, data)
     return ResponseEnvelope(data=EnrollmentResponse.model_validate(enrollment), correlation_id=correlation_id)
+
+
+@router.post("/seed-kucet", response_model=ResponseEnvelope[dict], status_code=status.HTTP_200_OK)
+def seed_kucet(
+    db: Session = Depends(get_db),
+    admin_user=Depends(require_roles([UserRole.ADMIN])),
+    correlation_id: str = Depends(get_correlation_id),
+):
+    from app.seeds.kucet_seed import seed_kucet_institutional_data
+    stats = seed_kucet_institutional_data(db)
+    return ResponseEnvelope(data=stats, correlation_id=correlation_id)
+

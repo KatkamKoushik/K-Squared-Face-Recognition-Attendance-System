@@ -60,10 +60,11 @@ class SessionSetupScreen extends ConsumerWidget {
                         style: theme.textTheme.bodyMedium,
                       ),
                       const SizedBox(height: 12),
-                      Row(
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 6,
                         children: [
                           _ContextPill(label: 'Term: ${offering['term']}'),
-                          const SizedBox(width: 8),
                           _ContextPill(label: '${offering['enrolledCount']} Roster Size'),
                         ],
                       ),

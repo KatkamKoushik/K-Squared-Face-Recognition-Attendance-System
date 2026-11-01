@@ -10,6 +10,6 @@ void main() {
       ),
     );
 
-    expect(find.text('FRS Attendance — Faculty Portal'), findsOneWidget);
+    expect(find.text('KUCET Faculty Portal'), findsOneWidget);
   });
 }
