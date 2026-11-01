@@ -3,12 +3,13 @@ FRS V7.1 K² — Academic Administration Endpoints.
 Guarded by ADMIN role. Configuration is represented as data, not code branches.
 """
 
-from typing import List
+from typing import List, Optional
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 from app.api.dependencies import get_current_user, require_roles, get_correlation_id
 from app.core.database import get_db
 from app.domain.enums import UserRole
+from app.domain.models.academic import User
 from app.schemas.academic import (
     DepartmentCreate,
     DepartmentResponse,
@@ -242,11 +243,23 @@ def create_student(
 
 @router.get("/students", response_model=ResponseEnvelope[List[StudentResponse]])
 def list_students(
+    cohort_id: Optional[str] = None,
+    limit: int = 100,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     correlation_id: str = Depends(get_correlation_id),
 ):
-    students = AcademicService.get_students(db)
+    """
+    Lists students with strict object-level authorization:
+    - Admin: institutional scope across all cohorts.
+    - Faculty: scoped only to students in cohorts or enrollments assigned to the instructor.
+    """
+    students = AcademicService.get_students_scoped(
+        db=db,
+        user=current_user,
+        cohort_id=cohort_id,
+        limit=limit,
+    )
     items = [StudentResponse.model_validate(s) for s in students]
     return ResponseEnvelope(data=items, correlation_id=correlation_id)
 

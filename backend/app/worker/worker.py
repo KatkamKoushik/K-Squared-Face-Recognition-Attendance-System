@@ -3,6 +3,7 @@ FRS V7.1 K² — Deterministic Vision Orchestration State Machine & Worker Proce
 Processes queued frames, enforces per-face evidence routing, and prepares candidate proposals.
 """
 
+import os
 from typing import Dict, List
 from PIL import Image
 from sqlalchemy import select
@@ -76,7 +77,12 @@ class VisionWorker:
         profiles = list(db.execute(profiles_stmt).scalars().all())
         roster_gallery: Dict[str, List[float]] = {p.student_id: p.vector_data for p in profiles}
 
-        # 2. Open frame image
+        # 2. Open frame image from shared storage
+        if not os.path.exists(frame.storage_path):
+            raise FileNotFoundError(
+                f"Frame image not found at storage path: {frame.storage_path}. "
+                "Ensure shared frame_storage volume is mounted for both API and vision-worker."
+            )
         image = Image.open(frame.storage_path)
 
         # 3. Detect faces

@@ -31,6 +31,9 @@ services:
       SECRET_KEY: dev_insecure_secret_key_change_in_production_min_32_bytes_len
       ENVIRONMENT: development
       PORT: 8000
+      STORAGE_DIR: /data/frames
+    volumes:
+      - frame_storage:/data/frames
     ports:
       - "8000:8000"
 
@@ -48,6 +51,9 @@ services:
     environment:
       DATABASE_URL: postgresql+asyncpg://postgres:postgres_dev_password@postgres:5432/frs_k2
       ENVIRONMENT: development
+      STORAGE_DIR: /data/frames
+    volumes:
+      - frame_storage:/data/frames
 
   admin-console:
     build:
@@ -66,4 +72,6 @@ services:
 
 volumes:
   postgres_data:
+    driver: local
+  frame_storage:
     driver: local

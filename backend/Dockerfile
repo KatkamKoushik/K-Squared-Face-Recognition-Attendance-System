@@ -31,8 +31,10 @@ COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/pytho
 COPY --from=builder /usr/local/bin /usr/local/bin
 COPY . .
 
-# Run as non-root user
-RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
+# Run as non-root user with shared frame storage permissions
+RUN mkdir -p /data/frames && \
+    useradd -m -u 1000 appuser && \
+    chown -R appuser:appuser /app /data/frames
 USER appuser
 
 EXPOSE 8000

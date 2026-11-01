@@ -39,8 +39,19 @@ class _CommitReceiptScreenState extends ConsumerState<CommitReceiptScreen> {
 
     if (confirmed == true) {
       setState(() => _isCommitting = true);
-      await ref.read(sessionProvider.notifier).commitFinalAttendance();
+      final receipt = await ref.read(sessionProvider.notifier).commitFinalAttendance();
       setState(() => _isCommitting = false);
+
+      if (receipt == null && mounted) {
+        final err = ref.read(sessionProvider).errorMessage ?? 'Commit rejected or server unreachable.';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(err),
+            backgroundColor: Colors.redAccent,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
     }
   }
 

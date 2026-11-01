@@ -187,3 +187,179 @@ def test_commit_invariants_and_roster_validation(db_session: Session, seed_data)
             request=dup_req,
             correlation_id="corr-err-3",
         )
+
+
+def test_offering_analytics_authorization(db_session: Session, seed_data):
+    """
+    P0.7: Verify object-level authorization on GET /api/v1/offerings/{id}/analytics.
+    - Assigned faculty has access.
+    - Unassigned faculty is forbidden (403).
+    - Administrator has institutional scope (200).
+    """
+    app = create_application()
+    app.dependency_overrides[get_db] = lambda: db_session
+    client = TestClient(app)
+
+    offering = seed_data["offering"]
+    user_a = seed_data["faculty_user"]
+    token_a = create_access_token(subject=str(user_a.id), role="FACULTY")
+    headers_a = {"Authorization": f"Bearer {token_a}"}
+
+    # Faculty B (unassigned)
+    user_b = User(email="faculty_b_analytics@kucet.ac.in", hashed_password="pw", role="FACULTY")
+    db_session.add(user_b)
+    db_session.flush()
+
+    faculty_b = Faculty(user_id=user_b.id, employee_id="FAC-B-002", full_name="Faculty B Analytics", department_id=seed_data["department"].id)
+    db_session.add(faculty_b)
+    db_session.flush()
+
+    token_b = create_access_token(subject=str(user_b.id), role="FACULTY")
+    headers_b = {"Authorization": f"Bearer {token_b}"}
+
+    # Admin
+    admin_user = User(email="admin_analytics@kucet.ac.in", hashed_password="pw", role="ADMIN")
+    db_session.add(admin_user)
+    db_session.flush()
+    token_admin = create_access_token(subject=str(admin_user.id), role="ADMIN")
+    headers_admin = {"Authorization": f"Bearer {token_admin}"}
+
+    # 1. Unassigned faculty B -> 403 Forbidden
+    res_b = client.get(f"/api/v1/offerings/{offering.id}/analytics", headers=headers_b)
+    assert res_b.status_code == 403
+    assert res_b.json()["error"]["code"] == "RESOURCE_FORBIDDEN"
+
+    # 2. Assigned faculty A -> 200 OK
+    res_a = client.get(f"/api/v1/offerings/{offering.id}/analytics", headers=headers_a)
+    assert res_a.status_code == 200
+    assert "data" in res_a.json()
+
+    # 3. Administrator -> 200 OK
+    res_admin = client.get(f"/api/v1/offerings/{offering.id}/analytics", headers=headers_admin)
+    assert res_admin.status_code == 200
+    assert "data" in res_admin.json()
+
+
+def test_student_directory_scoped_authorization(db_session: Session, seed_data):
+    """
+    P0.7: Verify object-level authorization on GET /api/v1/academic/students.
+    - Faculty cannot query students from unassigned cohorts (403).
+    - Faculty can query students from assigned cohorts (200).
+    - Admin has institutional access across any cohort (200).
+    """
+    from app.domain.models.academic import Cohort
+    from app.domain.models.student import Student
+
+    app = create_application()
+    app.dependency_overrides[get_db] = lambda: db_session
+    client = TestClient(app)
+
+    cohort_a = seed_data["cohort1"]
+    cohort_b = seed_data["cohort2"]
+    user_a = seed_data["faculty_user"]
+    token_a = create_access_token(subject=str(user_a.id), role="FACULTY")
+    headers_a = {"Authorization": f"Bearer {token_a}"}
+
+    # Add a student to unassigned cohort B
+    student_b = Student(
+        roll_number="23CSD01",
+        full_name="CSD Student 1",
+        cohort_id=cohort_b.id,
+    )
+    db_session.add(student_b)
+    db_session.flush()
+
+    # Admin
+    admin_user = User(email="admin_students@kucet.ac.in", hashed_password="pw", role="ADMIN")
+    db_session.add(admin_user)
+    db_session.flush()
+    token_admin = create_access_token(subject=str(admin_user.id), role="ADMIN")
+    headers_admin = {"Authorization": f"Bearer {token_admin}"}
+
+    # 1. Faculty A queries unassigned cohort B -> 403 Forbidden
+    res_unassigned = client.get(f"/api/v1/academic/students?cohort_id={cohort_b.id}", headers=headers_a)
+    assert res_unassigned.status_code == 403
+    assert res_unassigned.json()["error"]["code"] == "RESOURCE_FORBIDDEN"
+
+    # 2. Faculty A queries assigned cohort A -> 200 OK
+    res_assigned = client.get(f"/api/v1/academic/students?cohort_id={cohort_a.id}", headers=headers_a)
+    assert res_assigned.status_code == 200
+    assert len(res_assigned.json()["data"]) >= 1
+
+    # 3. Admin queries unassigned cohort B -> 200 OK
+    res_admin = client.get(f"/api/v1/academic/students?cohort_id={cohort_b.id}", headers=headers_admin)
+    assert res_admin.status_code == 200
+    assert len(res_admin.json()["data"]) == 1
+
+
+def test_commit_receipt_retrieval_authorization(db_session: Session, seed_data):
+    """
+    P0.4: Verify object-level authorization on GET /api/v1/sessions/{id}/receipt.
+    - Non-owner faculty is forbidden (403).
+    - Session owner has access (200).
+    - Admin has access (200).
+    """
+    from app.domain.models.audit import CommitReceipt
+
+    app = create_application()
+    app.dependency_overrides[get_db] = lambda: db_session
+    client = TestClient(app)
+
+    faculty_a = seed_data["faculty"]
+    user_a = seed_data["faculty_user"]
+    token_a = create_access_token(subject=str(user_a.id), role="FACULTY")
+    headers_a = {"Authorization": f"Bearer {token_a}"}
+
+    offering = seed_data["offering"]
+    session = AttendanceSession(
+        offering_id=offering.id,
+        faculty_id=faculty_a.id,
+        state=SessionState.FINALIZED,
+        planned_units=1,
+    )
+    db_session.add(session)
+    db_session.flush()
+
+    receipt = CommitReceipt(
+        session_id=session.id,
+        idempotency_key="idemp_receipt_test_001",
+        committed_by_user_id=user_a.id,
+        total_conducted_units=1,
+        total_present_records=1,
+        total_absent_records=0,
+        receipt_hash="0xabcd1234deadbeef",
+    )
+    db_session.add(receipt)
+    db_session.flush()
+
+    # Faculty B (not owner)
+    user_b = User(email="faculty_b_receipt@kucet.ac.in", hashed_password="pw", role="FACULTY")
+    db_session.add(user_b)
+    db_session.flush()
+    faculty_b = Faculty(user_id=user_b.id, employee_id="FAC-B-003", full_name="Faculty B Receipt", department_id=seed_data["department"].id)
+    db_session.add(faculty_b)
+    db_session.flush()
+    token_b = create_access_token(subject=str(user_b.id), role="FACULTY")
+    headers_b = {"Authorization": f"Bearer {token_b}"}
+
+    # Admin
+    admin_user = User(email="admin_receipt@kucet.ac.in", hashed_password="pw", role="ADMIN")
+    db_session.add(admin_user)
+    db_session.flush()
+    token_admin = create_access_token(subject=str(admin_user.id), role="ADMIN")
+    headers_admin = {"Authorization": f"Bearer {token_admin}"}
+
+    # 1. Faculty B -> 403 Forbidden
+    res_b = client.get(f"/api/v1/sessions/{session.id}/receipt", headers=headers_b)
+    assert res_b.status_code == 403
+    assert res_b.json()["error"]["code"] == "RESOURCE_FORBIDDEN"
+
+    # 2. Faculty A (owner) -> 200 OK
+    res_a = client.get(f"/api/v1/sessions/{session.id}/receipt", headers=headers_a)
+    assert res_a.status_code == 200
+    assert res_a.json()["data"]["receipt_hash"] == "0xabcd1234deadbeef"
+
+    # 3. Admin -> 200 OK
+    res_admin = client.get(f"/api/v1/sessions/{session.id}/receipt", headers=headers_admin)
+    assert res_admin.status_code == 200
+    assert res_admin.json()["data"]["receipt_hash"] == "0xabcd1234deadbeef"

@@ -24,11 +24,12 @@ Image.MAX_IMAGE_PIXELS = 4096 * 4096
 
 class IngressService:
 
-    STORAGE_DIR = Path(tempfile.gettempdir()) / "frs_temp_storage"
-
     @classmethod
-    def ensure_storage_dir(cls):
-        cls.STORAGE_DIR.mkdir(parents=True, exist_ok=True)
+    def get_storage_dir(cls) -> Path:
+        """Returns the configured shared storage directory, creating it if needed."""
+        storage_path = Path(settings.STORAGE_DIR).resolve()
+        storage_path.mkdir(parents=True, exist_ok=True)
+        return storage_path
 
     @classmethod
     def process_frame_upload(
@@ -43,7 +44,7 @@ class IngressService:
         """
         Validates, sanitizes, hashes, and stores an incoming classroom photo frame.
         """
-        cls.ensure_storage_dir()
+        storage_dir = cls.get_storage_dir()
 
         # 1. Size check
         max_bytes = settings.MAX_UPLOAD_SIZE_MB * 1024 * 1024
@@ -98,9 +99,9 @@ class IngressService:
         # 4. Cryptographic SHA-256 hash
         content_hash = hashlib.sha256(clean_bytes).hexdigest()
 
-        # 5. Save to private temporary storage
+        # 5. Save to shared volume storage
         filename = f"{content_hash}_{frame_index}.jpg"
-        file_path = cls.STORAGE_DIR / filename
+        file_path = (storage_dir / filename).resolve()
         with open(file_path, "wb") as f:
             f.write(clean_bytes)
 

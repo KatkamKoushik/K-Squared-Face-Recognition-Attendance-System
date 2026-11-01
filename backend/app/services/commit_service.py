@@ -15,7 +15,8 @@ from app.core.errors import (
     StateTransitionError,
     IdempotencyConflictError,
 )
-from app.domain.enums import SessionState, UnitStatus, AuditAction, AttendanceStatus
+from app.domain.enums import SessionState, UnitStatus, AuditAction, AttendanceStatus, UserRole
+from app.domain.models.academic import User, Faculty
 from app.domain.models.session import AttendanceSession, AttendanceUnit, RosterSnapshot
 from app.domain.models.attendance import AttendanceRecord
 from app.domain.models.audit import CommitReceipt, AuditEvent
@@ -204,4 +205,33 @@ class CommitService:
         db.add(audit)
 
         db.flush()
+        return receipt
+
+    @staticmethod
+    def get_session_receipt(
+        db: Session,
+        session_id: str,
+        user: User,
+    ) -> CommitReceipt:
+        """
+        Retrieves the durable commit receipt for a finalized session.
+        Enforces that only the conducting faculty owner or an administrator can access it.
+        """
+        receipt_stmt = select(CommitReceipt).where(CommitReceipt.session_id == session_id)
+        receipt = db.execute(receipt_stmt).scalar_one_or_none()
+        if not receipt:
+            raise ResourceNotFoundError(resource="CommitReceipt", identifier=session_id)
+
+        if user.role != UserRole.ADMIN:
+            session = db.get(AttendanceSession, session_id)
+            if not session:
+                raise ResourceNotFoundError(resource="AttendanceSession", identifier=session_id)
+
+            faculty_stmt = select(Faculty).where(Faculty.user_id == user.id)
+            faculty = db.execute(faculty_stmt).scalar_one_or_none()
+            if not faculty or session.faculty_id != faculty.id:
+                raise PermissionDeniedError(
+                    message="Only the conducting faculty member or an administrator may access this commit receipt.",
+                    reason_code="FACULTY_MISMATCH",
+                )
         return receipt

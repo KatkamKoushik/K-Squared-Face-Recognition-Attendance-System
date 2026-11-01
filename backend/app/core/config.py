@@ -72,6 +72,10 @@ class Settings(BaseSettings):
     MAX_IMAGE_WIDTH: int = 4096
     MAX_IMAGE_HEIGHT: int = 4096
     STRIP_EXIF_METADATA: bool = True
+    STORAGE_DIR: str = Field(
+        default=str(Path(tempfile.gettempdir()) / "frs_storage" / "frames"),
+        description="Path to shared frame storage accessible across backend API and vision worker containers",
+    )
 
     # Vision Job Queue & Lease
     JOB_LEASE_TIMEOUT_SECONDS: int = 60
