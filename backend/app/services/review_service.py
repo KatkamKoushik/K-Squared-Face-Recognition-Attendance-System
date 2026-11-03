@@ -4,6 +4,7 @@ Consolidates sightings across multi-photo batches, enforces open-set uncertainty
 """
 
 from typing import List, Dict, Set
+from collections import Counter
 from sqlalchemy import select, and_
 from sqlalchemy.orm import selectinload, Session
 from app.core.errors import ResourceNotFoundError
@@ -56,18 +57,19 @@ class ReviewService:
         recapture_hints: List[RecaptureHint] = []
 
         for frame in frames:
-            low_quality_faces = [f for f in frame.faces if f.quality_score < 0.5]
-            if len(low_quality_faces) > 3:
+            frame_faces = list(frame.faces)
+            low_quality_faces = [f for f in frame_faces if f.quality_score is not None and f.quality_score < 0.5]
+            if len(low_quality_faces) > 3 or (frame_faces and len(low_quality_faces) / len(frame_faces) > 0.4):
                 recapture_hints.append(
                     RecaptureHint(
                         frame_id=frame.id,
                         issue="HIGH_BLUR_OR_LOW_CONTRAST",
-                        recommendation="Consider capturing an additional photo from a closer angle with stable lighting.",
+                        recommendation="Frame has high blur or low illumination. Consider capturing an additional photo from a closer angle with stable lighting.",
                     )
                 )
 
-            for face in frame.faces:
-                if face.evidence_state == EvidenceState.CANDIDATE and face.candidate_student_id:
+            for face in frame_faces:
+                if (face.evidence_state in [EvidenceState.CANDIDATE, EvidenceState.REVIEW]) and face.candidate_student_id:
                     sightings_by_student.setdefault(face.candidate_student_id, []).append(face)
                 elif face.evidence_state == EvidenceState.UNKNOWN:
                     unknown_faces.append(
@@ -78,10 +80,21 @@ class ReviewService:
                             box_y1=face.box_y1,
                             box_x2=face.box_x2,
                             box_y2=face.box_y2,
-                            quality_score=face.quality_score,
+                            quality_score=face.quality_score or 0.0,
                             reason=face.reason_code,
                         )
                     )
+
+        # Classroom coverage analysis across sweep
+        if frames and total_eligible > 0 and len(frames) >= 2:
+            if len(sightings_by_student) < (total_eligible * 0.50):
+                recapture_hints.append(
+                    RecaptureHint(
+                        frame_id=frames[-1].id,
+                        issue="LOW_CLASSROOM_COVERAGE",
+                        recommendation=f"Only {len(sightings_by_student)} of {total_eligible} enrolled students detected across {len(frames)} photos. Capture additional wide-angle sweeps covering back rows and room corners.",
+                    )
+                )
 
         candidate_proposals: List[CandidateProposalItem] = []
         proposed_present_count = 0
@@ -92,14 +105,32 @@ class ReviewService:
             sightings = sightings_by_student.get(student_id, [])
 
             if sightings:
-                highest_sim = max((s.similarity_score or 0.0) for s in sightings)
-                has_margin_issue = any((s.score_margin or 1.0) < 0.08 for s in sightings)
+                best_sighting = max(sightings, key=lambda s: (s.similarity_score or 0.0, s.quality_score or 0.0))
+                highest_sim = best_sighting.similarity_score or 0.0
+                best_margin = best_sighting.score_margin or 0.0
+                sighted_frame_ids = sorted(list({s.frame_id for s in sightings if s.frame_id}))
 
-                if has_margin_issue:
+                # Multi-photo conflict detection: multiple distinct faces in same frame claiming same identity
+                frame_id_counts = Counter(s.frame_id for s in sightings if s.frame_id)
+                has_same_frame_duplicate = any(count > 1 for count in frame_id_counts.values())
+
+                if has_same_frame_duplicate:
+                    proposal_status = None
+                    evidence_state = EvidenceState.REVIEW
+                    requires_manual = True
+                    reason = "SAME_FRAME_MULTIPLE_DETECTIONS_CONFLICT"
+                    uncertain_count += 1
+                elif best_sighting.evidence_state == EvidenceState.REVIEW or best_margin < 0.08:
                     proposal_status = None
                     evidence_state = EvidenceState.REVIEW
                     requires_manual = True
                     reason = "LOW_MARGIN_AMBIGUOUS_CANDIDATE"
+                    uncertain_count += 1
+                elif highest_sim < 0.70:
+                    proposal_status = None
+                    evidence_state = EvidenceState.REVIEW
+                    requires_manual = True
+                    reason = "LOW_CONFIDENCE_BELOW_THRESHOLD"
                     uncertain_count += 1
                 else:
                     proposal_status = AttendanceStatus.PRESENT_CONFIRMED
@@ -117,13 +148,20 @@ class ReviewService:
                         evidence_state=evidence_state,
                         highest_similarity_score=round(highest_sim, 4),
                         sightings_count=len(sightings),
+                        sighted_frame_ids=sighted_frame_ids,
                         requires_manual_attention=requires_manual,
                         uncertainty_reason=reason,
+                        frame_id=best_sighting.frame_id,
+                        detection_id=best_sighting.id,
+                        match_threshold=0.70,
+                        model_version=best_sighting.model_artifact_hash,
+                        quality_score=round(best_sighting.quality_score, 4) if best_sighting.quality_score is not None else None,
+                        is_simulated=best_sighting.model_artifact_hash == "baseline_mock" or "mock" in (best_sighting.model_artifact_hash or "").lower(),
                     )
                 )
             else:
-                # FRS Invariant: Insufficient/unknown evidence must NEVER automatically become confirmed absent.
-                # Requires explicit human faculty adjudication.
+                # FRS P0.8 Invariant: Zero sightings must produce UNKNOWN / NO_CAMERA_SIGHTING, never automatic absence.
+                # Blur/quality explanations must NEVER be attributed to an unsighted student.
                 candidate_proposals.append(
                     CandidateProposalItem(
                         student_id=student_id,
@@ -133,8 +171,15 @@ class ReviewService:
                         evidence_state=EvidenceState.UNKNOWN,
                         highest_similarity_score=None,
                         sightings_count=0,
+                        sighted_frame_ids=[],
                         requires_manual_attention=True,
                         uncertainty_reason="NO_CAMERA_SIGHTING",
+                        frame_id=None,
+                        detection_id=None,
+                        match_threshold=None,
+                        model_version=None,
+                        quality_score=None,
+                        is_simulated=False,
                     )
                 )
 

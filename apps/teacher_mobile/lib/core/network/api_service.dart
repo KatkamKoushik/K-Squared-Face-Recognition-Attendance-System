@@ -13,8 +13,23 @@ class FrsApiService {
   );
 
   final http.Client _client;
+  String? authToken;
 
-  FrsApiService({http.Client? client}) : _client = client ?? http.Client();
+  FrsApiService({http.Client? client, this.authToken}) : _client = client ?? http.Client();
+
+  Map<String, String> _headers({Map<String, String>? extra}) {
+    final headers = <String, String>{
+      'Accept': 'application/json',
+      'Content-Type': 'application/json',
+    };
+    if (authToken != null && authToken!.isNotEmpty) {
+      headers['Authorization'] = 'Bearer $authToken';
+    }
+    if (extra != null) {
+      headers.addAll(extra);
+    }
+    return headers;
+  }
 
   dynamic _unwrap(http.Response res) {
     final decoded = jsonDecode(res.body);
@@ -29,7 +44,7 @@ class FrsApiService {
     try {
       final res = await _client.get(
         Uri.parse('$baseUrl/academic/offerings'),
-        headers: {'Accept': 'application/json'},
+        headers: _headers(),
       ).timeout(const Duration(seconds: 4));
 
       if (res.statusCode == 200) {
@@ -52,7 +67,7 @@ class FrsApiService {
     try {
       final res = await _client.post(
         Uri.parse('$baseUrl/sessions'),
-        headers: {'Content-Type': 'application/json'},
+        headers: _headers(),
         body: jsonEncode({
           'offering_id': offeringId,
           'planned_units': plannedUnits,
@@ -82,6 +97,9 @@ class FrsApiService {
     try {
       final uri = Uri.parse('$baseUrl/sessions/$sessionId/batches/$batchId/frames');
       final request = http.MultipartRequest('POST', uri);
+      if (authToken != null && authToken!.isNotEmpty) {
+        request.headers['Authorization'] = 'Bearer $authToken';
+      }
       request.fields['frame_index'] = frameIndex.toString();
       request.files.add(
         http.MultipartFile.fromBytes(
@@ -103,7 +121,7 @@ class FrsApiService {
     try {
       final res = await _client.get(
         Uri.parse('$baseUrl/sessions/$sessionId/proposal'),
-        headers: {'Accept': 'application/json'},
+        headers: _headers(),
       ).timeout(const Duration(seconds: 4));
 
       if (res.statusCode == 200) {
@@ -129,7 +147,7 @@ class FrsApiService {
       try {
         final res = await _client.get(
           Uri.parse('$baseUrl/sessions/$sessionId/proposal'),
-          headers: {'Accept': 'application/json'},
+          headers: _headers(),
         ).timeout(const Duration(seconds: 3));
 
         if (res.statusCode == 200) {
@@ -172,7 +190,7 @@ class FrsApiService {
 
       final res = await _client.post(
         Uri.parse('$baseUrl/sessions/$sessionId/commit'),
-        headers: {'Content-Type': 'application/json'},
+        headers: _headers(),
         body: jsonEncode({
           'idempotency_key': idempotencyKey,
           'conducted_unit_indices': List.generate(conductedUnitsCount, (i) => i + 1),
@@ -181,6 +199,27 @@ class FrsApiService {
       ).timeout(const Duration(seconds: 5));
 
       if (res.statusCode == 200 || res.statusCode == 201) {
+        final payload = _unwrap(res);
+        if (payload is Map<String, dynamic>) {
+          return CommitReceiptResponse.fromJson(payload);
+        }
+      }
+    } catch (_) {
+      // Gracefully handle offline
+    }
+    return null;
+  }
+
+  /// GET /sessions/{id}/receipt
+  /// Queries the authoritative commit receipt from the server.
+  Future<CommitReceiptResponse?> getSessionReceipt(String sessionId) async {
+    try {
+      final res = await _client.get(
+        Uri.parse('$baseUrl/sessions/$sessionId/receipt'),
+        headers: _headers(),
+      ).timeout(const Duration(seconds: 4));
+
+      if (res.statusCode == 200) {
         final payload = _unwrap(res);
         if (payload is Map<String, dynamic>) {
           return CommitReceiptResponse.fromJson(payload);

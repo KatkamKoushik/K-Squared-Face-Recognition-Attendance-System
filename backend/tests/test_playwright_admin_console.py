@@ -28,8 +28,8 @@ def admin_server():
     proc = subprocess.Popen(
         [node_bin, next_cli, "start", "-p", str(TEST_PORT)],
         cwd=ADMIN_CONSOLE_DIR,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
     )
 
     # Poll server readiness

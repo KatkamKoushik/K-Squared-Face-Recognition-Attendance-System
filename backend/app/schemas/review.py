@@ -15,8 +15,15 @@ class CandidateProposalItem(BaseModel):
     evidence_state: EvidenceState
     highest_similarity_score: Optional[float] = None
     sightings_count: int = 0
+    sighted_frame_ids: List[str] = Field(default_factory=list)
     requires_manual_attention: bool = False
     uncertainty_reason: Optional[str] = None
+    frame_id: Optional[str] = None
+    detection_id: Optional[str] = None
+    match_threshold: Optional[float] = None
+    model_version: Optional[str] = None
+    quality_score: Optional[float] = None
+    is_simulated: bool = False
 
 
 class UnknownFaceItem(BaseModel):

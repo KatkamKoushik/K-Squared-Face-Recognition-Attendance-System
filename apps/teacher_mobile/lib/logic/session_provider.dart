@@ -12,6 +12,7 @@ class SessionWorkflowState {
   final List<Map<String, String>> capturedFrames;
   final SessionState state;
   final List<CandidateProposalItem> candidates;
+  final List<UnassignedFaceObservation> unassignedObservations;
   final CommitReceiptResponse? receipt;
   final String? errorMessage;
 
@@ -23,6 +24,7 @@ class SessionWorkflowState {
     this.capturedFrames = const [],
     this.state = SessionState.draft,
     this.candidates = const [],
+    this.unassignedObservations = const [],
     this.receipt,
     this.errorMessage,
   });
@@ -35,6 +37,7 @@ class SessionWorkflowState {
     List<Map<String, String>>? capturedFrames,
     SessionState? state,
     List<CandidateProposalItem>? candidates,
+    List<UnassignedFaceObservation>? unassignedObservations,
     CommitReceiptResponse? receipt,
     String? errorMessage,
   }) {
@@ -46,14 +49,17 @@ class SessionWorkflowState {
       capturedFrames: capturedFrames ?? this.capturedFrames,
       state: state ?? this.state,
       candidates: candidates ?? this.candidates,
+      unassignedObservations: unassignedObservations ?? this.unassignedObservations,
       receipt: receipt ?? this.receipt,
       errorMessage: errorMessage ?? this.errorMessage,
     );
   }
 }
 
+final apiProvider = Provider<FrsApiService>((ref) => FrsApiService());
+
 class SessionNotifier extends Notifier<SessionWorkflowState> {
-  final FrsApiService _api = FrsApiService();
+  FrsApiService get _api => ref.read(apiProvider);
 
   @override
   SessionWorkflowState build() {
@@ -119,6 +125,7 @@ class SessionNotifier extends Notifier<SessionWorkflowState> {
     state = state.copyWith(
       state: SessionState.inReview,
       candidates: candidates,
+      unassignedObservations: MockTeacherData.getUnassignedObservations(),
     );
   }
 
@@ -158,7 +165,7 @@ class SessionNotifier extends Notifier<SessionWorkflowState> {
     state = state.copyWith(candidates: updatedCandidates);
   }
 
-  Future<CommitReceiptResponse> commitFinalAttendance() async {
+  Future<CommitReceiptResponse?> commitFinalAttendance() async {
     const uuid = Uuid();
     final idempotencyKey = 'IDEMP-${uuid.v4().replaceAll('-', '')}';
 
@@ -174,44 +181,34 @@ class SessionNotifier extends Notifier<SessionWorkflowState> {
       state = state.copyWith(
         state: SessionState.finalized,
         receipt: serverReceipt,
+        errorMessage: null,
       );
       return serverReceipt;
     }
 
-    // Offline / local fallback receipt with cryptographic guarantees
-    final receiptId = 'RCP-${uuid.v4().substring(0, 8).toUpperCase()}';
-    final txHash = '0x${uuid.v4().replaceAll('-', '')}';
-
-    int presentCount = 0;
-    int absentCount = 0;
-
-    for (final c in state.candidates) {
-      final isPresentAny = c.unitAttendance.values.any((s) => s == AttendanceStatus.presentConfirmed);
-      if (isPresentAny) {
-        presentCount++;
-      } else {
-        absentCount++;
-      }
-    }
-
-    final localReceipt = CommitReceiptResponse(
-      id: receiptId,
-      sessionId: state.sessionId.isNotEmpty ? state.sessionId : 'SES-${uuid.v4().substring(0, 6).toUpperCase()}',
-      idempotencyKey: idempotencyKey,
-      committedByUserId: MockTeacherData.facultyId,
-      totalConductedUnits: state.conductedUnitsCount,
-      totalPresentRecords: presentCount,
-      totalAbsentRecords: absentCount,
-      receiptHash: txHash,
-      committedAt: DateTime.now(),
-    );
-
+    // P0.4: Eliminate client-minted offline receipts.
+    // Client is forbidden from entering SessionState.finalized without an authoritative server-issued receipt.
+    // Retain inReview state and set descriptive error message.
     state = state.copyWith(
-      state: SessionState.finalized,
-      receipt: localReceipt,
+      errorMessage:
+          'Commit failed or server unreachable. Client-minted offline receipts are prohibited by institutional governance policy.',
     );
+    return null;
+  }
 
-    return localReceipt;
+  /// P0.4: Explicit server query to verify/recover durable commit receipt without fabricating local state.
+  Future<CommitReceiptResponse?> checkCommitReceiptStatus() async {
+    if (state.sessionId.isEmpty) return null;
+    final serverReceipt = await _api.getSessionReceipt(state.sessionId);
+    if (serverReceipt != null) {
+      state = state.copyWith(
+        state: SessionState.finalized,
+        receipt: serverReceipt,
+        errorMessage: null,
+      );
+      return serverReceipt;
+    }
+    return null;
   }
 
   void resetSession() {

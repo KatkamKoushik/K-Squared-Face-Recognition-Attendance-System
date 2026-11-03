@@ -3,23 +3,30 @@ import { Building2, Calendar, Layers, ShieldCheck, Database, Plus } from "lucide
 import { getDepartments, getCohorts, getTerms, DepartmentItem, CohortItem, TermItem } from "@/lib/api";
 
 const mockDepartments: DepartmentItem[] = [
-  { id: "dept-cse-01", code: "CSE", name: "Computer Science & Engineering", created_at: "2024-01-15T09:00:00Z" },
-  { id: "dept-ece-01", code: "ECE", name: "Electronics & Communication Engineering", created_at: "2024-01-15T09:00:00Z" },
-  { id: "dept-me-01", code: "MECH", name: "Mechanical Engineering", created_at: "2024-01-15T09:00:00Z" },
-  { id: "dept-ce-01", code: "CIVIL", name: "Civil Engineering", created_at: "2024-01-15T09:00:00Z" },
+  { id: "dept-cse-01", code: "CSE", name: "Computer Science & Engineering", created_at: "2009-08-01T09:00:00Z" },
+  { id: "dept-ece-01", code: "ECE", name: "Electronics & Communication Engineering", created_at: "2009-08-01T09:00:00Z" },
+  { id: "dept-eee-01", code: "EEE", name: "Electrical & Electronics Engineering", created_at: "2009-08-01T09:00:00Z" },
+  { id: "dept-me-01", code: "MECH", name: "Mechanical Engineering", created_at: "2009-08-01T09:00:00Z" },
+  { id: "dept-ce-01", code: "CIVIL", name: "Civil Engineering", created_at: "2009-08-01T09:00:00Z" },
+  { id: "dept-it-01", code: "IT", name: "Information Technology", created_at: "2010-08-01T09:00:00Z" },
+  { id: "dept-csd-01", code: "CSD", name: "Computer Science & Engineering (Data Science)", created_at: "2021-08-01T09:00:00Z" },
 ];
 
 const mockCohorts: CohortItem[] = [
-  { id: "coh-cse-2022", department_id: "dept-cse-01", name: "B.Tech CSE Class of 2026 (Final Year)", admission_year: 2022, graduation_year: 2026, is_active: true },
-  { id: "coh-cse-2023", department_id: "dept-cse-01", name: "B.Tech CSE Class of 2027 (Third Year)", admission_year: 2023, graduation_year: 2027, is_active: true },
-  { id: "coh-ece-2022", department_id: "dept-ece-01", name: "B.Tech ECE Class of 2026 (Final Year)", admission_year: 2022, graduation_year: 2026, is_active: true },
-  { id: "coh-me-2023", department_id: "dept-me-01", name: "B.Tech MECH Class of 2027 (Third Year)", admission_year: 2023, graduation_year: 2027, is_active: true },
+  { id: "coh-cse-2022", department_id: "dept-cse-01", name: "B.Tech CSE Class of 2026 (Final Year IV/IV)", admission_year: 2022, graduation_year: 2026, is_active: true },
+  { id: "coh-cse-2023", department_id: "dept-cse-01", name: "B.Tech CSE Class of 2027 (Third Year III/IV)", admission_year: 2023, graduation_year: 2027, is_active: true },
+  { id: "coh-it-2022", department_id: "dept-it-01", name: "B.Tech IT Class of 2026 (Final Year IV/IV)", admission_year: 2022, graduation_year: 2026, is_active: true },
+  { id: "coh-csd-2023", department_id: "dept-csd-01", name: "B.Tech CSD Class of 2027 (Third Year III/IV)", admission_year: 2023, graduation_year: 2027, is_active: true },
+  { id: "coh-ece-2022", department_id: "dept-ece-01", name: "B.Tech ECE Class of 2026 (Final Year IV/IV)", admission_year: 2022, graduation_year: 2026, is_active: true },
+  { id: "coh-eee-2022", department_id: "dept-eee-01", name: "B.Tech EEE Class of 2026 (Final Year IV/IV)", admission_year: 2022, graduation_year: 2026, is_active: true },
+  { id: "coh-me-2022", department_id: "dept-me-01", name: "B.Tech MECH Class of 2026 (Final Year IV/IV)", admission_year: 2022, graduation_year: 2026, is_active: true },
+  { id: "coh-ce-2022", department_id: "dept-ce-01", name: "B.Tech CIVIL Class of 2026 (Final Year IV/IV)", admission_year: 2022, graduation_year: 2026, is_active: true },
 ];
 
 const mockTerms: TermItem[] = [
-  { id: "term-2026-odd", academic_year_id: "ay-2026-2027", name: "Academic Year 2026-27 - Semester VII (Odd)", start_date: "2026-08-01", end_date: "2026-12-15", is_active: true },
-  { id: "term-2026-even", academic_year_id: "ay-2026-2027", name: "Academic Year 2026-27 - Semester VIII (Even)", start_date: "2027-01-05", end_date: "2027-05-20", is_active: false },
-  { id: "term-2025-even", academic_year_id: "ay-2025-2026", name: "Academic Year 2025-26 - Semester VI (Even)", start_date: "2026-01-05", end_date: "2026-05-20", is_active: false },
+  { id: "term-2026-odd", academic_year_id: "ay-2026-2027", name: "KUCET Academic Year 2026-27 - Semester VII (Odd)", start_date: "2026-08-01", end_date: "2026-12-15", is_active: true },
+  { id: "term-2026-even", academic_year_id: "ay-2026-2027", name: "KUCET Academic Year 2026-27 - Semester VIII (Even)", start_date: "2027-01-05", end_date: "2027-05-20", is_active: false },
+  { id: "term-2025-even", academic_year_id: "ay-2025-2026", name: "KUCET Academic Year 2025-26 - Semester VI (Even)", start_date: "2026-01-05", end_date: "2026-05-20", is_active: false },
 ];
 
 export default async function AcademicStructurePage() {

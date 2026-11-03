@@ -106,12 +106,18 @@ export interface CandidateProposalItem {
   student_id: string;
   roll_number: string;
   full_name: string;
-  proposal_status: AttendanceStatus;
+  proposal_status: AttendanceStatus | null;
   evidence_state: EvidenceState;
   highest_similarity_score?: number | null;
   sightings_count: number;
   requires_manual_attention: boolean;
   uncertainty_reason?: string | null;
+  frame_id?: string | null;
+  detection_id?: string | null;
+  match_threshold?: number | null;
+  model_version?: string | null;
+  quality_score?: number | null;
+  is_simulated?: boolean;
 }
 
 export interface UnknownFaceItem {

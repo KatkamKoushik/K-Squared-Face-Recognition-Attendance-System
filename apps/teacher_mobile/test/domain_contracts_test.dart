@@ -13,7 +13,8 @@ void main() {
       expect(AttendanceStatusWireExtension.fromWire('ABSENT_CONFIRMED'), AttendanceStatus.absentConfirmed);
       expect(AttendanceStatusWireExtension.fromWire('ABSENT'), AttendanceStatus.absentConfirmed);
       expect(AttendanceStatusWireExtension.fromWire('EXCUSED'), AttendanceStatus.excused);
-      expect(AttendanceStatusWireExtension.fromWire('UNKNOWN_STRING'), AttendanceStatus.absentConfirmed);
+      expect(AttendanceStatusWireExtension.fromWire('UNKNOWN_STRING'), isNull);
+      expect(AttendanceStatusWireExtension.fromWire(null), isNull);
     });
 
     test('SessionState wire mapping normalizes legacy terminology', () {

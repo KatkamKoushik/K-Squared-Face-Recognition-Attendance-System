@@ -137,4 +137,12 @@ docs/FRS_V7_1_K2_Master_Project_Handbook_85_Prompt_Shot_Plan.md
 FRS_V7_1_K2_Extracted_Aligned_Engineering_Checklist.md
 mobile_apps_and_websites_exhaustive_master_checklist.md
 
+# ==============================================================================
+# Model Weights & Binary Artifacts (Stored outside source control per P0.2)
+# ==============================================================================
+*.onnx
+backend/models/*.onnx
+models/
+
+
 

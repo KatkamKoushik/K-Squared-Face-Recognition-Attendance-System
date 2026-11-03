@@ -13,12 +13,12 @@ interface FrozenRosterItem {
 }
 
 const mockFrozenRoster: FrozenRosterItem[] = [
-  { id: "STU-001", rollNumber: "22KU01A0501", fullName: "Aarav Sharma", cohort: "B.Tech CSE - Final Year (Sec A)", templateEnrolled: true, consentSigned: true, status: "ACTIVE" },
-  { id: "STU-002", rollNumber: "22KU01A0502", fullName: "Bhavya Patel", cohort: "B.Tech CSE - Final Year (Sec A)", templateEnrolled: true, consentSigned: true, status: "ACTIVE" },
-  { id: "STU-003", rollNumber: "22KU01A0503", fullName: "Chaitanya Reddy", cohort: "B.Tech CSE - Final Year (Sec A)", templateEnrolled: true, consentSigned: true, status: "ACTIVE" },
-  { id: "STU-004", rollNumber: "22KU01A0504", fullName: "Deepika Rao", cohort: "B.Tech CSE - Final Year (Sec A)", templateEnrolled: true, consentSigned: true, status: "ACTIVE" },
-  { id: "STU-005", rollNumber: "22KU01A0505", fullName: "Eshwar Varma", cohort: "B.Tech CSE - Final Year (Sec A)", templateEnrolled: false, consentSigned: true, status: "ACTIVE" },
-  { id: "STU-006", rollNumber: "22KU01A0506", fullName: "Fatima Begum", cohort: "B.Tech CSE - Final Year (Sec A)", templateEnrolled: true, consentSigned: false, status: "ACTIVE" },
+  { id: "STU-KUCET-00622501", rollNumber: "00622501", fullName: "Katkam Koushik", cohort: "B.Tech CSE - Final Year (IV/IV Sec A)", templateEnrolled: true, consentSigned: true, status: "ACTIVE" },
+  { id: "STU-KUCET-00622502", rollNumber: "00622502", fullName: "A. Sai Teja", cohort: "B.Tech CSE - Final Year (IV/IV Sec A)", templateEnrolled: true, consentSigned: true, status: "ACTIVE" },
+  { id: "STU-KUCET-00622503", rollNumber: "00622503", fullName: "B. Manasa Reddy", cohort: "B.Tech CSE - Final Year (IV/IV Sec A)", templateEnrolled: true, consentSigned: true, status: "ACTIVE" },
+  { id: "STU-KUCET-00622504", rollNumber: "00622504", fullName: "Ch. Rahul", cohort: "B.Tech CSE - Final Year (IV/IV Sec A)", templateEnrolled: true, consentSigned: true, status: "ACTIVE" },
+  { id: "STU-KUCET-00622505", rollNumber: "00622505", fullName: "D. Ananya", cohort: "B.Tech CSE - Final Year (IV/IV Sec A)", templateEnrolled: false, consentSigned: true, status: "ACTIVE" },
+  { id: "STU-KUCET-00622506", rollNumber: "00622506", fullName: "E. Srikanth", cohort: "B.Tech CSE - Final Year (IV/IV Sec A)", templateEnrolled: true, consentSigned: false, status: "ACTIVE" },
 ];
 
 export default async function LiveRosterPreviewPage() {

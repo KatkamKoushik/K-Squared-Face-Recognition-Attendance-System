@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:crypto/crypto.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:uuid/uuid.dart';
 import '../../data/models/domain_contracts.dart';
 import '../../core/theme/app_theme.dart';
@@ -17,6 +18,34 @@ class CaptureGalleryScreen extends ConsumerStatefulWidget {
 
 class _CaptureGalleryScreenState extends ConsumerState<CaptureGalleryScreen> {
   final _uuid = const Uuid();
+  final _picker = ImagePicker();
+
+  Future<void> _capturePhoto() async {
+    try {
+      final photo = await _picker.pickImage(
+        source: ImageSource.camera,
+        maxWidth: 3840,
+        maxHeight: 2160,
+        imageQuality: 92,
+      );
+
+      if (photo != null) {
+        final bytes = await photo.readAsBytes();
+        final hash = sha256.convert(bytes).toString();
+        final frameId = 'FRM-${_uuid.v4().substring(0, 8).toUpperCase()}';
+
+        ref.read(sessionProvider.notifier).addCapturedFrame(
+          frameId: frameId,
+          hash: hash,
+        );
+        return;
+      }
+    } catch (_) {
+      // Hardware camera unavailable or permission denied; proceed to fallback
+    }
+
+    _simulateCapture();
+  }
 
   void _simulateCapture() {
     final frameId = 'FRM-${_uuid.v4().substring(0, 8).toUpperCase()}';
@@ -96,7 +125,7 @@ class _CaptureGalleryScreenState extends ConsumerState<CaptureGalleryScreen> {
                   TextButton.icon(
                     icon: const Icon(Icons.add_a_photo, size: 18),
                     label: const Text('Add Photo'),
-                    onPressed: isProcessing ? null : _simulateCapture,
+                    onPressed: isProcessing ? null : _capturePhoto,
                   ),
                 ],
               ),
@@ -122,7 +151,7 @@ class _CaptureGalleryScreenState extends ConsumerState<CaptureGalleryScreen> {
                             ElevatedButton.icon(
                               icon: const Icon(Icons.camera_rounded),
                               label: const Text('Capture First Photo'),
-                              onPressed: _simulateCapture,
+                              onPressed: _capturePhoto,
                             ),
                           ],
                         ),

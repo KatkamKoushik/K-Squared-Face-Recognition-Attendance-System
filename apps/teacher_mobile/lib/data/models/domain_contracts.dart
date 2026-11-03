@@ -215,7 +215,7 @@ extension AttendanceStatusWireExtension on AttendanceStatus {
     }
   }
 
-  static AttendanceStatus fromWire(String? value) {
+  static AttendanceStatus? fromWire(String? value) {
     switch (value?.toUpperCase()) {
       case 'PRESENT_CONFIRMED':
       case 'PRESENT':
@@ -224,8 +224,10 @@ extension AttendanceStatusWireExtension on AttendanceStatus {
         return AttendanceStatus.excused;
       case 'ABSENT_CONFIRMED':
       case 'ABSENT':
-      default:
         return AttendanceStatus.absentConfirmed;
+      default:
+        // P0.5 Guardrail: Null, missing, or unknown values must NEVER default to absent.
+        return null;
     }
   }
 }
@@ -275,25 +277,39 @@ class CandidateProposalItem {
   final String studentId;
   final String rollNumber;
   final String fullName;
-  final AttendanceStatus proposalStatus;
+  final AttendanceStatus? proposalStatus;
   final EvidenceState evidenceState;
   final double? highestSimilarityScore;
   final int sightingsCount;
+  final List<String> sightedFrameIds;
   final bool requiresManualAttention;
   final String? uncertaintyReason;
   final Map<int, AttendanceStatus> unitAttendance;
+  final String? frameId;
+  final String? detectionId;
+  final double? matchThreshold;
+  final String? modelVersion;
+  final double? qualityScore;
+  final bool isSimulated;
 
   const CandidateProposalItem({
     required this.studentId,
     required this.rollNumber,
     required this.fullName,
-    required this.proposalStatus,
+    this.proposalStatus,
     required this.evidenceState,
     this.highestSimilarityScore,
     this.sightingsCount = 0,
+    this.sightedFrameIds = const [],
     this.requiresManualAttention = false,
     this.uncertaintyReason,
     this.unitAttendance = const {},
+    this.frameId,
+    this.detectionId,
+    this.matchThreshold,
+    this.modelVersion,
+    this.qualityScore,
+    this.isSimulated = false,
   });
 
   CandidateProposalItem copyWith({
@@ -304,9 +320,16 @@ class CandidateProposalItem {
     EvidenceState? evidenceState,
     double? highestSimilarityScore,
     int? sightingsCount,
+    List<String>? sightedFrameIds,
     bool? requiresManualAttention,
     String? uncertaintyReason,
     Map<int, AttendanceStatus>? unitAttendance,
+    String? frameId,
+    String? detectionId,
+    double? matchThreshold,
+    String? modelVersion,
+    double? qualityScore,
+    bool? isSimulated,
   }) {
     return CandidateProposalItem(
       studentId: studentId ?? this.studentId,
@@ -316,9 +339,16 @@ class CandidateProposalItem {
       evidenceState: evidenceState ?? this.evidenceState,
       highestSimilarityScore: highestSimilarityScore ?? this.highestSimilarityScore,
       sightingsCount: sightingsCount ?? this.sightingsCount,
+      sightedFrameIds: sightedFrameIds ?? this.sightedFrameIds,
       requiresManualAttention: requiresManualAttention ?? this.requiresManualAttention,
       uncertaintyReason: uncertaintyReason ?? this.uncertaintyReason,
       unitAttendance: unitAttendance ?? this.unitAttendance,
+      frameId: frameId ?? this.frameId,
+      detectionId: detectionId ?? this.detectionId,
+      matchThreshold: matchThreshold ?? this.matchThreshold,
+      modelVersion: modelVersion ?? this.modelVersion,
+      qualityScore: qualityScore ?? this.qualityScore,
+      isSimulated: isSimulated ?? this.isSimulated,
     );
   }
 
@@ -331,8 +361,15 @@ class CandidateProposalItem {
       evidenceState: EvidenceStateWireExtension.fromWire(json['evidence_state'] as String?),
       highestSimilarityScore: (json['highest_similarity_score'] as num?)?.toDouble(),
       sightingsCount: json['sightings_count'] as int? ?? 0,
+      sightedFrameIds: (json['sighted_frame_ids'] as List<dynamic>?)?.map((e) => e as String).toList() ?? const [],
       requiresManualAttention: json['requires_manual_attention'] as bool? ?? false,
       uncertaintyReason: json['uncertainty_reason'] as String?,
+      frameId: json['frame_id'] as String?,
+      detectionId: json['detection_id'] as String?,
+      matchThreshold: (json['match_threshold'] as num?)?.toDouble(),
+      modelVersion: json['model_version'] as String?,
+      qualityScore: (json['quality_score'] as num?)?.toDouble(),
+      isSimulated: json['is_simulated'] as bool? ?? false,
     );
   }
 
@@ -340,12 +377,57 @@ class CandidateProposalItem {
     'student_id': studentId,
     'roll_number': rollNumber,
     'full_name': fullName,
-    'proposal_status': proposalStatus.toWire(),
+    'proposal_status': proposalStatus?.toWire(),
     'evidence_state': evidenceState.toWire(),
     'highest_similarity_score': highestSimilarityScore,
     'sightings_count': sightingsCount,
+    'sighted_frame_ids': sightedFrameIds,
     'requires_manual_attention': requiresManualAttention,
     'uncertainty_reason': uncertaintyReason,
+    'frame_id': frameId,
+    'detection_id': detectionId,
+    'match_threshold': matchThreshold,
+    'model_version': modelVersion,
+    'quality_score': qualityScore,
+    'is_simulated': isSimulated,
+  };
+}
+
+class UnassignedFaceObservation {
+  final String observationId;
+  final String frameId;
+  final String issueReason;
+  final String description;
+  final double qualityScore;
+  final List<double>? boundingBox;
+
+  const UnassignedFaceObservation({
+    required this.observationId,
+    required this.frameId,
+    required this.issueReason,
+    required this.description,
+    required this.qualityScore,
+    this.boundingBox,
+  });
+
+  factory UnassignedFaceObservation.fromJson(Map<String, dynamic> json) {
+    return UnassignedFaceObservation(
+      observationId: json['observation_id'] as String,
+      frameId: json['frame_id'] as String,
+      issueReason: json['issue_reason'] as String,
+      description: json['description'] as String,
+      qualityScore: (json['quality_score'] as num?)?.toDouble() ?? 0.0,
+      boundingBox: (json['bounding_box'] as List<dynamic>?)?.map((e) => (e as num).toDouble()).toList(),
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'observation_id': observationId,
+    'frame_id': frameId,
+    'issue_reason': issueReason,
+    'description': description,
+    'quality_score': qualityScore,
+    'bounding_box': boundingBox,
   };
 }
 

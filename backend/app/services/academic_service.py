@@ -7,8 +7,9 @@ from typing import List, Optional
 from sqlalchemy import select, and_
 from sqlalchemy.orm import Session
 from app.core.errors import PermissionDeniedError, ResourceNotFoundError
-from app.domain.enums import EnrollmentStatus
+from app.domain.enums import EnrollmentStatus, UserRole
 from app.domain.models.academic import (
+    User,
     Department,
     Cohort,
     AcademicYear,
@@ -191,6 +192,108 @@ class AcademicService:
     def get_students(db: Session, limit: int = 100) -> List[Student]:
         result = db.execute(select(Student).order_by(Student.roll_number).limit(limit))
         return list(result.scalars().all())
+
+    @staticmethod
+    def get_students_scoped(
+        db: Session,
+        user: User,
+        cohort_id: Optional[str] = None,
+        limit: int = 100,
+    ) -> List[Student]:
+        """
+        Retrieves students adhering to strict object-level authorization scopes:
+        - ADMIN: Institutional scope across all cohorts.
+        - FACULTY: Scoped strictly to cohorts and enrollments in subjects actively assigned to the instructor.
+        """
+        if user.role == UserRole.ADMIN:
+            stmt = select(Student)
+            if cohort_id:
+                stmt = stmt.where(Student.cohort_id == cohort_id)
+            result = db.execute(stmt.order_by(Student.roll_number).limit(limit))
+            return list(result.scalars().all())
+
+        if user.role == UserRole.FACULTY:
+            faculty = db.execute(select(Faculty).where(Faculty.user_id == user.id)).scalar_one_or_none()
+            if not faculty:
+                raise PermissionDeniedError(
+                    message="Authenticated user does not possess an active faculty profile.",
+                    reason_code="FACULTY_PROFILE_NOT_FOUND",
+                )
+
+            # Active faculty assignments
+            today = date.today()
+            assignments = list(
+                db.execute(
+                    select(FacultyAssignment).where(
+                        and_(
+                            FacultyAssignment.faculty_id == faculty.id,
+                            FacultyAssignment.is_active == True,
+                            FacultyAssignment.start_date <= today,
+                            FacultyAssignment.end_date >= today,
+                        )
+                    )
+                ).scalars().all()
+            )
+            assigned_offering_ids = [a.offering_id for a in assignments]
+            if not assigned_offering_ids:
+                return []
+
+            # Cohorts associated with these offerings via authorized class groups
+            assigned_cohort_ids = list(
+                db.execute(
+                    select(ClassGroupMemberCohort.cohort_id)
+                    .join(AuthorizedClassGroup, ClassGroupMemberCohort.group_id == AuthorizedClassGroup.id)
+                    .where(AuthorizedClassGroup.offering_id.in_(assigned_offering_ids))
+                ).scalars().all()
+            )
+
+            # Students directly enrolled in these offerings
+            enrolled_student_ids = list(
+                db.execute(
+                    select(Enrollment.student_id).where(
+                        and_(
+                            Enrollment.offering_id.in_(assigned_offering_ids),
+                            Enrollment.status == EnrollmentStatus.ACTIVE,
+                        )
+                    )
+                ).scalars().all()
+            )
+
+            # If a specific cohort_id is requested, verify faculty is assigned to it
+            if cohort_id:
+                if cohort_id not in assigned_cohort_ids:
+                    # Check if any directly enrolled students belong to this cohort
+                    cohort_enrolled = db.execute(
+                        select(Student.id).where(
+                            and_(
+                                Student.cohort_id == cohort_id,
+                                Student.id.in_(enrolled_student_ids),
+                            )
+                        ).limit(1)
+                    ).scalar_one_or_none()
+                    if not cohort_enrolled:
+                        raise PermissionDeniedError(
+                            message="Instructor is not authorized to access students in this cohort.",
+                            reason_code="COHORT_NOT_ASSIGNED",
+                        )
+                stmt = select(Student).where(
+                    and_(
+                        Student.cohort_id == cohort_id,
+                        (Student.cohort_id.in_(assigned_cohort_ids) | Student.id.in_(enrolled_student_ids)),
+                    )
+                )
+            else:
+                stmt = select(Student).where(
+                    (Student.cohort_id.in_(assigned_cohort_ids) | Student.id.in_(enrolled_student_ids))
+                )
+
+            result = db.execute(stmt.order_by(Student.roll_number).limit(limit))
+            return list(result.scalars().all())
+
+        raise PermissionDeniedError(
+            message="Role not authorized to access student directory.",
+            reason_code="ROLE_NOT_AUTHORIZED",
+        )
 
     @staticmethod
     def enroll_student(db: Session, data: EnrollmentCreate) -> Enrollment:

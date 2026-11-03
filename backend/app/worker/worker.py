@@ -3,6 +3,7 @@ FRS V7.1 K² — Deterministic Vision Orchestration State Machine & Worker Proce
 Processes queued frames, enforces per-face evidence routing, and prepares candidate proposals.
 """
 
+import os
 from typing import Dict, List
 from PIL import Image
 from sqlalchemy import select
@@ -34,15 +35,19 @@ class VisionWorker:
 
         for job in jobs:
             try:
-                self.execute_job(db, job)
-                QueueService.complete_job(db, job.id, self.worker_id, success=True)
+                self.process_job(db, job)
                 processed_count += 1
             except Exception as e:
-                QueueService.complete_job(
-                    db, job.id, self.worker_id, success=False, error_message=str(e)
+                QueueService.record_job_failure(
+                    db, job.id, error_message=str(e), retryable=True
                 )
 
         return processed_count
+
+    def process_job(self, db: Session, job: VisionJob):
+        """Processes a single vision job through the state machine pipeline."""
+        self.execute_job(db, job)
+        QueueService.complete_job(db, job.id, self.worker_id, success=True)
 
     def execute_job(self, db: Session, job: VisionJob):
         """Executes full pipeline for one classroom frame."""
@@ -72,7 +77,12 @@ class VisionWorker:
         profiles = list(db.execute(profiles_stmt).scalars().all())
         roster_gallery: Dict[str, List[float]] = {p.student_id: p.vector_data for p in profiles}
 
-        # 2. Open frame image
+        # 2. Open frame image from shared storage
+        if not os.path.exists(frame.storage_path):
+            raise FileNotFoundError(
+                f"Frame image not found at storage path: {frame.storage_path}. "
+                "Ensure shared frame_storage volume is mounted for both API and vision-worker."
+            )
         image = Image.open(frame.storage_path)
 
         # 3. Detect faces
