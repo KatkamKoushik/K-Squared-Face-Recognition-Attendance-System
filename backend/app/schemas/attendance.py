@@ -63,3 +63,24 @@ class OfferingAttendanceAnalyticsResponse(BaseModel):
     total_sessions: int
     total_conducted_units: int
     student_stats: List[StudentAttendanceStat]
+
+
+class AttendanceCorrectionRequest(BaseModel):
+    student_id: str
+    unit_index: int = Field(..., ge=1, le=4)
+    new_status: AttendanceStatus
+    action_type: str = Field(..., description="'OVERRIDE' for faculty correction, 'APPEAL' for student appeal")
+    reason: str = Field(..., min_length=5, max_length=500, description="Mandatory institutional justification")
+    reference_document: Optional[str] = Field(None, max_length=100, description="Medical cert / HOD memo ref")
+
+
+class AttendanceCorrectionResponse(BaseModel):
+    record_id: str
+    session_id: str
+    student_id: str
+    unit_index: int
+    previous_status: AttendanceStatus
+    new_status: AttendanceStatus
+    action: str
+    audit_event_id: str
+    updated_at: datetime

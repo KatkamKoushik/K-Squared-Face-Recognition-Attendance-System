@@ -14,6 +14,8 @@ from app.schemas.attendance import (
     AttendanceCommitRequest,
     CommitReceiptResponse,
     OfferingAttendanceAnalyticsResponse,
+    AttendanceCorrectionRequest,
+    AttendanceCorrectionResponse,
 )
 from app.schemas.common import ResponseEnvelope
 from app.services.commit_service import CommitService
@@ -71,6 +73,33 @@ def get_session_receipt(
         user=current_user,
     )
     return ResponseEnvelope(data=CommitReceiptResponse.model_validate(receipt), correlation_id=correlation_id)
+
+
+@router.post(
+    "/sessions/{session_id}/corrections",
+    response_model=ResponseEnvelope[AttendanceCorrectionResponse],
+    status_code=status.HTTP_200_OK,
+)
+def apply_attendance_correction(
+    session_id: str,
+    request: AttendanceCorrectionRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    correlation_id: str = Depends(get_correlation_id),
+):
+    """
+    Applies an audited post-commit attendance override or processes an official student appeal.
+    Records an append-only AuditEvent and updates ledger statistics.
+    Guarded by object-level authorization: caller must be conducting faculty or admin.
+    """
+    response = CommitService.apply_attendance_correction(
+        db=db,
+        session_id=session_id,
+        user=current_user,
+        request=request,
+        correlation_id=correlation_id,
+    )
+    return ResponseEnvelope(data=response, correlation_id=correlation_id)
 
 
 @router.get(

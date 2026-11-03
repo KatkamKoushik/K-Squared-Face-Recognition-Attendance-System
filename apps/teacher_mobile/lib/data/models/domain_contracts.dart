@@ -281,6 +281,7 @@ class CandidateProposalItem {
   final EvidenceState evidenceState;
   final double? highestSimilarityScore;
   final int sightingsCount;
+  final List<String> sightedFrameIds;
   final bool requiresManualAttention;
   final String? uncertaintyReason;
   final Map<int, AttendanceStatus> unitAttendance;
@@ -299,6 +300,7 @@ class CandidateProposalItem {
     required this.evidenceState,
     this.highestSimilarityScore,
     this.sightingsCount = 0,
+    this.sightedFrameIds = const [],
     this.requiresManualAttention = false,
     this.uncertaintyReason,
     this.unitAttendance = const {},
@@ -318,6 +320,7 @@ class CandidateProposalItem {
     EvidenceState? evidenceState,
     double? highestSimilarityScore,
     int? sightingsCount,
+    List<String>? sightedFrameIds,
     bool? requiresManualAttention,
     String? uncertaintyReason,
     Map<int, AttendanceStatus>? unitAttendance,
@@ -336,6 +339,7 @@ class CandidateProposalItem {
       evidenceState: evidenceState ?? this.evidenceState,
       highestSimilarityScore: highestSimilarityScore ?? this.highestSimilarityScore,
       sightingsCount: sightingsCount ?? this.sightingsCount,
+      sightedFrameIds: sightedFrameIds ?? this.sightedFrameIds,
       requiresManualAttention: requiresManualAttention ?? this.requiresManualAttention,
       uncertaintyReason: uncertaintyReason ?? this.uncertaintyReason,
       unitAttendance: unitAttendance ?? this.unitAttendance,
@@ -357,6 +361,7 @@ class CandidateProposalItem {
       evidenceState: EvidenceStateWireExtension.fromWire(json['evidence_state'] as String?),
       highestSimilarityScore: (json['highest_similarity_score'] as num?)?.toDouble(),
       sightingsCount: json['sightings_count'] as int? ?? 0,
+      sightedFrameIds: (json['sighted_frame_ids'] as List<dynamic>?)?.map((e) => e as String).toList() ?? const [],
       requiresManualAttention: json['requires_manual_attention'] as bool? ?? false,
       uncertaintyReason: json['uncertainty_reason'] as String?,
       frameId: json['frame_id'] as String?,
@@ -376,6 +381,7 @@ class CandidateProposalItem {
     'evidence_state': evidenceState.toWire(),
     'highest_similarity_score': highestSimilarityScore,
     'sightings_count': sightingsCount,
+    'sighted_frame_ids': sightedFrameIds,
     'requires_manual_attention': requiresManualAttention,
     'uncertainty_reason': uncertaintyReason,
     'frame_id': frameId,

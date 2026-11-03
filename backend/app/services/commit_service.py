@@ -20,7 +20,12 @@ from app.domain.models.academic import User, Faculty
 from app.domain.models.session import AttendanceSession, AttendanceUnit, RosterSnapshot
 from app.domain.models.attendance import AttendanceRecord
 from app.domain.models.audit import CommitReceipt, AuditEvent
-from app.schemas.attendance import AttendanceCommitRequest, CommitReceiptResponse
+from app.schemas.attendance import (
+    AttendanceCommitRequest,
+    CommitReceiptResponse,
+    AttendanceCorrectionRequest,
+    AttendanceCorrectionResponse,
+)
 
 
 def utc_now() -> datetime:
@@ -153,6 +158,23 @@ class CommitService:
                 total_absent += 1
             # Note: EXCUSED is strictly not counted in total_absent
 
+        # Invariant FR-08: Decision Matrix Completeness
+        # Cartesian product of eligible_student_ids x conducted_unit_indices must be fully decided
+        if eligible_student_ids and request.conducted_unit_indices:
+            expected_pairs = {
+                (student_id, unit_idx)
+                for student_id in eligible_student_ids
+                for unit_idx in request.conducted_unit_indices
+            }
+            missing_pairs = expected_pairs - seen_decisions
+            if missing_pairs:
+                missing_students_count = len({s for s, _ in missing_pairs})
+                raise ValueError(
+                    f"Incomplete attendance decision matrix. Missing decisions for {len(missing_pairs)} student-unit "
+                    f"combinations ({missing_students_count} students affected across {len(request.conducted_unit_indices)} conducted units). "
+                    "Every eligible student in the frozen roster snapshot must have an explicit status confirmed for every conducted unit."
+                )
+
         db.add_all(records_to_add)
 
         # Update unit states
@@ -235,3 +257,132 @@ class CommitService:
                     reason_code="FACULTY_MISMATCH",
                 )
         return receipt
+
+    @staticmethod
+    def apply_attendance_correction(
+        db: Session,
+        session_id: str,
+        user: User,
+        request: AttendanceCorrectionRequest,
+        correlation_id: str,
+    ) -> AttendanceCorrectionResponse:
+        """
+        Applies an audited post-commit attendance correction or processes an official student appeal.
+        Enforces:
+        1. Caller authorization: conducting faculty or administrator only (IDOR safe).
+        2. Session state must be FINALIZED.
+        3. Unit must be a conducted unit within this session.
+        4. AttendanceRecord must exist for (session_id, unit_id, student_id).
+        5. Emits an immutable AuditEvent (POST_COMMIT_OVERRIDE or APPEAL_PROCESSED) with before/after state.
+        6. Reconciles CommitReceipt aggregate metrics.
+        """
+        session_stmt = (
+            select(AttendanceSession)
+            .options(selectinload(AttendanceSession.units))
+            .where(AttendanceSession.id == session_id)
+        )
+        session = db.execute(session_stmt).scalar_one_or_none()
+        if not session:
+            raise ResourceNotFoundError(resource="AttendanceSession", identifier=session_id)
+
+        # 1. Authorization Guard
+        if user.role != UserRole.ADMIN:
+            faculty = db.execute(
+                select(Faculty).where(Faculty.user_id == user.id)
+            ).scalar_one_or_none()
+            if not faculty or session.faculty_id != faculty.id:
+                raise PermissionDeniedError(
+                    message="Only the conducting faculty member or an administrator may apply attendance corrections.",
+                    reason_code="FACULTY_MISMATCH",
+                )
+
+        # 2. State Guard
+        if session.state != SessionState.FINALIZED:
+            raise StateTransitionError(
+                message=f"Attendance corrections can only be applied to FINALIZED sessions (current state: {session.state.value}).",
+                current_state=session.state.value,
+                attempted_state="FINALIZED",
+                reason_code="SESSION_NOT_FINALIZED",
+            )
+
+        # 3. Unit validation
+        unit = next((u for u in session.units if u.unit_index == request.unit_index and u.is_conducted), None)
+        if not unit:
+            raise ValueError(f"Unit index {request.unit_index} was not conducted in session {session_id}")
+
+        # 4. Find record
+        record_stmt = select(AttendanceRecord).where(
+            and_(
+                AttendanceRecord.session_id == session_id,
+                AttendanceRecord.unit_id == unit.id,
+                AttendanceRecord.student_id == request.student_id,
+            )
+        )
+        record = db.execute(record_stmt).scalar_one_or_none()
+        if not record:
+            raise ResourceNotFoundError(
+                resource="AttendanceRecord",
+                identifier=f"student={request.student_id}, unit={request.unit_index}",
+            )
+
+        previous_status = record.status
+        if previous_status == request.new_status:
+            raise ValueError(
+                f"Student attendance is already marked as {request.new_status.value} for unit {request.unit_index}."
+            )
+
+        action_type = request.action_type.upper().strip()
+        if action_type not in ["OVERRIDE", "APPEAL"]:
+            raise ValueError("action_type must be either 'OVERRIDE' or 'APPEAL'")
+
+        action = AuditAction.POST_COMMIT_OVERRIDE if action_type == "OVERRIDE" else AuditAction.APPEAL_PROCESSED
+
+        # 5. Mutate record with audit lineage
+        record.status = request.new_status
+        record.finalized_by_user_id = user.id
+        record.reason_code = f"AUDIT_{action_type}"
+
+        # 6. Reconcile CommitReceipt counts if receipt exists
+        receipt_stmt = select(CommitReceipt).where(CommitReceipt.session_id == session_id)
+        receipt = db.execute(receipt_stmt).scalar_one_or_none()
+        if receipt:
+            if previous_status == AttendanceStatus.PRESENT_CONFIRMED:
+                receipt.total_present_records = max(0, receipt.total_present_records - 1)
+            elif previous_status == AttendanceStatus.ABSENT_CONFIRMED:
+                receipt.total_absent_records = max(0, receipt.total_absent_records - 1)
+
+            if request.new_status == AttendanceStatus.PRESENT_CONFIRMED:
+                receipt.total_present_records += 1
+            elif request.new_status == AttendanceStatus.ABSENT_CONFIRMED:
+                receipt.total_absent_records += 1
+
+        # 7. Append immutable AuditEvent
+        now = utc_now()
+        prev_val = previous_status.value if hasattr(previous_status, "value") else str(previous_status)
+        new_val = request.new_status.value if hasattr(request.new_status, "value") else str(request.new_status)
+        action_val = action.value if hasattr(action, "value") else str(action)
+
+        audit_event = AuditEvent(
+            session_id=session_id,
+            actor_id=user.id,
+            action=action,
+            reason=f"[{action_type}] {request.reason}" + (f" (Ref: {request.reference_document})" if request.reference_document else ""),
+            before_state={"status": prev_val, "reason_code": "FACULTY_COMMIT"},
+            after_state={"status": new_val, "reference_document": request.reference_document},
+            correlation_id=correlation_id,
+            timestamp=now,
+        )
+        db.add(audit_event)
+        db.flush()
+
+        return AttendanceCorrectionResponse(
+            record_id=record.id,
+            session_id=session_id,
+            student_id=request.student_id,
+            unit_index=request.unit_index,
+            previous_status=previous_status,
+            new_status=request.new_status,
+            action=action_val,
+            audit_event_id=audit_event.id,
+            updated_at=now,
+        )
