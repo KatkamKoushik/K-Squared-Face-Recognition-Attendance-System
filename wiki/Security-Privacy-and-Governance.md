@@ -42,18 +42,28 @@ flowchart TD
 * The ArcFace neural network maps facial images into 512-dimensional floating-point vectors on a unit hypersphere ($\mathbb{S}^{511}$).
 * **Non-Invertibility:** It is mathematically impossible to reconstruct a student's original photograph, facial texture, or identifiable biometric image from a 512-dimensional embedding vector.
 
-### 3. Ephemeral Frame Retention & Automated Purge
+### 3. Ephemeral Frame Retention & Automated Purge Engine
 * Raw classroom photograph sweeps are stored in temporary, bounded volume storage strictly during active session inference.
-* Following faculty commit or session closure, raw image frames are scheduled for immediate cryptographic wiping. The system permanently retains only the structured attendance ledger (Roll Number, Course Code, Unit Index, Date, Status, Receipt Hash).
+* Following the configurable retention window (default 7 days post-finalization), `GovernanceService.purge_ephemeral_storage` physically unlinks raw image frames from disk, updates frame storage paths, and emits a `DATA_PURGE_EXECUTED` audit event recording freed bytes.
+* The system permanently retains only the structured attendance ledger (Roll Number, Course Code, Unit Index, Date, Status, Receipt Hash).
 
-### 4. Client-Side Cryptographic Hashing
+### 4. Cryptographic HMAC-SHA256 Receipt Verification
+* Upon attendance commitment, the backend generates an authoritative HMAC-SHA256 receipt signature incorporating session ID, user ID, total conducted units, present/absent counts, and server `SECRET_KEY`.
+* Any party can verify receipts via `POST /sessions/{id}/receipt/verify`, which checks signature integrity and verifies that ledger records strictly match receipt counts.
+
+### 5. DPDP Act Student Biometric Consent & Non-Biometric Alternatives
+* Students maintain the legal right to give or withhold biometric consent under India's Digital Personal Data Protection Act.
+* When a student's consent is toggled off (`is_active=False` on `EnrollmentProfile`), the proposal generator automatically marks them as requiring a non-biometric manual roll call, ensuring zero academic disadvantage.
+
+### 6. Client-Side Cryptographic Hashing
 * Before any classroom image is uploaded from the teacher's mobile device, the Flutter client computes a `SHA-256` checksum of the raw bytes.
 * The backend independently computes the `SHA-256` digest upon ingress. If the hashes mismatch, the frame is rejected immediately, preventing in-transit corruption or tampering.
 
-### 5. Biometric Redaction In Audits & Telemetry
-* As demonstrated on the Admin Console [Audit Logs](file:///d:/k^2/apps/admin_console/app/audit/logs/page.tsx), facial crops, bounding box coordinates, and raw embedding arrays are strictly redacted from operational logs, administrative views, and audit tables.
+### 7. Biometric Redaction & Safe Privacy Logging
+* Facial crops, bounding box coordinates, and raw embedding arrays are strictly redacted from operational logs, administrative views, and audit tables.
+* `SafePrivacyFormatter` actively redacts authorization Bearer tokens, secrets, vector coordinates, and base64 strings from standard output and container streams.
 
-### 6. Ingress Payload Guardrails & Multi-Session Isolation
+### 8. Ingress Payload Guardrails & Multi-Session Isolation
 * **Pre-Parsing Payload Boundary:** Inbound HTTP requests are validated prior to body buffering. Payloads exceeding 15MB are rejected with `413 Payload Too Large`. Executable binaries, scripts, and suspicious MIME types (`application/x-sh`, `application/x-msdownload`, `.exe`, `.bat`) are blocked with `415 Unsupported Media Type`.
 * **Mobile Sync Journal Context Isolation:** The Teacher Mobile client buffers pending offline sync items in a secure journal partitioned strictly by faculty account ID (`OfflineSyncJournal`). Logging out triggers a full purge to prevent account cross-contamination.
 * **Admin Console Session Purge & Crawler Exclusion:** The Admin Web Console uses cross-tab `BroadcastChannel` synchronization (`session.ts`). On sign-out or session timeout, `localStorage` and `sessionStorage` caches are wiped instantly. `public/robots.txt` enforces complete crawler exclusion (`User-agent: *`, `Disallow: /`) to prevent indexing of student registries or audit records.

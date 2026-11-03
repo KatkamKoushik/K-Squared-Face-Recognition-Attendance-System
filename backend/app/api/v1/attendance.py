@@ -16,6 +16,7 @@ from app.schemas.attendance import (
     OfferingAttendanceAnalyticsResponse,
     AttendanceCorrectionRequest,
     AttendanceCorrectionResponse,
+    ReceiptVerificationResponse,
 )
 from app.schemas.common import ResponseEnvelope
 from app.services.commit_service import CommitService
@@ -73,6 +74,30 @@ def get_session_receipt(
         user=current_user,
     )
     return ResponseEnvelope(data=CommitReceiptResponse.model_validate(receipt), correlation_id=correlation_id)
+
+
+@router.post(
+    "/sessions/{session_id}/receipt/verify",
+    response_model=ResponseEnvelope[ReceiptVerificationResponse],
+    status_code=status.HTTP_200_OK,
+)
+def verify_session_receipt(
+    session_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    correlation_id: str = Depends(get_correlation_id),
+):
+    """
+    Cryptographically verifies the authenticity and ledger consistency of a commit receipt.
+    Recomputes HMAC signature and cross-checks actual database attendance records.
+    Guarded by object-level authorization: caller must be conducting faculty or admin.
+    """
+    verification = CommitService.verify_session_receipt(
+        db=db,
+        session_id=session_id,
+        user=current_user,
+    )
+    return ResponseEnvelope(data=verification, correlation_id=correlation_id)
 
 
 @router.post(

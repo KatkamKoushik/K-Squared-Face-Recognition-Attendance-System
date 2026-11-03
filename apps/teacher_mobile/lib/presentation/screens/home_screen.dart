@@ -13,6 +13,7 @@ class HomeScreen extends ConsumerWidget {
     final theme = Theme.of(context);
     final offeringsAsync = ref.watch(assignedOfferingsProvider);
     final offerings = offeringsAsync.asData?.value ?? MockTeacherData.sampleOfferings;
+    final journal = ref.watch(offlineSyncJournalProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -83,6 +84,66 @@ class HomeScreen extends ConsumerWidget {
                     ],
                   ),
                 ),
+
+                // Offline Sync Pending Banner
+                if (journal.pendingCount > 0) ...[
+                  const SizedBox(height: 16),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: Colors.amber.shade50,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: Colors.amber.shade300),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.cloud_off_rounded, color: Colors.amber.shade900, size: 24),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '${journal.pendingCount} Pending Offline Mutation(s)',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.amber.shade900,
+                                  fontSize: 13,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                'Attendance draft waiting to synchronize with control plane.',
+                                style: TextStyle(
+                                  color: Colors.amber.shade800,
+                                  fontSize: 11,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: () async {
+                            final count = await ref.read(sessionProvider.notifier).syncOfflineJournal();
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    count > 0
+                                        ? 'Synchronized $count mutation(s) with control plane.'
+                                        : 'Server unreachable. Changes remain queued in journal.',
+                                  ),
+                                ),
+                              );
+                            }
+                          },
+                          child: const Text('Sync Now', style: TextStyle(fontWeight: FontWeight.bold)),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
 
                 const SizedBox(height: 28),
 

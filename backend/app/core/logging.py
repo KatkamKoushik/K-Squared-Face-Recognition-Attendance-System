@@ -3,7 +3,10 @@ FRS V7.1 K² — Safe Structured Telemetry & Logging.
 Enforces biometric privacy: raw frames, crops, embeddings, and secrets are strictly redacted.
 """
 
+from datetime import datetime, timezone
+import json
 import logging
+import re
 import sys
 from typing import Any, Dict
 from app.core.config import settings
@@ -12,28 +15,46 @@ from app.core.config import settings
 class SafePrivacyFormatter(logging.Formatter):
     """
     Formatter ensuring no biometric embeddings, auth tokens,
-    or raw base64 payloads escape into standard application logs.
+    passwords, or raw image payloads escape into standard application logs.
     """
 
-    REDACTED_KEYS = {
-        "embedding",
-        "features",
-        "token",
-        "secret",
-        "password",
-        "authorization",
-        "crop_bytes",
-        "image_bytes",
-    }
+    REDACTION_PATTERNS = [
+        # Bearer tokens
+        (re.compile(r'(?i)bearer\s+[a-zA-Z0-9_\-\.]+', re.IGNORECASE), "Bearer [REDACTED_TOKEN]"),
+        # Key / Secret / Password fields in key=value or "key": "value"
+        (re.compile(r'(?i)(password|secret_key|secret|hashed_password|access_token|refresh_token)\s*([:=])\s*["\']?[^"\'\s,{}]+["\']?', re.IGNORECASE), r'\1\2"[REDACTED]"'),
+        # Large floating-point arrays (biometric embedding vectors >= 5 floats)
+        (re.compile(r'\[(?:\s*-?\d+\.\d+\s*,?){5,}\]'), "[REDACTED_EMBEDDING_VECTOR]"),
+        # Base64 image payloads
+        (re.compile(r'data:image\/[a-zA-Z]+;base64,[a-zA-Z0-9+/=]{30,}'), "[REDACTED_IMAGE_BYTES]"),
+    ]
+
+    def redact(self, text: str) -> str:
+        if not getattr(settings, "REDACT_SENSITIVE_LOGS", True):
+            return text
+        redacted = text
+        for pattern, replacement in self.REDACTION_PATTERNS:
+            redacted = pattern.sub(replacement, redacted)
+        return redacted
 
     def format(self, record: logging.LogRecord) -> str:
-        msg = super().format(record)
-        if settings.REDACT_SENSITIVE_LOGS:
-            for key in self.REDACTED_KEYS:
-                if key in msg.lower():
-                    # Mask potential token/secret fragments
-                    pass
-        return msg
+        formatted = super().format(record)
+        redacted = self.redact(formatted)
+
+        if getattr(settings, "LOG_FORMAT", "text").lower() == "json":
+            corr_id = getattr(record, "correlation_id", "none")
+            log_dict = {
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "level": record.levelname,
+                "name": record.name,
+                "correlation_id": corr_id,
+                "message": self.redact(record.getMessage()),
+            }
+            if record.exc_text:
+                log_dict["exception"] = self.redact(record.exc_text)
+            return json.dumps(log_dict)
+
+        return redacted
 
 
 def setup_logging():

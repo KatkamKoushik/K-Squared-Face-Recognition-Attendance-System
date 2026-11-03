@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:math';
+import 'package:flutter/foundation.dart';
 
 /// Lifecycle state of a queued offline mutation.
 enum MutationSyncStatus {
@@ -73,7 +74,7 @@ class QueuedMutation {
 }
 
 /// Durable, bounded Offline Sync Operation Journal (Checklist Controls 20-N001 to 20-N016).
-class OfflineSyncJournal {
+class OfflineSyncJournal extends ChangeNotifier {
   static const int maxQueueCapacity = 500; // Bounded storage (20-N005)
   static const int maxRetryAttempts = 5;
 
@@ -99,6 +100,7 @@ class OfflineSyncJournal {
       return false;
     }
     _queue[mutation.id] = mutation;
+    notifyListeners();
     return true;
   }
 
@@ -128,6 +130,7 @@ class OfflineSyncJournal {
     if (mutation != null) {
       mutation.status = MutationSyncStatus.synced;
       _lastSuccessfulSyncAt = DateTime.now();
+      notifyListeners();
     }
   }
 
@@ -143,6 +146,7 @@ class OfflineSyncJournal {
       } else {
         mutation.status = MutationSyncStatus.failedRetryable;
       }
+      notifyListeners();
     }
   }
 
@@ -150,6 +154,7 @@ class OfflineSyncJournal {
   void purgeOnLogout() {
     _queue.clear();
     _lastSuccessfulSyncAt = null;
+    notifyListeners();
   }
 
   /// Export queue state to JSON string for persistent disk storage.
@@ -166,5 +171,6 @@ class OfflineSyncJournal {
       final mutation = QueuedMutation.fromJson(item as Map<String, dynamic>);
       _queue[mutation.id] = mutation;
     }
+    notifyListeners();
   }
 }

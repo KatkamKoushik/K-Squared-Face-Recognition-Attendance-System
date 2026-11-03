@@ -81,8 +81,92 @@ export interface AuditEventItem {
   transaction_hash: string;
 }
 
+export interface StudentConsentStatusItem {
+  student_id: string;
+  roll_number: string;
+  full_name: string;
+  biometric_consent_active: boolean;
+  profile_version?: number;
+  embedding_namespace?: string;
+  alternative_roll_call_required: boolean;
+}
+
+export interface GovernanceSummary {
+  total_students: number;
+  students_with_biometric_consent: number;
+  students_withheld_consent: number;
+  consent_compliance_percentage: number;
+  total_captured_frames: number;
+  active_unpurged_frames: number;
+  purged_frames: number;
+  disk_usage_bytes: number;
+  disk_usage_mb: number;
+  retention_policy_days: number;
+}
+
+export interface PurgeResult {
+  purged_frames_count: number;
+  freed_bytes: number;
+  retention_days: number;
+  audit_event_id: string;
+  executed_at: string;
+}
+
+export interface ReceiptVerificationResult {
+  session_id: string;
+  is_valid: boolean;
+  signature_valid: boolean;
+  ledger_integrity_valid: boolean;
+  computed_signature: string;
+  stored_signature: string;
+  audit_ledger_hash: string;
+  computed_ledger_hash: string;
+  verified_at: string;
+  detail: string;
+}
+
 export async function getSystemReadiness(): Promise<ReadinessTelemetry | null> {
   return fetchFromApi<ReadinessTelemetry>("/health/readiness");
+}
+
+export async function getGovernanceSummary(): Promise<GovernanceSummary | null> {
+  return fetchFromApi<GovernanceSummary>("/governance/status");
+}
+
+export async function executePurge(
+  retentionDays: number = 7,
+  sessionId?: string,
+): Promise<PurgeResult | null> {
+  return fetchFromApi<PurgeResult>("/governance/purge", {
+    method: "POST",
+    body: JSON.stringify({
+      retention_days: retentionDays,
+      session_id: sessionId || null,
+    }),
+  });
+}
+
+export async function toggleBiometricConsent(
+  studentId: string,
+  consentActive: boolean,
+  reason: string = "Consent preference updated via Admin Console",
+): Promise<StudentConsentStatusItem | null> {
+  return fetchFromApi<StudentConsentStatusItem>("/governance/consent", {
+    method: "POST",
+    body: JSON.stringify({
+      student_id: studentId,
+      consent_active: consentActive,
+      reason,
+    }),
+  });
+}
+
+export async function verifyReceipt(
+  sessionId: string,
+): Promise<ReceiptVerificationResult | null> {
+  return fetchFromApi<ReceiptVerificationResult>(`/sessions/${sessionId}/receipt/verify`, {
+    method: "POST",
+  });
 }
 
 export async function getAuditEvents(): Promise<AuditEventItem[] | null> {

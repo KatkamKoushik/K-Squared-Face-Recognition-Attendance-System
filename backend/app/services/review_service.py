@@ -100,6 +100,16 @@ class ReviewService:
         proposed_present_count = 0
         uncertain_count = 0
 
+        from app.domain.models.student import EnrollmentProfile
+        inactive_consent_ids = set(
+            db.execute(
+                select(EnrollmentProfile.student_id).where(
+                    EnrollmentProfile.student_id.in_([r.student_id for r in roster_items]),
+                    EnrollmentProfile.is_active == False,
+                )
+            ).scalars().all()
+        )
+
         for roster_student in roster_items:
             student_id = roster_student.student_id
             sightings = sightings_by_student.get(student_id, [])
@@ -162,6 +172,11 @@ class ReviewService:
             else:
                 # FRS P0.8 Invariant: Zero sightings must produce UNKNOWN / NO_CAMERA_SIGHTING, never automatic absence.
                 # Blur/quality explanations must NEVER be attributed to an unsighted student.
+                zero_sighting_reason = (
+                    "NON_BIOMETRIC_ALTERNATIVE_REQUIRED (CONSENT WITHHELD)"
+                    if (student_id in inactive_consent_ids)
+                    else "NO_CAMERA_SIGHTING"
+                )
                 candidate_proposals.append(
                     CandidateProposalItem(
                         student_id=student_id,
@@ -173,7 +188,7 @@ class ReviewService:
                         sightings_count=0,
                         sighted_frame_ids=[],
                         requires_manual_attention=True,
-                        uncertainty_reason="NO_CAMERA_SIGHTING",
+                        uncertainty_reason=zero_sighting_reason,
                         frame_id=None,
                         detection_id=None,
                         match_threshold=None,

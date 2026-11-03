@@ -4,6 +4,7 @@ Extracted from official institutional registers (http://kucet.ac.in/).
 Kakatiya University College of Engineering & Technology, Warangal.
 """
 
+import math
 import uuid
 from datetime import date
 from typing import Dict, Any
@@ -25,15 +26,22 @@ from app.domain.models.academic import (
     Faculty,
     FacultyAssignment,
 )
-from app.domain.models.student import Student, Enrollment
+from app.domain.models.student import Student, Enrollment, EnrollmentProfile
+from app.services.model_registry_service import ModelRegistryService
 
 
 def seed_kucet_institutional_data(db: Session) -> Dict[str, Any]:
     """
     Populates the database with verified academic departments, programs,
     faculty, subjects, and student cohorts from KUCET Warangal.
+    Also registers approved OpenCV Zoo models and seeds biometric profiles
+    with DPDP Act consent status (student 00622504 withholding consent).
     Idempotent: skips existing records by unique code/identifier.
     """
+    # 0. Seed Approved Vision Model Registry & Default Policy
+    policy = ModelRegistryService.seed_default_registry(db)
+    sface_hash = policy.recognizer_model_hash
+
     stats = {
         "departments": 0,
         "faculty": 0,
@@ -41,6 +49,8 @@ def seed_kucet_institutional_data(db: Session) -> Dict[str, Any]:
         "subjects": 0,
         "offerings": 0,
         "students": 0,
+        "profiles_active": 0,
+        "profiles_withheld": 0,
     }
 
     # 1. Departments (7 Verified Engineering Programs from KUCET)
@@ -380,6 +390,41 @@ def seed_kucet_institutional_data(db: Session) -> Dict[str, Any]:
                 db.add(enr)
                 db.flush()
             stats["students"] += 1
+        else:
+            stu = existing_stu
+
+        # 8. Biometric Enrollment Profile (DPDP Act Compliance: Consent Gate)
+        # Student 00622504 (Ch. Rahul) actively exercises biometric consent refusal
+        is_consent_active = (stu_data["roll"] != "00622504")
+        existing_profile = db.execute(
+            select(EnrollmentProfile).where(
+                EnrollmentProfile.student_id == stu.id,
+                EnrollmentProfile.embedding_namespace == "sface_128d_v1",
+            )
+        ).scalar_one_or_none()
+
+        if not existing_profile:
+            idx = int(stu_data["roll"][-2:])
+            raw_vec = [math.sin(idx * 0.1 + i * 0.05) for i in range(128)]
+            norm = math.sqrt(sum(x * x for x in raw_vec))
+            unit_vec = [round(x / norm, 6) for x in raw_vec]
+
+            profile = EnrollmentProfile(
+                id=str(uuid.uuid4()),
+                student_id=stu.id,
+                model_artifact_id=sface_hash,
+                embedding_namespace="sface_128d_v1",
+                embedding_dimension=128,
+                vector_data=unit_vec,
+                profile_version=1,
+                is_active=is_consent_active,
+            )
+            db.add(profile)
+            db.flush()
+            if is_consent_active:
+                stats["profiles_active"] += 1
+            else:
+                stats["profiles_withheld"] += 1
 
     db.commit()
     return stats

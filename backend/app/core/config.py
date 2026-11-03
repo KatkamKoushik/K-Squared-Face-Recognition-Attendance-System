@@ -85,6 +85,7 @@ class Settings(BaseSettings):
 
     # Observability
     LOG_LEVEL: str = "INFO"
+    LOG_FORMAT: str = "text"
     REDACT_SENSITIVE_LOGS: bool = True
 
     model_config = SettingsConfigDict(

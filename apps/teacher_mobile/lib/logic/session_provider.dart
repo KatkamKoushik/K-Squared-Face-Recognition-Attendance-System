@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 import '../core/network/api_service.dart';
+import '../core/network/offline_sync_journal.dart';
 import '../data/mock/mock_teacher_data.dart';
 import '../data/models/domain_contracts.dart';
 
@@ -57,9 +58,11 @@ class SessionWorkflowState {
 }
 
 final apiProvider = Provider<FrsApiService>((ref) => FrsApiService());
+final offlineSyncJournalProvider = ChangeNotifierProvider<OfflineSyncJournal>((ref) => OfflineSyncJournal());
 
 class SessionNotifier extends Notifier<SessionWorkflowState> {
   FrsApiService get _api => ref.read(apiProvider);
+  OfflineSyncJournal get _journal => ref.read(offlineSyncJournalProvider);
 
   @override
   SessionWorkflowState build() {
@@ -188,12 +191,58 @@ class SessionNotifier extends Notifier<SessionWorkflowState> {
 
     // P0.4: Eliminate client-minted offline receipts.
     // Client is forbidden from entering SessionState.finalized without an authoritative server-issued receipt.
+    // Record pending mutation in offline sync journal for durable reconciliation upon reconnect.
+    _journal.enqueueMutation(
+      QueuedMutation(
+        id: 'MUT-${uuid.v4().substring(0, 8).toUpperCase()}',
+        mutationType: 'SESSION_COMMIT',
+        accountId: 'FACULTY-KUCET',
+        sessionId: state.sessionId,
+        idempotencyKey: idempotencyKey,
+        payload: {
+          'session_id': state.sessionId,
+          'conducted_units_count': state.conductedUnitsCount,
+        },
+        createdAt: DateTime.now(),
+      ),
+    );
+
     // Retain inReview state and set descriptive error message.
     state = state.copyWith(
       errorMessage:
-          'Commit failed or server unreachable. Client-minted offline receipts are prohibited by institutional governance policy.',
+          'Commit failed or server unreachable. Client-minted offline receipts are prohibited by institutional governance policy. Mutation queued in offline journal.',
     );
     return null;
+  }
+
+  /// Synchronizes pending mutations queued in the offline journal with the server.
+  Future<int> syncOfflineJournal() async {
+    final pending = _journal.getPendingMutationsForAccount('FACULTY-KUCET');
+    int syncedCount = 0;
+    for (final mutation in pending) {
+      if (mutation.mutationType == 'SESSION_COMMIT') {
+        final serverReceipt = await _api.commitSession(
+          sessionId: mutation.sessionId,
+          idempotencyKey: mutation.idempotencyKey,
+          conductedUnitsCount: mutation.payload['conducted_units_count'] as int? ?? state.conductedUnitsCount,
+          candidates: state.candidates,
+        );
+        if (serverReceipt != null) {
+          _journal.markSynced(mutation.id);
+          syncedCount++;
+          if (mutation.sessionId == state.sessionId) {
+            state = state.copyWith(
+              state: SessionState.finalized,
+              receipt: serverReceipt,
+              errorMessage: null,
+            );
+          }
+        } else {
+          _journal.recordFailure(mutation.id, 'Connection unreachable during background sync');
+        }
+      }
+    }
+    return syncedCount;
   }
 
   /// P0.4: Explicit server query to verify/recover durable commit receipt without fabricating local state.

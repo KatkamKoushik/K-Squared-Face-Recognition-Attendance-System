@@ -101,6 +101,7 @@ def test_e2e_dashboard_layout_and_navigation(admin_server, page: Page):
     assert page.locator('a[href="/students"]').count() >= 1
     assert page.locator('a[href="/reports/attendance"]').count() >= 1
     assert page.locator('a[href="/audit/logs"]').count() >= 1
+    assert page.locator('a[href="/governance"]').count() >= 1
     assert page.locator('a[href="/system/readiness"]').count() >= 1
 
 
@@ -181,6 +182,19 @@ def test_e2e_system_readiness_page(admin_server, page: Page):
 
     content = page.content()
     assert "Readiness" in content or "System" in content or "Hardware" in content
+
+
+def test_e2e_governance_and_privacy_page(admin_server, page: Page):
+    """Governance page renders compliance metrics, ephemeral purging controls, and consent register."""
+    page.goto(f"{admin_server}/governance")
+    page.wait_for_load_state("networkidle")
+
+    content = page.content()
+    assert "Data Governance" in content or "Biometric Privacy" in content
+    assert "Ephemeral Raw Image Purge" in content
+    assert "Student Biometric Consent" in content
+    assert "Cryptographic Receipt" in content
+    assert "Non-Biometric Alternative" in content
 
 
 def test_e2e_404_not_found_recovery(admin_server, page: Page):

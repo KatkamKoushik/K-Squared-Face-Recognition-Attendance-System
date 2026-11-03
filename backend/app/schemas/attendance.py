@@ -84,3 +84,16 @@ class AttendanceCorrectionResponse(BaseModel):
     action: str
     audit_event_id: str
     updated_at: datetime
+
+
+class ReceiptVerificationResponse(BaseModel):
+    session_id: str
+    receipt_id: str
+    is_valid: bool
+    signature_verified: bool
+    ledger_records_matched: bool
+    total_conducted_units: int
+    total_present_records: int
+    total_absent_records: int
+    receipt_hash: str
+    verified_at: datetime

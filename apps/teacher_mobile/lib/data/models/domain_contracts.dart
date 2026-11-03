@@ -480,3 +480,369 @@ class CommitReceiptResponse {
     'committed_at': committedAt.toIso8601String(),
   };
 }
+
+class AttendanceRecordResponse {
+  final String id;
+  final String sessionId;
+  final String unitId;
+  final String studentId;
+  final AttendanceStatus status;
+  final String finalizedByUserId;
+  final String reasonCode;
+  final DateTime committedAt;
+
+  const AttendanceRecordResponse({
+    required this.id,
+    required this.sessionId,
+    required this.unitId,
+    required this.studentId,
+    required this.status,
+    required this.finalizedByUserId,
+    required this.reasonCode,
+    required this.committedAt,
+  });
+
+  factory AttendanceRecordResponse.fromJson(Map<String, dynamic> json) {
+    return AttendanceRecordResponse(
+      id: json['id'] as String,
+      sessionId: json['session_id'] as String,
+      unitId: json['unit_id'] as String,
+      studentId: json['student_id'] as String,
+      status: AttendanceStatusWireExtension.fromWire(json['status'] as String?) ?? AttendanceStatus.absentConfirmed,
+      finalizedByUserId: json['finalized_by_user_id'] as String,
+      reasonCode: json['reason_code'] as String,
+      committedAt: DateTime.parse(json['committed_at'] as String),
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'session_id': sessionId,
+    'unit_id': unitId,
+    'student_id': studentId,
+    'status': status.toWire(),
+    'finalized_by_user_id': finalizedByUserId,
+    'reason_code': reasonCode,
+    'committed_at': committedAt.toIso8601String(),
+  };
+}
+
+class AttendanceCorrectionRequest {
+  final String studentId;
+  final int unitIndex;
+  final AttendanceStatus newStatus;
+  final String actionType;
+  final String reason;
+  final String? referenceDocument;
+
+  const AttendanceCorrectionRequest({
+    required this.studentId,
+    required this.unitIndex,
+    required this.newStatus,
+    required this.actionType,
+    required this.reason,
+    this.referenceDocument,
+  });
+
+  factory AttendanceCorrectionRequest.fromJson(Map<String, dynamic> json) {
+    return AttendanceCorrectionRequest(
+      studentId: json['student_id'] as String,
+      unitIndex: json['unit_index'] as int,
+      newStatus: AttendanceStatusWireExtension.fromWire(json['new_status'] as String?) ?? AttendanceStatus.absentConfirmed,
+      actionType: json['action_type'] as String,
+      reason: json['reason'] as String,
+      referenceDocument: json['reference_document'] as String?,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'student_id': studentId,
+    'unit_index': unitIndex,
+    'new_status': newStatus.toWire(),
+    'action_type': actionType,
+    'reason': reason,
+    if (referenceDocument != null) 'reference_document': referenceDocument,
+  };
+}
+
+class AttendanceCorrectionResponse {
+  final String recordId;
+  final String sessionId;
+  final String studentId;
+  final int unitIndex;
+  final AttendanceStatus previousStatus;
+  final AttendanceStatus newStatus;
+  final String action;
+  final String auditEventId;
+  final DateTime updatedAt;
+
+  const AttendanceCorrectionResponse({
+    required this.recordId,
+    required this.sessionId,
+    required this.studentId,
+    required this.unitIndex,
+    required this.previousStatus,
+    required this.newStatus,
+    required this.action,
+    required this.auditEventId,
+    required this.updatedAt,
+  });
+
+  factory AttendanceCorrectionResponse.fromJson(Map<String, dynamic> json) {
+    return AttendanceCorrectionResponse(
+      recordId: json['record_id'] as String,
+      sessionId: json['session_id'] as String,
+      studentId: json['student_id'] as String,
+      unitIndex: json['unit_index'] as int,
+      previousStatus: AttendanceStatusWireExtension.fromWire(json['previous_status'] as String?) ?? AttendanceStatus.absentConfirmed,
+      newStatus: AttendanceStatusWireExtension.fromWire(json['new_status'] as String?) ?? AttendanceStatus.absentConfirmed,
+      action: json['action'] as String,
+      auditEventId: json['audit_event_id'] as String,
+      updatedAt: DateTime.parse(json['updated_at'] as String),
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'record_id': recordId,
+    'session_id': sessionId,
+    'student_id': studentId,
+    'unit_index': unitIndex,
+    'previous_status': previousStatus.toWire(),
+    'new_status': newStatus.toWire(),
+    'action': action,
+    'audit_event_id': auditEventId,
+    'updated_at': updatedAt.toIso8601String(),
+  };
+}
+
+class ReceiptVerificationResponse {
+  final String sessionId;
+  final String receiptId;
+  final bool isValid;
+  final bool signatureVerified;
+  final bool ledgerRecordsMatched;
+  final int totalConductedUnits;
+  final int totalPresentRecords;
+  final int totalAbsentRecords;
+  final String receiptHash;
+  final DateTime verifiedAt;
+
+  const ReceiptVerificationResponse({
+    required this.sessionId,
+    required this.receiptId,
+    required this.isValid,
+    required this.signatureVerified,
+    required this.ledgerRecordsMatched,
+    required this.totalConductedUnits,
+    required this.totalPresentRecords,
+    required this.totalAbsentRecords,
+    required this.receiptHash,
+    required this.verifiedAt,
+  });
+
+  factory ReceiptVerificationResponse.fromJson(Map<String, dynamic> json) {
+    return ReceiptVerificationResponse(
+      sessionId: json['session_id'] as String,
+      receiptId: json['receipt_id'] as String,
+      isValid: json['is_valid'] as bool,
+      signatureVerified: json['signature_verified'] as bool,
+      ledgerRecordsMatched: json['ledger_records_matched'] as bool,
+      totalConductedUnits: json['total_conducted_units'] as int,
+      totalPresentRecords: json['total_present_records'] as int,
+      totalAbsentRecords: json['total_absent_records'] as int,
+      receiptHash: json['receipt_hash'] as String,
+      verifiedAt: DateTime.parse(json['verified_at'] as String),
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'session_id': sessionId,
+    'receipt_id': receiptId,
+    'is_valid': isValid,
+    'signature_verified': signatureVerified,
+    'ledger_records_matched': ledgerRecordsMatched,
+    'total_conducted_units': totalConductedUnits,
+    'total_present_records': totalPresentRecords,
+    'total_absent_records': totalAbsentRecords,
+    'receipt_hash': receiptHash,
+    'verified_at': verifiedAt.toIso8601String(),
+  };
+}
+
+class StudentConsentStatus {
+  final String studentId;
+  final String rollNumber;
+  final String fullName;
+  final bool biometricConsentActive;
+  final int? profileVersion;
+  final String? embeddingNamespace;
+  final bool alternativeRollCallRequired;
+
+  const StudentConsentStatus({
+    required this.studentId,
+    required this.rollNumber,
+    required this.fullName,
+    required this.biometricConsentActive,
+    this.profileVersion,
+    this.embeddingNamespace,
+    required this.alternativeRollCallRequired,
+  });
+
+  factory StudentConsentStatus.fromJson(Map<String, dynamic> json) {
+    return StudentConsentStatus(
+      studentId: json['student_id'] as String,
+      rollNumber: json['roll_number'] as String,
+      fullName: json['full_name'] as String,
+      biometricConsentActive: json['biometric_consent_active'] as bool,
+      profileVersion: json['profile_version'] as int?,
+      embeddingNamespace: json['embedding_namespace'] as String?,
+      alternativeRollCallRequired: json['alternative_roll_call_required'] as bool,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'student_id': studentId,
+    'roll_number': rollNumber,
+    'full_name': fullName,
+    'biometric_consent_active': biometricConsentActive,
+    if (profileVersion != null) 'profile_version': profileVersion,
+    if (embeddingNamespace != null) 'embedding_namespace': embeddingNamespace,
+    'alternative_roll_call_required': alternativeRollCallRequired,
+  };
+}
+
+class ConsentToggleRequest {
+  final String studentId;
+  final bool consentActive;
+  final String reason;
+
+  const ConsentToggleRequest({
+    required this.studentId,
+    required this.consentActive,
+    required this.reason,
+  });
+
+  factory ConsentToggleRequest.fromJson(Map<String, dynamic> json) {
+    return ConsentToggleRequest(
+      studentId: json['student_id'] as String,
+      consentActive: json['consent_active'] as bool,
+      reason: json['reason'] as String,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'student_id': studentId,
+    'consent_active': consentActive,
+    'reason': reason,
+  };
+}
+
+class PurgeRequest {
+  final int retentionDays;
+  final String? sessionId;
+
+  const PurgeRequest({
+    this.retentionDays = 7,
+    this.sessionId,
+  });
+
+  factory PurgeRequest.fromJson(Map<String, dynamic> json) {
+    return PurgeRequest(
+      retentionDays: json['retention_days'] as int? ?? 7,
+      sessionId: json['session_id'] as String?,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'retention_days': retentionDays,
+    if (sessionId != null) 'session_id': sessionId,
+  };
+}
+
+class PurgeResponse {
+  final int purgedFramesCount;
+  final int freedBytes;
+  final int retentionDays;
+  final String auditEventId;
+  final DateTime executedAt;
+
+  const PurgeResponse({
+    required this.purgedFramesCount,
+    required this.freedBytes,
+    required this.retentionDays,
+    required this.auditEventId,
+    required this.executedAt,
+  });
+
+  factory PurgeResponse.fromJson(Map<String, dynamic> json) {
+    return PurgeResponse(
+      purgedFramesCount: json['purged_frames_count'] as int,
+      freedBytes: json['freed_bytes'] as int,
+      retentionDays: json['retention_days'] as int,
+      auditEventId: json['audit_event_id'] as String,
+      executedAt: DateTime.parse(json['executed_at'] as String),
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'purged_frames_count': purgedFramesCount,
+    'freed_bytes': freedBytes,
+    'retention_days': retentionDays,
+    'audit_event_id': auditEventId,
+    'executed_at': executedAt.toIso8601String(),
+  };
+}
+
+class GovernanceSummaryResponse {
+  final int totalStudents;
+  final int studentsWithBiometricConsent;
+  final int studentsWithheldConsent;
+  final double consentCompliancePercentage;
+  final int totalCapturedFrames;
+  final int activeUnpurgedFrames;
+  final int purgedFrames;
+  final int diskUsageBytes;
+  final double diskUsageMb;
+  final int retentionPolicyDays;
+
+  const GovernanceSummaryResponse({
+    required this.totalStudents,
+    required this.studentsWithBiometricConsent,
+    required this.studentsWithheldConsent,
+    required this.consentCompliancePercentage,
+    required this.totalCapturedFrames,
+    required this.activeUnpurgedFrames,
+    required this.purgedFrames,
+    required this.diskUsageBytes,
+    required this.diskUsageMb,
+    required this.retentionPolicyDays,
+  });
+
+  factory GovernanceSummaryResponse.fromJson(Map<String, dynamic> json) {
+    return GovernanceSummaryResponse(
+      totalStudents: json['total_students'] as int,
+      studentsWithBiometricConsent: json['students_with_biometric_consent'] as int,
+      studentsWithheldConsent: json['students_withheld_consent'] as int,
+      consentCompliancePercentage: (json['consent_compliance_percentage'] as num).toDouble(),
+      totalCapturedFrames: json['total_captured_frames'] as int,
+      activeUnpurgedFrames: json['active_unpurged_frames'] as int,
+      purgedFrames: json['purged_frames'] as int,
+      diskUsageBytes: json['disk_usage_bytes'] as int,
+      diskUsageMb: (json['disk_usage_mb'] as num).toDouble(),
+      retentionPolicyDays: json['retention_policy_days'] as int,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'total_students': totalStudents,
+    'students_with_biometric_consent': studentsWithBiometricConsent,
+    'students_withheld_consent': studentsWithheldConsent,
+    'consent_compliance_percentage': consentCompliancePercentage,
+    'total_captured_frames': totalCapturedFrames,
+    'active_unpurged_frames': activeUnpurgedFrames,
+    'purged_frames': purgedFrames,
+    'disk_usage_bytes': diskUsageBytes,
+    'disk_usage_mb': diskUsageMb,
+    'retention_policy_days': retentionPolicyDays,
+  };
+}
