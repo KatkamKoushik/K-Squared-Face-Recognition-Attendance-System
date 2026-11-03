@@ -81,3 +81,4 @@ def toggle_student_consent(
         correlation_id=correlation_id,
     )
     return ResponseEnvelope(data=result, correlation_id=correlation_id)
+

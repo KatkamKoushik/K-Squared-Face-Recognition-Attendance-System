@@ -58,7 +58,7 @@ class SessionWorkflowState {
 }
 
 final apiProvider = Provider<FrsApiService>((ref) => FrsApiService());
-final offlineSyncJournalProvider = Provider<OfflineSyncJournal>((ref) => OfflineSyncJournal());
+final offlineSyncJournalProvider = ChangeNotifierProvider<OfflineSyncJournal>((ref) => OfflineSyncJournal());
 
 class SessionNotifier extends Notifier<SessionWorkflowState> {
   FrsApiService get _api => ref.read(apiProvider);

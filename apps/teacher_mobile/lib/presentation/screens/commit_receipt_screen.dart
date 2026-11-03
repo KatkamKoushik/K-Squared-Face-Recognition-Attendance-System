@@ -259,6 +259,44 @@ class _CommitReceiptScreenState extends ConsumerState<CommitReceiptScreen> {
               ),
             ),
 
+            if (sessionState.errorMessage != null)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                color: Colors.amber.shade50,
+                child: Row(
+                  children: [
+                    Icon(Icons.info_outline, size: 18, color: Colors.amber.shade900),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        sessionState.errorMessage!,
+                        style: TextStyle(fontSize: 11, color: Colors.amber.shade900, fontWeight: FontWeight.w500),
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: () async {
+                        setState(() => _isCommitting = true);
+                        final synced = await ref.read(sessionProvider.notifier).syncOfflineJournal();
+                        setState(() => _isCommitting = false);
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                synced > 0
+                                    ? 'Synchronized with control plane. Receipt issued.'
+                                    : 'Server still unreachable. Change remains safely in offline journal.',
+                              ),
+                            ),
+                          );
+                        }
+                      },
+                      child: const Text('Retry Sync', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                    ),
+                  ],
+                ),
+              ),
+
             Container(
               padding: const EdgeInsets.all(16),
               decoration: const BoxDecoration(

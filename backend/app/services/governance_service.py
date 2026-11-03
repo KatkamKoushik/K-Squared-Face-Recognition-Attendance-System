@@ -215,3 +215,4 @@ class GovernanceService:
             embedding_namespace=latest_profile.embedding_namespace if latest_profile else None,
             alternative_roll_call_required=not request.consent_active or not profiles,
         )
+

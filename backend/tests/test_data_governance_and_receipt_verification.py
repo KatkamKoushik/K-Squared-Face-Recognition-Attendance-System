@@ -297,3 +297,4 @@ def test_student_biometric_consent_and_non_biometric_fallback(db_session: Sessio
     summary = GovernanceService.get_governance_summary(db=db_session)
     assert summary.total_students >= 1
     assert summary.students_withheld_consent >= 1
+
