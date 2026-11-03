@@ -1,0 +1,22 @@
+# Git & Version Control
+.git
+.github
+.gitignore
+
+# Node & Build Outputs
+node_modules/
+.next/
+out/
+build/
+dist/
+.turbo/
+*.tsbuildinfo
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment & Secrets (Keep .env.example)
+.env
+.env.*
+!.env.example
+

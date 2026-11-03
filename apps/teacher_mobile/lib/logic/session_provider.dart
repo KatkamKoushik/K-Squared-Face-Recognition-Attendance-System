@@ -82,7 +82,7 @@ class SessionNotifier extends Notifier<SessionWorkflowState> {
     );
 
     // Asynchronously register session on control-plane in background
-    final offeringId = offering['id'] as String? ?? 'OFF-CS401-2026';
+    final offeringId = (offering['id'] ?? offering['offeringId']) as String? ?? 'OFF-CS401-2026';
     try {
       final serverId = await _api.createSession(
         offeringId: offeringId,

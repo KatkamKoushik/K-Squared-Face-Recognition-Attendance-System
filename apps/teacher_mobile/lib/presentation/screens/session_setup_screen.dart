@@ -51,12 +51,12 @@ class SessionSetupScreen extends ConsumerWidget {
                       ),
                       const SizedBox(height: 12),
                       Text(
-                        offering['subjectName'] as String,
+                        (offering['subjectName'] ?? offering['name'] ?? 'Classroom Session') as String,
                         style: theme.textTheme.titleLarge,
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        '${offering['subjectCode']} • ${offering['cohort']}',
+                        '${offering['subjectCode'] ?? offering['code'] ?? 'OFFERING'} • ${offering['cohort'] ?? offering['section'] ?? 'Primary Section'}',
                         style: theme.textTheme.bodyMedium,
                       ),
                       const SizedBox(height: 12),
@@ -64,8 +64,8 @@ class SessionSetupScreen extends ConsumerWidget {
                         spacing: 8,
                         runSpacing: 6,
                         children: [
-                          _ContextPill(label: 'Term: ${offering['term']}'),
-                          _ContextPill(label: '${offering['enrolledCount']} Roster Size'),
+                          _ContextPill(label: 'Term: ${offering['term'] ?? 'Current Term'}'),
+                          _ContextPill(label: '${offering['enrolledCount'] ?? 66} Roster Size'),
                         ],
                       ),
                     ],

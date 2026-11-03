@@ -80,6 +80,18 @@ def test_invalid_scheme_in_production_rejected():
     assert "Invalid PostgreSQL connection scheme" in str(exc_info.value)
 
 
+def test_wildcard_allowed_hosts_forbidden_in_production():
+    """Confirms wildcard '*' host header is strictly forbidden in production mode."""
+    with pytest.raises(ValueError) as exc_info:
+        Settings(
+            ENVIRONMENT="production",
+            DATABASE_URL="postgresql+psycopg2://user:password@pg-primary:5432/frs_k2",
+            SECRET_KEY="a_valid_cryptographically_strong_production_secret_32_bytes_long",
+            ALLOWED_HOSTS=["*"],
+        )
+    assert "Wildcard '*' in ALLOWED_HOSTS is strictly forbidden" in str(exc_info.value)
+
+
 def test_sync_database_url_property_translation():
     """Ensures async URL schemes (e.g. asyncpg) are transparently translated for sync engines."""
     settings = Settings(

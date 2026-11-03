@@ -39,6 +39,9 @@ services:
         max-file: "5"
 
   alembic-migration:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
     image: ghcr.io/katkamkoushik/k-squared-face-recognition-attendance-system/backend-api:latest
     container_name: frs-k2-migration-prod
     restart: "no"
@@ -57,6 +60,9 @@ services:
         max-file: "3"
 
   backend-api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
     image: ghcr.io/katkamkoushik/k-squared-face-recognition-attendance-system/backend-api:latest
     container_name: frs-k2-backend-api-prod
     restart: always
@@ -101,6 +107,9 @@ services:
         max-file: "5"
 
   vision-worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
     image: ghcr.io/katkamkoushik/k-squared-face-recognition-attendance-system/vision-worker:latest
     container_name: frs-k2-vision-worker-prod
     restart: always
@@ -136,6 +145,9 @@ services:
         max-file: "5"
 
   admin-console:
+    build:
+      context: ./apps/admin_console
+      dockerfile: Dockerfile
     image: ghcr.io/katkamkoushik/k-squared-face-recognition-attendance-system/admin-console:latest
     container_name: frs-k2-admin-console-prod
     restart: always

@@ -1,0 +1,58 @@
+# Git & Version Control
+.git
+.github
+.gitignore
+.gitattributes
+
+# Editor & OS Artifacts
+.vscode
+.idea
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Environment & Secrets (Keep .env.example)
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.cert
+*.p12
+
+# Python Build & Test Caches
+**/__pycache__
+**/*.pyc
+**/*.pyo
+**/*.pyd
+**/.pytest_cache
+**/.venv
+**/venv
+**/*.egg-info
+backend/tests/
+backend/diag.py
+
+# Node.js & Next.js Caches
+**/node_modules
+apps/admin_console/.next
+apps/admin_console/out
+apps/admin_console/build
+apps/admin_console/dist
+.turbo
+*.tsbuildinfo
+npm-debug.log*
+
+# Flutter / Dart Caches
+apps/teacher_mobile/build
+apps/teacher_mobile/.dart_tool
+apps/teacher_mobile/.pub-cache
+apps/teacher_mobile/.packages
+
+# Documentation & Sources
+docs/
+wiki/
+sources/
+*.md
+

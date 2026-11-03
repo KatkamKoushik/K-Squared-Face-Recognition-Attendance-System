@@ -11,9 +11,9 @@
 
 | Checklist Identifier | Relative Source Path | Line Count | Section Count | Total Controls | SHA-256 Checksum |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **Master Project Engineering Checklist (SPM)** | `sources/software_project_master_checklist.md` | 1305 | 55 | 1204 | `1050af14cb25d418a07541e3bc4248341b133d4e0c39b27a510fb0107b7e0954` |
-| **Production Website & App Checklist (WEB)** | `sources/production_level_website_app_checklist.md` | 1132 | 124 | 919 | `e210f233e179b814f0736989050b98a11c7cea43e4fcdd85cfd47295cdc0ef73` |
-| **Exhaustive CI Workflow Testing Checklist (CI)** | `sources/github_actions_ci_tests_exhaustive_checklist_expanded.md` | 947 | 34 | 874 | `35a89174b743dd46241c2f61461243595d821fcd4301a6739e88c1a089e1e34c` |
+| **Master Project Engineering Checklist (SPM)** | `docs/references/checklists/software_project_master_checklist.md` | 1305 | 55 | 1204 | `1050af14cb25d418a07541e3bc4248341b133d4e0c39b27a510fb0107b7e0954` |
+| **Production Website & App Checklist (WEB)** | `docs/references/checklists/production_level_website_app_checklist.md` | 1132 | 124 | 919 | `e210f233e179b814f0736989050b98a11c7cea43e4fcdd85cfd47295cdc0ef73` |
+| **Exhaustive CI Workflow Testing Checklist (CI)** | `docs/references/checklists/github_actions_ci_tests_exhaustive_checklist_expanded.md` | 947 | 34 | 874 | `35a89174b743dd46241c2f61461243595d821fcd4301a6739e88c1a089e1e34c` |
 | **TOTAL CONSOLIDATED COVERAGE NET** | **All 3 Source Documents** | **3384** | **213** | **2997** | **Deterministic Reconciliation Verified** |
 
 ---

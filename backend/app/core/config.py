@@ -45,7 +45,7 @@ class Settings(BaseSettings):
         "http://localhost:3000",
         "http://127.0.0.1:3000",
     ]
-    ALLOWED_HOSTS: List[str] = ["*"]
+    ALLOWED_HOSTS: List[str] = ["localhost", "127.0.0.1", "kucet.ac.in"]
 
     # Security & Tokens
     SECRET_KEY: str = Field(
@@ -136,6 +136,17 @@ class Settings(BaseSettings):
                 raise ValueError(
                     "CRITICAL SECURITY FAILURE: In production mode, SECRET_KEY must be a cryptographically strong secret of at least 32 characters."
                 )
+        return v
+
+    @field_validator("ALLOWED_HOSTS")
+    @classmethod
+    def validate_allowed_hosts(cls, v: List[str], info) -> List[str]:
+        """Enforce strict host header validation: reject wildcard '*' in production."""
+        env = info.data.get("ENVIRONMENT", "development")
+        if env == "production" and ("*" in v or not v):
+            raise ValueError(
+                "CRITICAL SECURITY CONFIGURATION: Wildcard '*' in ALLOWED_HOSTS is strictly forbidden in production mode. Specify explicit domain hostnames."
+            )
         return v
 
 

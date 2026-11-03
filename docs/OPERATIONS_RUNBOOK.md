@@ -97,7 +97,7 @@ In the event of network disruption, sensor failure, or lighting anomalies:
 ## 5. Model Weight Certification & Rotation Gates (Checklist Section 49)
 
 * **Face Detection Artifact:** `scrfd_2.5g_k2_v7.onnx` (G1 Certification Gate Approved).
-* **Face Embedding Artifact:** `arcface_w600k_r50_v7.onnx` (512-dimensional output, normalized $\|\mathbf{v}\|_2 = 1.0$).
+* **Face Embedding Artifact:** `face_recognition_sface_2021dec.onnx` (128-dimensional output, normalized $\|\mathbf{v}\|_2 = 1.0$).
 * **Gate Requirement:** Before deploying updated model weights, candidate ONNX binaries must pass the offline validation benchmark on the golden evaluation gallery with:
   * False Match Rate (FMR) $\le 0.01\%$.
   * False Non-Match Rate (FNMR) $\le 1.5\%$.

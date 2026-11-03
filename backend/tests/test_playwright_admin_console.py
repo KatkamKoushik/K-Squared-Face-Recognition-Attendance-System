@@ -197,6 +197,20 @@ def test_e2e_governance_and_privacy_page(admin_server, page: Page):
     assert "Non-Biometric Alternative" in content
 
 
+def test_e2e_controlled_pilot_dashboard_page(admin_server, page: Page):
+    """Controlled Pilot page displays cohort cards, TAR/FAR metrics, 14-day log, and Gate G7 matrix."""
+    page.goto(f"{admin_server}/pilot")
+    page.wait_for_load_state("networkidle")
+
+    content = page.content()
+    assert "Controlled Classroom Pilot Dashboard" in content
+    assert "CS401: Distributed Systems" in content
+    assert "True Accept Rate" in content
+    assert "False Accept Rate" in content
+    assert "14-Day Pilot Session Schedule" in content
+    assert "Gate G7" in content
+
+
 def test_e2e_404_not_found_recovery(admin_server, page: Page):
     """Visiting an unmapped route renders a friendly 404 boundary with navigation recovery."""
     page.goto(f"{admin_server}/non-existent-sample-route")
@@ -228,3 +242,41 @@ def test_e2e_responsive_mobile_viewport(admin_server, browser: Browser):
         assert box["width"] <= 380  # Fits within mobile width bounds
 
     context.close()
+
+
+def test_e2e_login_screen_and_demo_autofill(admin_server, page: Page):
+    """Login view renders institutional branding, hidden sidebars, and functional demo account autofill."""
+    page.goto(f"{admin_server}/login")
+    page.wait_for_load_state("networkidle")
+
+    # Verify institutional branding
+    content = page.content()
+    assert "FRS Admin Console" in content
+    assert "Kakatiya University" in content
+    assert "Sign In to Admin Console" in content
+
+    # Sidebar and top header must be hidden on the clean login screen
+    assert page.locator("aside").count() == 0
+    assert page.locator("header").count() == 0
+
+    # Verify input fields
+    email_input = page.locator('input[type="email"]')
+    assert email_input.is_visible()
+    password_input = page.locator('input[type="password"]')
+    assert password_input.is_visible()
+
+    # Click demo Principal button and verify autofill
+    page.click("text=Principal / Admin")
+    assert email_input.input_value() == "principal.kucet@gmail.com"
+    assert password_input.input_value() == "KucetFaculty@2026"
+
+
+def test_e2e_governance_data_status_banner(admin_server, page: Page):
+    """Governance page clearly displays the authoritative or offline status banner."""
+    page.goto(f"{admin_server}/governance")
+    page.wait_for_load_state("networkidle")
+
+    content = page.content()
+    # Must indicate either live postgres or offline preview mode cleanly
+    assert "Live Control Plane Connected" in content or "Offline Preview Mode" in content
+

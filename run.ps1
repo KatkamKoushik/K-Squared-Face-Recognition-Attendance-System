@@ -36,8 +36,8 @@ switch ($Command) {
         Write-Host '[3/5] Running admin console typecheck...' -ForegroundColor Green
         npm --prefix apps/admin_console run typecheck
 
-        Write-Host '[4/5] Running mobile Dart static analyzer...' -ForegroundColor Green
-        dart analyze apps/teacher_mobile
+        Write-Host '[4/5] Running mobile and shared Dart static analyzer...' -ForegroundColor Green
+        dart analyze apps/teacher_mobile packages/contracts/lib/domain_contracts.dart
 
         Write-Host '[5/5] Validating shared TypeScript contracts...' -ForegroundColor Green
         node apps/admin_console/node_modules/typescript/bin/tsc --noEmit packages/contracts/src/index.ts
@@ -58,8 +58,8 @@ switch ($Command) {
     }
 
     'lint' {
-        Write-Host 'Analyzing teacher mobile...' -ForegroundColor Green
-        dart analyze apps/teacher_mobile
+        Write-Host 'Analyzing teacher mobile & contracts...' -ForegroundColor Green
+        dart analyze apps/teacher_mobile packages/contracts/lib/domain_contracts.dart
 
         Write-Host 'Typechecking admin console...' -ForegroundColor Green
         npm --prefix apps/admin_console run typecheck
@@ -73,6 +73,9 @@ switch ($Command) {
     'contracts' {
         Write-Host 'Validating TypeScript contracts...' -ForegroundColor Green
         node apps/admin_console/node_modules/typescript/bin/tsc --noEmit packages/contracts/src/index.ts
+
+        Write-Host 'Validating Dart contracts...' -ForegroundColor Green
+        dart analyze packages/contracts/lib/domain_contracts.dart
     }
 
     'up' {

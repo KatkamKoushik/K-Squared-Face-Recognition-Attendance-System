@@ -118,7 +118,7 @@ sequenceDiagram
 
     Worker->>DB: Poll & Lease Job (LEASED / 60s Lease)
     Worker->>Worker: Run SCRFD Face Detection & Affine Landmark Alignment
-    Worker->>Worker: Run ArcFace Embeddings (512-d normalized vectors)
+    Worker->>Worker: Run SFace Embeddings (128-d unit hypersphere vectors)
     Worker->>DB: Persist Candidate Proposals & Open-Set Decisions
     Worker->>DB: Complete Job (DONE)
 
@@ -315,6 +315,44 @@ frs-v7-1-k2/
 
 ---
 
+## Verified Mobile UI & Operational Workflow Gallery
+
+The teacher mobile client runs on Flutter 3.27 / Dart 3.6+ and guides faculty through the complete classroom proposal lifecycle:
+
+| Step 1: Faculty Home & Assigned Offerings | Step 2: Session Setup & Unit Allocation | Step 3: Camera Multi-Photo Sweep |
+| :---: | :---: | :---: |
+| ![Faculty Home](docs/images/01_faculty_home.png) | ![Session Setup](docs/images/02_session_setup.png) | ![Camera Capture](docs/images/03_camera_capture.png) |
+| *View assigned course offerings, cached offline journal count, and faculty profile.* | *Select conducted units (1–4), freeze student eligibility snapshot, and create session.* | *Capture classroom photo sweep bursts with real-time frame guidance and SHA-256 checks.* |
+
+| Step 4: Capture Burst Gallery | Step 5: Proposal Review & Lookalike Adjudication | Step 6: ACID Commit & Cryptographic Receipt |
+| :---: | :---: | :---: |
+| ![Capture Gallery](docs/images/04_capture_gallery.png) | ![Proposal Review](docs/images/05_proposal_review.png) | ![Commit Receipt](docs/images/07_commit_receipt.png) |
+| *Inspect thumbnail sweeps, verify frame quality, and trigger vision inference worker.* | *Review candidate detections, adjudicate ambiguities, and route withheld consent to manual roll-call.* | *Submit atomic idempotency commit and obtain authoritative HMAC-SHA256 signed receipt.* |
+
+---
+
+## Environment Variables Reference
+
+All runtime services are configured via environment variables. Copy `.env.example` to `.env` before starting services:
+
+| Variable | Tier | Type | Default Value | Required in Production | Description & Security Invariant |
+| :--- | :--- | :--- | :--- | :---: | :--- |
+| `DATABASE_URL` | Backend | string | `sqlite+aiosqlite:///./frs_dev.db` | Yes | PostgreSQL async connection URL (`postgresql+asyncpg://...`). SQLite fail-closed in production. |
+| `SECRET_KEY` | Backend | string | `dev_insecure_secret_key...` | Yes | Cryptographic HMAC-SHA256 signing secret for session receipts and JWT tokens. Must be $\ge 32$ bytes. |
+| `ALLOWED_HOSTS` | Backend | list | `["localhost", "127.0.0.1", "kucet.ac.in"]` | Yes | Trusted Host Header origins. Wildcard `"*"` is strictly forbidden in production. |
+| `ENVIRONMENT` | Backend | enum | `development` | Yes | Runtime mode (`development`, `staging`, `production`). Enforces SSL and PostgreSQL in production. |
+| `PORT` | Backend | integer | `8000` | No | FastAPI HTTP listener port. |
+| `STORAGE_DIR` | Backend | string | `/data/frames` | No | Shared local filesystem path for ephemeral classroom capture photos. |
+| `LOG_LEVEL` | Backend | enum | `INFO` | No | Application logging verbosity (`DEBUG`, `INFO`, `WARNING`, `ERROR`). |
+| `LOG_FORMAT` | Backend | enum | `json` | No | Log output format (`text` for local development, `json` for production). |
+| `REDACT_SENSITIVE_LOGS` | Backend | boolean | `true` | Yes | Redacts JWT tokens, passwords, embedding coordinates, and base64 payloads from logs. |
+| `MAX_UPLOAD_SIZE_MB` | Backend | integer | `15` | No | Bounded HTTP request payload guardrail rejecting bodies $> 15\text{MB}$ (`413 Payload Too Large`). |
+| `CORS_ORIGINS` | Backend | list | `["http://localhost:3000"]` | Yes | Allowed CORS origin URLs for the Next.js Admin Console. |
+| `NEXT_PUBLIC_API_URL` | Web | string | `http://localhost:8000/api/v1` | Yes | Base URL for FastAPI REST control plane accessed by the browser. |
+| `API_URL` | Mobile | string | `http://10.0.2.2:8000/api/v1` | Yes | Compile-time base URL for Flutter mobile client connecting to control plane. |
+
+---
+
 ## Getting Started & Local Development
 
 ### Prerequisites
@@ -354,16 +392,19 @@ make up          # Start Docker Compose services
 ### 2. Manual Service Commands
 
 ```bash
-# Backend Unit, Security, Persistence & Evaluation Tests (84 passed)
+# Backend Unit, Security, Persistence, Governance & Pilot Simulation Tests (86 passed)
 cd backend && python -m pytest tests/ -v -m "not playwright"
 
-# Playwright Browser E2E Automation (11 passed across all 11 Admin Console routes)
+# Playwright Browser E2E Automation (15 passed across all Admin Console routes including /login and /pilot)
 cd backend && python -m pytest tests/test_playwright_admin_console.py -v
 
 # Backend Invariant Acceptance Suite (5/5 suites passed with 100% invariant fidelity)
 cd backend && python verify_backend.py
 
-# Admin Console Typecheck & Production Build (0 errors, 13 prerendered routes)
+# Admin Console Unit Tests (4 passed with native node:test runner)
+cd apps/admin_console && npm test
+
+# Admin Console Typecheck & Production Build (0 errors, 14 prerendered routes)
 cd apps/admin_console && npm run typecheck && npm run build
 
 # Flutter Teacher Mobile Code Analysis (0 issues found)
@@ -371,6 +412,7 @@ dart analyze apps/teacher_mobile
 
 # Shared Contracts Parity Check (0 errors across TS and Dart)
 dart analyze packages/contracts/lib/domain_contracts.dart
+npm --prefix packages/contracts run typecheck
 ```
 
 ---
@@ -381,12 +423,13 @@ All test suites must pass before pull requests can merge into `main`:
 
 | Tier | Directory | Test Command | Outcome |
 | :--- | :--- | :--- | :--- |
-| **Control Plane Unit, Security & Evaluation** | `backend` | `python -m pytest tests/ -v -m "not playwright"` | **84/84 Passed** (+ 1 resilient PG environment skip) |
-| **Playwright Browser E2E** | `backend` | `python -m pytest tests/test_playwright_admin_console.py -v` | **11/11 Passed** (100% of Admin Console routes verified) |
+| **Control Plane Unit, Security, Governance & Pilot Simulation** | `backend` | `python -m pytest tests/ -v -m "not playwright"` | **86/86 Passed** (+ 1 resilient PG environment skip) |
+| **Playwright Browser E2E** | `backend` | `python -m pytest tests/test_playwright_admin_console.py -v` | **15/15 Passed** (100% of Admin Console routes including `/login` and `/pilot` verified) |
 | **Acceptance Invariants** | `backend` | `python verify_backend.py` | **5/5 Suites Passed** (100% mathematical invariant fidelity) |
-| **Admin Console Build** | `apps/admin_console` | `npm run build` | **0 errors** (13 static/ISR routes prerendered) |
+| **Admin Console Unit Suite** | `apps/admin_console` | `npm test` | **4/4 Passed** (Node native runner; mock integrity & token injection) |
+| **Admin Console Build** | `apps/admin_console` | `npm run build` | **0 errors** (14 static/ISR routes prerendered) |
 | **Mobile Analysis** | `apps/teacher_mobile` | `dart analyze` | **0 issues found** (Clean static analysis) |
-| **Shared Contracts** | `packages/contracts` | `dart analyze` & `tsc` | **0 issues found** (Full cross-language parity) |
+| **Shared Contracts** | `packages/contracts` | `dart analyze` & `npm run typecheck` | **0 issues found** (Full cross-language parity) |
 
 ---
 

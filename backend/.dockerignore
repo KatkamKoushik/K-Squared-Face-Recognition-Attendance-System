@@ -1,0 +1,30 @@
+# Git & Version Control
+.git
+.github
+.gitignore
+
+# Environment & Secrets (Keep .env.example)
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.cert
+*.p12
+
+# Python Build & Test Caches
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache
+.venv
+venv
+*.egg-info
+frs_backend.egg-info/
+
+# Tests & Diagnostic Scripts
+tests/
+diag.py
+verify_backend.py
+

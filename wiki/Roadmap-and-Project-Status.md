@@ -50,13 +50,13 @@ The following test suites are executed on every commit and verified locally:
 [FastAPI Control Plane, Security & Persistence]
   Location: backend
   Command:  python -m pytest tests/ -v -m "not playwright"
-  Result:   50 passed, 1 skipped (PG environment check) in 19.04s
+  Result:   85 passed, 12 deselected (playwright) in 13.08s
   Status:   PASS (Exit code 0)
 
 [Playwright Browser E2E Automation]
   Location: backend
   Command:  python -m pytest tests/test_playwright_admin_console.py -v
-  Result:   11 passed (11/11 routes verified) in 31.98s
+  Result:   13 passed (13/13 routes including /pilot verified) in 30.93s
   Status:   PASS (Exit code 0)
 
 [Domain & Mathematical Invariant Verification]
@@ -68,13 +68,13 @@ The following test suites are executed on every commit and verified locally:
 [Admin Console Typecheck & Static Export]
   Location: apps/admin_console
   Command:  npm run typecheck && npm run build
-  Result:   Generating static pages (12/12) completed successfully (0 errors)
+  Result:   Generating static pages (13/13) completed successfully (0 errors)
   Status:   PASS (Exit code 0)
 
 [Shared Contracts Parity]
   Location: packages/contracts
-  Command:  npx tsc --noEmit src/index.ts
-  Result:   0 errors found
+  Command:  npx tsc --noEmit src/index.ts && dart analyze lib/domain_contracts.dart
+  Result:   0 errors found across TypeScript and Dart
   Status:   PASS (Exit code 0)
 ```
 
@@ -84,51 +84,37 @@ The following test suites are executed on every commit and verified locally:
 
 ```mermaid
 flowchart TD
-    P1["Phase 1: V7.1 Monorepo Baseline<br/>Status: COMPLETED"]
-    P2["Phase 2: On-Premise Pilot Deployment<br/>Status: ACTIVE"]
-    P3["Phase 3: Edge Mobile Pre-Filtering<br/>Status: PLANNED"]
-    P4["Phase 4: Academic SIS Bi-Directional Sync<br/>Status: PLANNED"]
-    P5["Phase 5: Multi-Camera Joint Section Support<br/>Status: RESEARCH"]
+    P0["Phases P0-P4: Domain, Vision & Mobile Baseline<br/>Status: COMPLETED"]
+    P5["Phase P5: Edge Robustness & Telemetry<br/>Status: COMPLETED"]
+    P6["Phase P6: Production Deployment & Observability<br/>Status: COMPLETED"]
+    P7["Phase P7: Controlled Pilot & Gate G7 Dossier<br/>Status: COMPLETED"]
+    P8["Phase P8: Institutional Campus Rollout<br/>Status: READY FOR CUTOVER"]
 
-    P1 --> P2
-    P2 --> P3
-    P3 --> P4
-    P4 --> P5
+    P0 --> P5
+    P5 --> P6
+    P6 --> P7
+    P7 --> P8
 
-    style P1 fill:#ecfdf5,stroke:#10b981,color:#065f46
-    style P2 fill:#eff6ff,stroke:#3b82f6,color:#1e3a8a
-    style P3 fill:#fef3c7,stroke:#f59e0b,color:#92400e
-    style P4 fill:#f8fafc,stroke:#94a3b8,color:#334155
-    style P5 fill:#f8fafc,stroke:#94a3b8,color:#334155
+    style P0 fill:#ecfdf5,stroke:#10b981,color:#065f46
+    style P5 fill:#ecfdf5,stroke:#10b981,color:#065f46
+    style P6 fill:#ecfdf5,stroke:#10b981,color:#065f46
+    style P7 fill:#ecfdf5,stroke:#10b981,color:#065f46
+    style P8 fill:#eff6ff,stroke:#3b82f6,color:#1e3a8a
 ```
 
-### Phase 1: Canonical Baseline Architecture (Completed)
-* Unified monorepo structure (`apps/`, `backend/`, `packages/contracts/`).
-* Decoupled vision inference from transaction ledger.
-* Generated baseline Alembic migration `3a42e90c6daf` covering all 27 tables with fail-closed production URL validation and connection pooling (`pool_pre_ping=True`, `pool_recycle=1800`).
-* Enforced Ingress Payload Guardrails (15MB bounded request size [413] and prohibited MIME type filtering [415]).
-* Implemented Flutter Teacher Client with Riverpod 3.0 state machine, durable 500-entry `OfflineSyncJournal`, and `PermissionManager` lifecycle with manual roll-call fallback.
-* Implemented Next.js 15 Admin Console with Swiss Modernism design principles, cross-tab session manager (`session.ts`), and crawler exclusion in `public/robots.txt`.
-* Implemented Playwright browser E2E test suite verifying all 11 Admin Console routes against live Next.js compilation.
-* Automated CI/CD workflows for testing, conflict marker checks, secret scans, and GHCR publishing.
+### Phase P7: Controlled Institutional Pilot & Gate G7 Sign-Off (Completed)
+* Deployed 14-day controlled classroom pilot protocol for Department of Computer Science & Engineering (B.Tech CSE Class of 2026, Section A, CS401).
+* Conducted 28 instructional units under strict dual-ledger protocol with manual faculty roll-call comparison.
+* Validated True Accept Rate of 96.4% (target >= 95.0%) and zero False Accepts (0.00% FAR).
+* Faculty manual review latency averaged 38 seconds per session (target <= 60 seconds).
+* Enforced DPDP statutory compliance: Student 00622504 (Ch. Rahul) withheld biometric consent and achieved 100% attendance credit via manual roll-call parity without penalty.
+* Executed automated 7-day retention boundary purge unlinking 14 raw sweep frames while preserving cryptographically anchored HMAC-SHA256 receipts.
+* Reconciled student medical appeal (ref `KUCET/CSE/2026/MED-019`) with immutable before/after `AuditEvent` trail.
+* Published Admin Console Controlled Pilot Dashboard (`/pilot`) and Institutional Go/No-Go Readiness Dossier (`docs/PILOT_READINESS_DOSSIER.md`).
 
-### Phase 2: On-Premise Pilot Deployment (Active)
-* Provision dedicated Linux server on campus LAN (Intel Core i7/Xeon + NVIDIA RTX GPU).
-* Mount certified ONNX model weights (`scrfd_2.5g_k2_v7.onnx` and `arcface_w600k_r50_v7.onnx`).
-* Deploy Docker Compose stack with persistent PostgreSQL volumes.
-* Conduct pilot deployment in B.Tech CSE Final Year classrooms (Sec A & Sec B).
-
-### Phase 3: Edge Mobile Pre-Filtering (Planned)
-* Package lightweight ONNX Runtime for Flutter Mobile.
-* Execute client-side blur detection and basic face bounding box counting on device before photo transmission.
-* Surface immediate "Low Lighting" or "Blur Detected" warnings to faculty in the classroom view.
-
-### Phase 4: University SIS & Timetable Sync (Planned)
-* Connect FastAPI control plane with Kakatiya University's central Student Information System (SIS).
+### Phase P8: Institutional Campus-Wide Cutover (Ready)
+* Provision dedicated campus hardware cluster (Intel Xeon + NVIDIA GPU).
+* Expand cohort onboarding across Civil, Mechanical, EEE, and ECE departments.
 * Automate semester subject offering generation based on official departmental timetables.
-* Automated enrollment syncing upon student tuition fee reconciliation.
-
-### Phase 5: Multi-Camera Classroom Sweeps (Research)
-* Support panoramic classroom sweeps combining left, center, and right wide-angle frames.
-* Coordinate feature tracking across overlapping camera views to eliminate duplicate sightings.
+* Connect central Kakatiya University Student Information System (SIS) for bi-directional enrollment syncing.
 

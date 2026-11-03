@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/mock/mock_teacher_data.dart';
+import '../../logic/auth_provider.dart';
 import '../../logic/session_provider.dart';
 import 'session_setup_screen.dart';
 
@@ -27,7 +28,63 @@ class HomeScreen extends ConsumerWidget {
           IconButton(
             icon: const Icon(Icons.account_circle_outlined),
             tooltip: 'Faculty Profile',
-            onPressed: () {},
+            onPressed: () {
+              final auth = ref.read(authProvider);
+              showDialog(
+                context: context,
+                builder: (ctx) => AlertDialog(
+                  title: const Text('Faculty Session'),
+                  content: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        auth.email ?? MockTeacherData.facultyName,
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Role: ${auth.role ?? "FACULTY"}',
+                        style: TextStyle(color: Colors.grey.shade700, fontSize: 13),
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: auth.isOfflineDemo ? Colors.amber.shade50 : Colors.green.shade50,
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(
+                            color: auth.isOfflineDemo ? Colors.amber.shade300 : Colors.green.shade300,
+                          ),
+                        ),
+                        child: Text(
+                          auth.isOfflineDemo ? 'Offline Preview Session' : 'Authoritative Control Plane Active',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: auth.isOfflineDemo ? Colors.amber.shade900 : Colors.green.shade900,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx),
+                      child: const Text('Close'),
+                    ),
+                    TextButton(
+                      onPressed: () {
+                        Navigator.pop(ctx);
+                        ref.read(authProvider.notifier).logout();
+                      },
+                      style: TextButton.styleFrom(foregroundColor: AppTheme.errorRed),
+                      child: const Text('Sign Out'),
+                    ),
+                  ],
+                ),
+              );
+            },
           ),
         ],
       ),

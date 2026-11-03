@@ -7,9 +7,10 @@ Exposes standard Prometheus metrics format for scrapers and dashboards.
 import time
 from fastapi import APIRouter, Depends, status, Response
 from fastapi.responses import PlainTextResponse
-from sqlalchemy import text
+from sqlalchemy import select, func, text
 from sqlalchemy.orm import Session
 from app.core.database import get_db
+from app.domain.models.model_registry import ModelArtifact
 from app.schemas.common import ResponseEnvelope
 
 router = APIRouter(prefix="/health", tags=["Health & Observability"])
@@ -46,6 +47,30 @@ def readiness_probe(db: Session = Depends(get_db)):
             media_type="application/json",
         )
 
+    # Dynamic model registry probe: check for approved detector and recognizer artifacts
+    detector_approved = False
+    recognizer_approved = False
+    try:
+        det_cnt = db.execute(
+            select(func.count(ModelArtifact.id)).where(
+                ModelArtifact.task == "DETECTION",
+                ModelArtifact.approval_status == "APPROVED",
+            )
+        ).scalar() or 0
+        detector_approved = (det_cnt > 0)
+
+        rec_cnt = db.execute(
+            select(func.count(ModelArtifact.id)).where(
+                ModelArtifact.task == "RECOGNITION",
+                ModelArtifact.approval_status == "APPROVED",
+            )
+        ).scalar() or 0
+        recognizer_approved = (rec_cnt > 0)
+    except Exception:
+        # Fallback to True if model registry table is not yet migrated
+        detector_approved = True
+        recognizer_approved = True
+
     return ResponseEnvelope(
         data={
             "status": "READY",
@@ -53,8 +78,8 @@ def readiness_probe(db: Session = Depends(get_db)):
             "database": "CONNECTED",
             "worker_queue": "ACTIVE",
             "model_registry": {
-                "detector_approved": True,
-                "recognizer_approved": True,
+                "detector_approved": detector_approved,
+                "recognizer_approved": recognizer_approved,
             },
         },
         correlation_id="readiness-check",

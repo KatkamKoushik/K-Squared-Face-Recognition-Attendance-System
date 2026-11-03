@@ -39,6 +39,43 @@ class FrsApiService {
     return decoded;
   }
 
+  /// POST /auth/login
+  /// Authenticates faculty credentials against FastAPI control plane.
+  Future<Map<String, dynamic>?> login({
+    required String email,
+    required String password,
+  }) async {
+    try {
+      final res = await _client.post(
+        Uri.parse('$baseUrl/auth/login'),
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'email': email,
+          'password': password,
+        }),
+      ).timeout(const Duration(seconds: 4));
+
+      if (res.statusCode == 200) {
+        final payload = _unwrap(res);
+        if (payload is Map<String, dynamic>) {
+          authToken = payload['access_token'] as String?;
+          return payload;
+        }
+      }
+    } catch (_) {
+      // Gracefully handle offline or unreachable host
+    }
+    return null;
+  }
+
+  /// Clears active JWT session token.
+  void logout() {
+    authToken = null;
+  }
+
   /// GET /academic/offerings
   Future<List<Map<String, dynamic>>> getAssignedOfferings() async {
     try {
