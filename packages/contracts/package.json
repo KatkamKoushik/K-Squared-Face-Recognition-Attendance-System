@@ -4,6 +4,8 @@
   "description": "Shared TypeScript and Dart domain models, contracts, and enums for FRS V7.1 K2",
   "main": "src/index.ts",
   "types": "src/index.ts",
+  "scripts": {
+    "typecheck": "node ../../apps/admin_console/node_modules/typescript/bin/tsc --noEmit --project tsconfig.json"
+  },
   "private": true
 }
-
