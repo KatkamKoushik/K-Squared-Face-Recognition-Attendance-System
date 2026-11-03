@@ -1,18 +1,151 @@
 /**
  * Typed API Client for Next.js Admin Console connecting to FastAPI Control Plane.
  * Conforms to canonical OpenAPI contracts and unwraps ResponseEnvelope wrappers.
+ * Handles client-side bearer token injection for authenticated endpoints.
  */
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 
-export async function fetchFromApi<T>(endpoint: string, options?: RequestInit): Promise<T | null> {
+const AUTH_TOKEN_KEY = "kucet_frs_auth_token";
+const AUTH_USER_KEY = "kucet_frs_auth_user";
+
+let inMemoryToken: string | null = null;
+let inMemoryUser: StoredAuthUser | null = null;
+
+export interface StoredAuthUser {
+  user_id: string;
+  email: string;
+  role: string;
+}
+
+export interface LoginResponse {
+  access_token: string;
+  token_type: string;
+  expires_in_minutes: number;
+  user_id: string;
+  role: string;
+  email: string;
+}
+
+export function getAuthToken(): string | null {
+  if (typeof window !== "undefined") {
+    try {
+      return localStorage.getItem(AUTH_TOKEN_KEY) || sessionStorage.getItem(AUTH_TOKEN_KEY) || inMemoryToken;
+    } catch {
+      return inMemoryToken;
+    }
+  }
+  return inMemoryToken;
+}
+
+export function setAuthToken(token: string | null, remember: boolean = true): void {
+  inMemoryToken = token;
+  if (typeof window !== "undefined") {
+    try {
+      if (token) {
+        if (remember) {
+          localStorage.setItem(AUTH_TOKEN_KEY, token);
+        } else {
+          sessionStorage.setItem(AUTH_TOKEN_KEY, token);
+        }
+      } else {
+        localStorage.removeItem(AUTH_TOKEN_KEY);
+        sessionStorage.removeItem(AUTH_TOKEN_KEY);
+      }
+    } catch {
+      // Storage access blocked or unavailable
+    }
+  }
+}
+
+export function getStoredUser(): StoredAuthUser | null {
+  if (typeof window !== "undefined") {
+    try {
+      const raw = localStorage.getItem(AUTH_USER_KEY) || sessionStorage.getItem(AUTH_USER_KEY);
+      if (raw) {
+        return JSON.parse(raw) as StoredAuthUser;
+      }
+    } catch {
+      return inMemoryUser;
+    }
+  }
+  return inMemoryUser;
+}
+
+export function setStoredUser(user: StoredAuthUser | null, remember: boolean = true): void {
+  inMemoryUser = user;
+  if (typeof window !== "undefined") {
+    try {
+      if (user) {
+        const serialized = JSON.stringify(user);
+        if (remember) {
+          localStorage.setItem(AUTH_USER_KEY, serialized);
+        } else {
+          sessionStorage.setItem(AUTH_USER_KEY, serialized);
+        }
+      } else {
+        localStorage.removeItem(AUTH_USER_KEY);
+        sessionStorage.removeItem(AUTH_USER_KEY);
+      }
+    } catch {
+      // Storage access blocked or unavailable
+    }
+  }
+}
+
+export async function login(email: string, password: string, remember: boolean = true): Promise<LoginResponse | null> {
   try {
-    const res = await fetch(`${API_BASE}${endpoint}`, {
-      ...options,
+    const res = await fetch(`${API_BASE}/auth/login`, {
+      method: "POST",
       headers: {
         "Content-Type": "application/json",
-        ...options?.headers,
       },
+      body: JSON.stringify({ email, password }),
+    });
+
+    if (!res.ok) {
+      return null;
+    }
+
+    const json = await res.json();
+    const data = (json && typeof json === "object" && "data" in json) ? json.data : json;
+    if (data && data.access_token) {
+      const loginData = data as LoginResponse;
+      setAuthToken(loginData.access_token, remember);
+      setStoredUser({
+        user_id: loginData.user_id,
+        email: loginData.email,
+        role: loginData.role,
+      }, remember);
+      return loginData;
+    }
+    return null;
+  } catch (error) {
+    console.warn("Login request failure:", error);
+    return null;
+  }
+}
+
+export function logout(): void {
+  setAuthToken(null);
+  setStoredUser(null);
+}
+
+export async function fetchFromApi<T>(endpoint: string, options?: RequestInit): Promise<T | null> {
+  try {
+    const token = getAuthToken();
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+      ...(options?.headers as Record<string, string> || {}),
+    };
+
+    if (token && !headers["Authorization"]) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+
+    const res = await fetch(`${API_BASE}${endpoint}`, {
+      ...options,
+      headers,
       next: { revalidate: 10 }, // Next.js ISR cache
     });
 

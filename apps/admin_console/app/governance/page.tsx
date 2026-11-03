@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import {
   getGovernanceSummary,
+  getStudents,
   executePurge,
   toggleBiometricConsent,
   verifyReceipt,
@@ -23,70 +24,16 @@ import {
   PurgeResult,
   ReceiptVerificationResult,
 } from "@/lib/api";
-
-interface StudentConsentRow {
-  studentId: string;
-  rollNumber: string;
-  fullName: string;
-  biometricConsentActive: boolean;
-  alternativeRollCallRequired: boolean;
-}
-
-const fallbackStudents: StudentConsentRow[] = [
-  {
-    studentId: "STU-KUCET-00622501",
-    rollNumber: "00622501",
-    fullName: "Katkam Koushik",
-    biometricConsentActive: true,
-    alternativeRollCallRequired: false,
-  },
-  {
-    studentId: "STU-KUCET-00622502",
-    rollNumber: "00622502",
-    fullName: "A. Sai Teja",
-    biometricConsentActive: true,
-    alternativeRollCallRequired: false,
-  },
-  {
-    studentId: "STU-KUCET-00622503",
-    rollNumber: "00622503",
-    fullName: "B. Manasa Reddy",
-    biometricConsentActive: true,
-    alternativeRollCallRequired: false,
-  },
-  {
-    studentId: "STU-KUCET-00622504",
-    rollNumber: "00622504",
-    fullName: "Ch. Rahul",
-    biometricConsentActive: false,
-    alternativeRollCallRequired: true,
-  },
-  {
-    studentId: "STU-KUCET-00622505",
-    rollNumber: "00622505",
-    fullName: "D. Ananya",
-    biometricConsentActive: true,
-    alternativeRollCallRequired: false,
-  },
-  {
-    studentId: "STU-KUCET-00622506",
-    rollNumber: "00622506",
-    fullName: "E. Srikanth",
-    biometricConsentActive: true,
-    alternativeRollCallRequired: false,
-  },
-  {
-    studentId: "STU-KUCET-00622507",
-    rollNumber: "00622507",
-    fullName: "G. Akhil Kumar",
-    biometricConsentActive: true,
-    alternativeRollCallRequired: false,
-  },
-];
+import {
+  StudentConsentRow,
+  FALLBACK_STUDENTS,
+  FALLBACK_GOVERNANCE_SUMMARY,
+} from "@/lib/mock-data";
 
 export default function GovernancePage() {
   const [summary, setSummary] = useState<GovernanceSummary | null>(null);
-  const [students, setStudents] = useState<StudentConsentRow[]>(fallbackStudents);
+  const [students, setStudents] = useState<StudentConsentRow[]>([]);
+  const [isLiveBackend, setIsLiveBackend] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
@@ -104,26 +51,36 @@ export default function GovernancePage() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const res = await getGovernanceSummary();
-      if (res) {
-        setSummary(res);
+      const [summaryRes, studentsRes] = await Promise.all([
+        getGovernanceSummary(),
+        getStudents(),
+      ]);
+
+      if (summaryRes) {
+        setSummary(summaryRes);
       } else {
-        // Fallback telemetry
-        setSummary({
-          total_students: 7,
-          students_with_biometric_consent: 6,
-          students_withheld_consent: 1,
-          consent_compliance_percentage: 85.7,
-          total_captured_frames: 42,
-          active_unpurged_frames: 18,
-          purged_frames: 24,
-          disk_usage_bytes: 8400000,
-          disk_usage_mb: 8.01,
-          retention_policy_days: 7,
-        });
+        setSummary(FALLBACK_GOVERNANCE_SUMMARY);
+      }
+
+      if (studentsRes && studentsRes.length > 0) {
+        setStudents(
+          studentsRes.map((s) => ({
+            studentId: s.id,
+            rollNumber: s.roll_number,
+            fullName: s.full_name,
+            biometricConsentActive: s.consent_signed,
+            alternativeRollCallRequired: !s.consent_signed,
+          }))
+        );
+        setIsLiveBackend(true);
+      } else {
+        setStudents(FALLBACK_STUDENTS);
+        setIsLiveBackend(false);
       }
     } catch {
-      // Offline fallback
+      setSummary(FALLBACK_GOVERNANCE_SUMMARY);
+      setStudents(FALLBACK_STUDENTS);
+      setIsLiveBackend(false);
     } finally {
       setLoading(false);
     }
@@ -240,6 +197,35 @@ export default function GovernancePage() {
           <span>Refresh Governance State</span>
         </button>
       </div>
+
+      {/* Live vs Offline Status Banner */}
+      {!isLiveBackend ? (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-center justify-between text-xs text-amber-900">
+          <div className="flex items-center space-x-3">
+            <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0" />
+            <div>
+              <span className="font-semibold">Offline Preview Mode:</span> Control plane is unreachable or session token is absent. Displaying local fixture data from <span className="font-mono">lib/mock-data.ts</span>.
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={loadData}
+            className="px-3 py-1 bg-amber-600 text-white rounded-md font-semibold hover:bg-amber-700 transition-colors shadow-xs"
+          >
+            Retry API
+          </button>
+        </div>
+      ) : (
+        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 flex items-center justify-between text-xs text-emerald-900">
+          <div className="flex items-center space-x-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+            <span className="font-medium">Live Control Plane Connected: PostgreSQL authoritative consent records loaded.</span>
+          </div>
+          <span className="font-mono text-[11px] bg-white px-2 py-0.5 rounded border border-emerald-200">
+            TLS / JWT Scoped
+          </span>
+        </div>
+      )}
 
       {/* Metrics Grid */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
