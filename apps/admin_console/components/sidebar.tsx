@@ -13,6 +13,7 @@ import {
   LogOut,
   ShieldAlert,
   ShieldCheck,
+  FlaskConical,
 } from "lucide-react";
 
 const navigationItems = [
@@ -24,6 +25,7 @@ const navigationItems = [
   { name: "Live Roster Preview", href: "/roster-preview", icon: Eye },
   { name: "Attendance Analytics", href: "/reports/attendance", icon: BarChart3 },
   { name: "Governance & Privacy", href: "/governance", icon: ShieldCheck },
+  { name: "Controlled Pilot", href: "/pilot", icon: FlaskConical },
   { name: "Audit Trail Browser", href: "/audit/logs", icon: FileCheck2 },
   { name: "System Readiness", href: "/system/readiness", icon: Activity },
 ];

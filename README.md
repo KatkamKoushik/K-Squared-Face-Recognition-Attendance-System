@@ -354,10 +354,10 @@ make up          # Start Docker Compose services
 ### 2. Manual Service Commands
 
 ```bash
-# Backend Unit, Security, Persistence & Evaluation Tests (84 passed)
+# Backend Unit, Security, Persistence, Governance & Pilot Simulation Tests (85 passed)
 cd backend && python -m pytest tests/ -v -m "not playwright"
 
-# Playwright Browser E2E Automation (11 passed across all 11 Admin Console routes)
+# Playwright Browser E2E Automation (13 passed across all Admin Console routes including /pilot)
 cd backend && python -m pytest tests/test_playwright_admin_console.py -v
 
 # Backend Invariant Acceptance Suite (5/5 suites passed with 100% invariant fidelity)
@@ -381,8 +381,8 @@ All test suites must pass before pull requests can merge into `main`:
 
 | Tier | Directory | Test Command | Outcome |
 | :--- | :--- | :--- | :--- |
-| **Control Plane Unit, Security & Evaluation** | `backend` | `python -m pytest tests/ -v -m "not playwright"` | **84/84 Passed** (+ 1 resilient PG environment skip) |
-| **Playwright Browser E2E** | `backend` | `python -m pytest tests/test_playwright_admin_console.py -v` | **11/11 Passed** (100% of Admin Console routes verified) |
+| **Control Plane Unit, Security, Governance & Pilot Simulation** | `backend` | `python -m pytest tests/ -v -m "not playwright"` | **85/85 Passed** (+ 1 resilient PG environment skip) |
+| **Playwright Browser E2E** | `backend` | `python -m pytest tests/test_playwright_admin_console.py -v` | **13/13 Passed** (100% of Admin Console routes including `/pilot` verified) |
 | **Acceptance Invariants** | `backend` | `python verify_backend.py` | **5/5 Suites Passed** (100% mathematical invariant fidelity) |
 | **Admin Console Build** | `apps/admin_console` | `npm run build` | **0 errors** (13 static/ISR routes prerendered) |
 | **Mobile Analysis** | `apps/teacher_mobile` | `dart analyze` | **0 issues found** (Clean static analysis) |

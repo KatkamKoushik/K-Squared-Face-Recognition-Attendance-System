@@ -197,6 +197,20 @@ def test_e2e_governance_and_privacy_page(admin_server, page: Page):
     assert "Non-Biometric Alternative" in content
 
 
+def test_e2e_controlled_pilot_dashboard_page(admin_server, page: Page):
+    """Controlled Pilot page displays cohort cards, TAR/FAR metrics, 14-day log, and Gate G7 matrix."""
+    page.goto(f"{admin_server}/pilot")
+    page.wait_for_load_state("networkidle")
+
+    content = page.content()
+    assert "Controlled Classroom Pilot Dashboard" in content
+    assert "CS401: Distributed Systems" in content
+    assert "True Accept Rate" in content
+    assert "False Accept Rate" in content
+    assert "14-Day Pilot Session Schedule" in content
+    assert "Gate G7" in content
+
+
 def test_e2e_404_not_found_recovery(admin_server, page: Page):
     """Visiting an unmapped route renders a friendly 404 boundary with navigation recovery."""
     page.goto(f"{admin_server}/non-existent-sample-route")
