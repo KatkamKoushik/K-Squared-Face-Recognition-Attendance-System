@@ -22,8 +22,8 @@ test:
 	cd backend && python -m pytest tests/ -v
 	@echo "[TEST] Running admin console typecheck..."
 	npm --prefix apps/admin_console run typecheck
-	@echo "[TEST] Running mobile analyzer..."
-	dart analyze apps/teacher_mobile
+	@echo "[TEST] Running mobile & contracts analyzer..."
+	dart analyze apps/teacher_mobile packages/contracts/lib/domain_contracts.dart
 	@echo "[TEST] Running contracts validation..."
 	node apps/admin_console/node_modules/typescript/bin/tsc --noEmit packages/contracts/src/index.ts
 
@@ -36,8 +36,8 @@ verify:
 	python backend/verify_backend.py
 
 lint:
-	@echo "[LINT] Analyzing mobile app..."
-	dart analyze apps/teacher_mobile
+	@echo "[LINT] Analyzing mobile app & contracts..."
+	dart analyze apps/teacher_mobile packages/contracts/lib/domain_contracts.dart
 	@echo "[LINT] Checking admin console..."
 	npm --prefix apps/admin_console run typecheck
 
@@ -48,6 +48,8 @@ build:
 contracts:
 	@echo "[CONTRACTS] Verifying TypeScript contracts..."
 	node apps/admin_console/node_modules/typescript/bin/tsc --noEmit packages/contracts/src/index.ts
+	@echo "[CONTRACTS] Verifying Dart contracts..."
+	dart analyze packages/contracts/lib/domain_contracts.dart
 
 up:
 	docker compose up -d

@@ -105,7 +105,7 @@ class MockTeacherData {
         highestSimilarityScore: null,
         sightingsCount: 0,
         requiresManualAttention: true,
-        uncertaintyReason: 'NO_CAMERA_SIGHTING',
+        uncertaintyReason: 'NON_BIOMETRIC_ALTERNATIVE_REQUIRED: Student has withheld biometric consent under DPDP Act. Manual roll-call fallback required.',
         frameId: null,
         detectionId: null,
         matchThreshold: null,

@@ -224,27 +224,50 @@ class ProposalReviewScreen extends ConsumerWidget {
                                 ),
                               ] else ...[
                                 const SizedBox(height: 10),
-                                Container(
-                                  width: double.infinity,
-                                  padding: const EdgeInsets.all(10),
-                                  decoration: BoxDecoration(
-                                    color: Colors.orange.shade50,
-                                    borderRadius: BorderRadius.circular(6),
-                                    border: Border.all(color: Colors.orange.shade200),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      Icon(Icons.videocam_off_outlined, size: 16, color: Colors.orange.shade800),
-                                      const SizedBox(width: 8),
-                                      Expanded(
-                                        child: Text(
-                                          'NO CAMERA SIGHTING — Awaiting manual faculty roll-call.',
-                                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.orange.shade900),
+                                if (candidate.uncertaintyReason?.contains('NON_BIOMETRIC_ALTERNATIVE_REQUIRED') == true)
+                                  Container(
+                                    width: double.infinity,
+                                    padding: const EdgeInsets.all(10),
+                                    decoration: BoxDecoration(
+                                      color: Colors.indigo.shade50,
+                                      borderRadius: BorderRadius.circular(6),
+                                      border: Border.all(color: Colors.indigo.shade200),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Icon(Icons.shield_outlined, size: 16, color: Colors.indigo.shade800),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: Text(
+                                            'DPDP ACT NON-BIOMETRIC ALTERNATIVE — Consent withheld. Conduct manual roll-call.',
+                                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.indigo.shade900),
+                                          ),
                                         ),
-                                      ),
-                                    ],
+                                      ],
+                                    ),
+                                  )
+                                else
+                                  Container(
+                                    width: double.infinity,
+                                    padding: const EdgeInsets.all(10),
+                                    decoration: BoxDecoration(
+                                      color: Colors.orange.shade50,
+                                      borderRadius: BorderRadius.circular(6),
+                                      border: Border.all(color: Colors.orange.shade200),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Icon(Icons.videocam_off_outlined, size: 16, color: Colors.orange.shade800),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: Text(
+                                            'NO CAMERA SIGHTING — Awaiting manual faculty roll-call.',
+                                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.orange.shade900),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   ),
-                                ),
                               ],
 
                               if (candidate.uncertaintyReason != null && candidate.uncertaintyReason != 'NO_CAMERA_SIGHTING') ...[
