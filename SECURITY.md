@@ -44,7 +44,7 @@ Please report vulnerabilities via confidential communication to:
 ## Biometric Privacy & Invariant Protections
 
 Security audits should verify that the system strictly adheres to our privacy invariants:
-* Irreversible 512-dimensional vector representations.
+* Irreversible 128-dimensional OpenCV SFace vector representations (unit hypersphere normalized $\|\mathbf{v}\|_2 = 1.0$).
 * Ephemeral photo frame purging following session finalization.
 * Complete biometric redaction across administrative views and audit trails.
 * Enforced role-based access control preventing non-faculty accounts from signing attendance receipts.

@@ -19,7 +19,7 @@ When contributing code, you must preserve the core institutional invariants:
 1. **Human-in-the-Loop Principle:** Computer vision algorithms generate candidate evidence proposals. They must never directly write final attendance records without explicit faculty review and commit.
 2. **Denominator Invariant:** Attendance is evaluated per student per conducted instructional unit ($1 \le \text{units} \le 4$). If zero units are conducted, the attendance percentage must strictly evaluate to `N/A`. It must never be coerced to $0\%$ or $100\%$.
 3. **Immutable Snapshots:** Eligible student enrollments are frozen at session initialization (`ROSTER_FROZEN`). Mid-session mutations must never retroactively alter session eligibility.
-4. **Biometric Privacy:** Raw facial crops, coordinates, and 512-dimensional embedding vectors must remain strictly on-premise and must never be committed to repository logs, exported to third-party cloud APIs, or exposed in administrative telemetry views.
+4. **Biometric Privacy:** Raw facial crops, coordinates, and 128-dimensional embedding vectors must remain strictly on-premise and must never be committed to repository logs, exported to third-party cloud APIs, or exposed in administrative telemetry views.
 
 ---
 
