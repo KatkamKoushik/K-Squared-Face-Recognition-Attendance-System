@@ -298,3 +298,53 @@ def test_student_biometric_consent_and_non_biometric_fallback(db_session: Sessio
     assert summary.total_students >= 1
     assert summary.students_withheld_consent >= 1
 
+
+def test_kucet_institutional_seeder_and_consent_invariants(db_session: Session):
+    """
+    Verifies that seed_kucet_institutional_data:
+    1. Populates official KUCET departments, faculty, subjects, and student cohorts.
+    2. Seeds approved OpenCV Zoo models and institutional policy.
+    3. Respects DPDP Act consent: student 00622504 (Ch. Rahul) has is_active=False.
+    4. Guarantees complete idempotency on repeated execution.
+    """
+    from app.seeds.kucet_seed import seed_kucet_institutional_data
+    from app.domain.models.model_registry import ModelArtifact, PolicyVersion
+
+    res1 = seed_kucet_institutional_data(db_session)
+    assert res1["departments"] == 7
+    assert res1["faculty"] == 8
+    assert res1["subjects"] == 7
+    assert res1["students"] == 8
+    assert res1["profiles_active"] == 7
+    assert res1["profiles_withheld"] == 1
+
+    # Verify student 00622504 withheld consent
+    rahul = db_session.execute(select(Student).where(Student.roll_number == "00622504")).scalar_one()
+    rahul_profile = db_session.execute(
+        select(EnrollmentProfile).where(EnrollmentProfile.student_id == rahul.id)
+    ).scalar_one()
+    assert rahul_profile.is_active is False
+    assert rahul_profile.embedding_dimension == 128
+    assert len(rahul_profile.vector_data) == 128
+
+    # Verify student 00622501 active consent
+    koushik = db_session.execute(select(Student).where(Student.roll_number == "00622501")).scalar_one()
+    koushik_profile = db_session.execute(
+        select(EnrollmentProfile).where(EnrollmentProfile.student_id == koushik.id)
+    ).scalar_one()
+    assert koushik_profile.is_active is True
+
+    # Verify models and policy seeded
+    policy = db_session.get(PolicyVersion, "policy_kucet_v7_1_default")
+    assert policy is not None
+    assert policy.is_active is True
+
+    # Verify idempotency
+    res2 = seed_kucet_institutional_data(db_session)
+    assert res2["departments"] == 0
+    assert res2["faculty"] == 0
+    assert res2["subjects"] == 0
+    assert res2["students"] == 0
+    assert res2["profiles_active"] == 0
+    assert res2["profiles_withheld"] == 0
+

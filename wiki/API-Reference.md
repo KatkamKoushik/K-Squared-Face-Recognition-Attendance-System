@@ -184,3 +184,52 @@ curl -X POST http://localhost:8000/api/v1/sessions/SES-94A1F8/commit \
 }
 ```
 
+---
+
+## Governance & Receipt Verification Endpoints
+
+### 1. Authoritative Receipt Verification (`POST /api/v1/sessions/{session_id}/receipt/verify`)
+Cryptographically validates the server HMAC-SHA256 signature and confirms that ledger records match receipt counts.
+```bash
+curl -X POST http://localhost:8000/api/v1/sessions/SES-94A1F8/receipt/verify \
+  -H "Authorization: Bearer <TOKEN>"
+```
+
+### 2. Ephemeral Storage Purge (`POST /api/v1/governance/purge`)
+Unlinks raw image files beyond the configured retention threshold (default 7 days).
+```bash
+curl -X POST http://localhost:8000/api/v1/governance/purge \
+  -H "Authorization: Bearer <TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d '{"retention_days": 7}'
+```
+
+### 3. Student Biometric Consent Toggle (`POST /api/v1/governance/consent`)
+Toggles DPDP Act consent status and updates non-biometric manual roll call flags.
+```bash
+curl -X POST http://localhost:8000/api/v1/governance/consent \
+  -H "Authorization: Bearer <TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "student_id": "STU-001",
+    "consent_active": false,
+    "reason": "Student requested alternative roll call under DPDP Act."
+  }'
+```
+
+### 4. Post-Commit Attendance Correction (`POST /api/v1/ledger/corrections`)
+Records faculty overrides or student appeals with mandatory institutional justification.
+```bash
+curl -X POST http://localhost:8000/api/v1/ledger/corrections \
+  -H "Authorization: Bearer <TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "student_id": "STU-001",
+    "unit_index": 1,
+    "new_status": "PRESENT_CONFIRMED",
+    "action_type": "OVERRIDE",
+    "reason": "Faculty confirmed presence via classroom sign-in sheet.",
+    "reference_document": "MEMO-CSE-2026-081"
+  }'
+```
+

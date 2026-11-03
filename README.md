@@ -197,6 +197,15 @@ frs-v7-1-k2/
 │   │   ├── lib/
 │   │   │   ├── api.ts                 # Typed API client with envelope unwrapping and 10s ISR
 │   │   │   └── session.ts             # Cross-tab session manager and storage purge
+│   │   ├── app/                       # Next.js 15.5 App Router pages & server components
+│   │   │   ├── analytics/             # Department & offering attendance analytics
+│   │   │   ├── audit/                 # Institutional audit log browser & hash chain
+│   │   │   ├── classes/               # Authorized class groups and enrolled student rosters
+│   │   │   ├── faculty/               # Faculty directory and teaching assignments
+│   │   │   ├── governance/            # Biometric privacy consent, ephemeral purge & HMAC receipt verification
+│   │   │   ├── sessions/              # Active & finalized classroom session monitoring
+│   │   │   ├── students/              # Student directory and DPDP consent tracking
+│   │   │   └── system/readiness/      # Real-time infrastructure readiness & ONNX model registry
 │   │   ├── public/robots.txt          # Crawler exclusion policy protecting student privacy
 │   │   ├── Dockerfile                 # Multi-stage production container build (standalone output)
 │   │   └── package.json               # Node.js dependencies
@@ -205,7 +214,7 @@ frs-v7-1-k2/
 │       ├── android/app/               # Native Android host & release signing configuration
 │       ├── lib/
 │       │   ├── core/
-│       │   │   ├── network/           # API client & durable offline sync journal (500-entry queue)
+│       │   │   ├── network/           # API client & durable offline sync journal (500-entry queue with reactive UI)
 │       │   │   ├── permissions/       # Camera permission manager & manual roll-call fallback
 │       │   │   └── theme/             # Material 3 Swiss Modernism design system & status badges
 │       │   ├── data/                  # Canonical Dart DTOs, wire serialization, offline mocks
@@ -221,13 +230,14 @@ frs-v7-1-k2/
 │   │   ├── env.py                     # Async SQLAlchemy engine migration runner
 │   │   └── script.py.mako             # Migration template generator
 │   ├── app/
-│   │   ├── api/v1/                    # REST routers (academic, sessions, capture, review, ledger, health)
-│   │   ├── core/                      # Configuration, rate limiter, security headers, async DB pool, payload guardrails
+│   │   ├── api/v1/                    # REST routers (academic, sessions, capture, review, ledger, governance, health)
+│   │   ├── core/                      # Configuration, rate limiter, security headers, privacy log redaction, async DB pool
 │   │   ├── domain/                    # SQLAlchemy ORM models and canonical state enums (27 tables)
-│   │   ├── schemas/                   # Pydantic V2 request, response, and envelope contracts
-│   │   ├── services/                  # Business logic (session, roster snapshot, ACID commit, analytics)
-│   │   └── worker/                    # ONNX background worker (leasing queue, SCRFD, ArcFace)
-│   ├── tests/                         # Pytest automated test suite (50 unit/security/persistence + 11 Playwright E2E)
+│   │   ├── schemas/                   # Pydantic V2 request, response, governance, and envelope contracts
+│   │   ├── seeds/                     # Authentic KUCET institutional seeder & approved model registry
+│   │   ├── services/                  # Business logic (session, roster, ACID commit, governance, review, analytics)
+│   │   └── worker/                    # ONNX background worker (leasing queue, YuNet detector, SFace recognizer, PAD)
+│   ├── tests/                         # Pytest automated test suite (84 unit/security/persistence/eval + 11 Playwright E2E)
 │   ├── verify_backend.py              # 5-suite mathematical invariant & acceptance test runner
 │   ├── alembic.ini                    # Alembic environment and driver configuration
 │   ├── Dockerfile                     # Multi-stage production API image
@@ -252,6 +262,7 @@ frs-v7-1-k2/
 │
 ├── wiki/                              # Comprehensive GitHub technical documentation wiki
 ├── docker-compose.yml                 # Local multi-service orchestration (Postgres, API, Worker, Web)
+├── docker-compose.prod.yml            # Hardened production multi-container orchestration with migration gating
 ├── Makefile                           # Unified developer automation commands (test, verify, lint, up)
 ├── run.ps1                            # Windows PowerShell developer automation runner
 ├── .gitignore                         # Comprehensive monorepo ignore rules
@@ -265,7 +276,7 @@ frs-v7-1-k2/
 | HTTP Method | Endpoint Route | Authorization | Description |
 | :--- | :--- | :--- | :--- |
 | `GET` | `/api/v1/health/liveness` | Public | Process liveness probe confirming server is active. |
-| `GET` | `/api/v1/health/readiness` | Public | Validates database pool saturation and ONNX model status. |
+| `GET` | `/api/v1/health/readiness` | Public | Validates database pool saturation, Redis queue, and approved model registry. |
 | `GET` | `/api/v1/health/metrics` | Public | Prometheus exposition format metrics (uptime, status, invariants). |
 | `GET` | `/api/v1/academic/departments` | Authenticated | Lists all academic departments. |
 | `GET` | `/api/v1/academic/cohorts` | Authenticated | Lists graduation cohorts and enrolment units. |
@@ -273,12 +284,17 @@ frs-v7-1-k2/
 | `GET` | `/api/v1/academic/offerings` | Authenticated | Lists active subject offerings for the current term. |
 | `GET` | `/api/v1/academic/groups` | Authenticated | Lists authorized joint-class groups and member cohorts. |
 | `GET` | `/api/v1/academic/faculty-assignments` | Authenticated | Lists authorized faculty teaching assignments. |
-| `GET` | `/api/v1/academic/students` | Authenticated | Retrieves student registry with enrollment statuses. |
-| `POST` | `/api/v1/sessions` | `FACULTY` | Initializes session, verifies assignment, freezes roster. |
+| `GET` | `/api/v1/academic/students` | Authenticated | Retrieves student registry with enrollment and consent statuses. |
+| `POST` | `/api/v1/sessions` | `FACULTY` | Initializes session, verifies assignment, freezes roster snapshot. |
 | `GET` | `/api/v1/sessions/{id}/roster` | `FACULTY` | Returns the frozen roster snapshot of eligible students. |
 | `POST` | `/api/v1/sessions/{id}/batches/{id}/frames` | `FACULTY` | Ingests classroom photo frame with SHA-256 checksum. |
-| `GET` | `/api/v1/sessions/{id}/proposal` | `FACULTY` | Returns inferred evidence candidates for instructor review. |
-| `POST` | `/api/v1/sessions/{id}/commit` | `FACULTY` | Executes atomic ACID commit with cryptographic receipt. |
+| `GET` | `/api/v1/sessions/{id}/proposal` | `FACULTY` | Returns inferred evidence candidates for instructor review with non-biometric routing. |
+| `POST` | `/api/v1/sessions/{id}/commit` | `FACULTY` | Executes atomic ACID commit with HMAC-SHA256 signed cryptographic receipt. |
+| `POST` | `/api/v1/sessions/{id}/receipt/verify` | Authenticated | Cryptographically verifies HMAC-SHA256 receipt signature and ledger record integrity. |
+| `POST` | `/api/v1/ledger/corrections` | `FACULTY` / `ADMIN` | Corrects post-commit records or student appeals with mandatory audit justification. |
+| `GET` | `/api/v1/governance/status` | `ADMIN` | Institutional telemetry: consent compliance %, frame counts, and storage footprint. |
+| `POST` | `/api/v1/governance/purge` | `ADMIN` | Ephemeral frame purge: unlinks raw images older than retention days with audit log. |
+| `POST` | `/api/v1/governance/consent` | `ADMIN` | Toggles student biometric consent status under the DPDP Act framework. |
 | `GET` | `/api/v1/offerings/{id}/analytics` | Authenticated | Computes official attendance analytics per conducted unit. |
 | `GET` | `/api/v1/audit/events` | `ADMIN` | Institutional audit log browser (biometrics redacted). |
 
@@ -287,13 +303,15 @@ frs-v7-1-k2/
 ## Security, Privacy & Biometric Governance
 
 1. **On-Premise Institutional Sovereignty:** Zero data is transmitted to external cloud APIs. All computation executes locally on Kakatiya University hardware.
-2. **Irreversible Vector Embeddings:** The neural network outputs 512-dimensional floating-point vectors on $\mathbb{S}^{511}$. Original facial images cannot be mathematically reconstructed from these embeddings.
-3. **Digital Personal Data Protection (DPDP) Act Compliance:** Biometric template enrollment requires verified student DPDP consent. Students without consent are credited via manual roll-call.
-4. **Ingress Protection & Payload Guardrails:** Responses enforce `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy`, and production HSTS. Inbound requests enforce 15MB bounded `Content-Length` (`413 Payload Too Large`), prohibited MIME type filtering (`415 Unsupported Media Type`), and sliding-window rate limiting.
-5. **PostgreSQL Persistence Foundation & Pooling:** 27 normalized relational tables managed via Alembic baseline revision `3a42e90c6daf`. Fail-closed production URL validation prevents insecure defaults; credentials are masked in logs and health endpoints; connection pooling enforces `pool_pre_ping=True` and `pool_recycle=1800` to prevent connection leaks and stale sockets.
-6. **Offline Sync Resilience & Session Security:** Teacher mobile app buffers up to 500 actions in a durable, faculty-scoped `OfflineSyncJournal` with jittered exponential backoff and logout purge. Admin Console syncs auth across tabs and completely clears browser session and local storage on logout.
-7. **Client-Side SHA-256 Hashing:** The mobile client calculates cryptographic digests before upload, preventing in-transit payload substitution.
-8. **Biometric Redaction:** Facial crops, landmark coordinates, and raw embedding arrays are strictly excluded from administrative dashboards, application logs, and audit tables.
+2. **Irreversible Vector Embeddings:** The neural network outputs 128-dimensional floating-point vectors on unit hypersphere $\mathbb{S}^{127}$. Original facial images cannot be mathematically reconstructed from these embeddings.
+3. **Digital Personal Data Protection (DPDP) Act Compliance:** Biometric template enrollment requires verified student DPDP consent. Students without consent are routed to alternative manual roll-call workflows with zero penalty.
+4. **Ephemeral Storage Purge Engine:** Raw classroom sweep frames are stored ephemerally on local disk and physically unlinked via automated background tasks or administrative governance controls post-retention window (default 7 days).
+5. **Cryptographic Receipt Verification:** Attendance commitments emit an authoritative HMAC-SHA256 receipt signed with server secret key. The control plane provides tamper-evident receipt verification against the immutable attendance ledger.
+6. **Ingress Protection & Payload Guardrails:** Responses enforce `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy`, and production HSTS. Inbound requests enforce 15MB bounded `Content-Length` (`413 Payload Too Large`), prohibited MIME type filtering (`415 Unsupported Media Type`), and sliding-window rate limiting.
+7. **PostgreSQL Persistence Foundation & Pooling:** 27 normalized relational tables managed via Alembic baseline revision `3a42e90c6daf`. Fail-closed production URL validation prevents insecure defaults; credentials are masked in logs and health endpoints; connection pooling enforces `pool_pre_ping=True` and `pool_recycle=1800` to prevent connection leaks and stale sockets.
+8. **Offline Sync Resilience & Session Security:** Teacher mobile app buffers up to 500 actions in a durable, faculty-scoped `OfflineSyncJournal` with reactive UI banners, jittered exponential backoff, and logout purge. Admin Console syncs auth across tabs and completely clears browser session and local storage on logout.
+9. **Log Privacy Redaction:** `SafePrivacyFormatter` filters Bearer tokens, passwords, secrets, embedding vector coordinates, and base64 image strings from application and container logs.
+10. **Biometric Redaction:** Facial crops, landmark coordinates, and raw embedding arrays are strictly excluded from administrative dashboards, application logs, and audit tables.
 
 ---
 
@@ -336,7 +354,7 @@ make up          # Start Docker Compose services
 ### 2. Manual Service Commands
 
 ```bash
-# Backend Unit, Security & Persistence Tests (52 passed, 1 resilient PG environment skip)
+# Backend Unit, Security, Persistence & Evaluation Tests (84 passed)
 cd backend && python -m pytest tests/ -v -m "not playwright"
 
 # Playwright Browser E2E Automation (11 passed across all 11 Admin Console routes)
@@ -345,14 +363,14 @@ cd backend && python -m pytest tests/test_playwright_admin_console.py -v
 # Backend Invariant Acceptance Suite (5/5 suites passed with 100% invariant fidelity)
 cd backend && python verify_backend.py
 
-# Admin Console Typecheck & Production Build (0 errors, 12 prerendered routes)
+# Admin Console Typecheck & Production Build (0 errors, 13 prerendered routes)
 cd apps/admin_console && npm run typecheck && npm run build
 
 # Flutter Teacher Mobile Code Analysis (0 issues found)
 dart analyze apps/teacher_mobile
 
-# Shared Contracts Parity Check (0 errors)
-cd packages/contracts && npx tsc --noEmit src/index.ts
+# Shared Contracts Parity Check (0 errors across TS and Dart)
+dart analyze packages/contracts/lib/domain_contracts.dart
 ```
 
 ---
@@ -363,12 +381,12 @@ All test suites must pass before pull requests can merge into `main`:
 
 | Tier | Directory | Test Command | Outcome |
 | :--- | :--- | :--- | :--- |
-| **Control Plane Unit & Security** | `backend` | `python -m pytest tests/ -v -m "not playwright"` | **52/52 Passed** (+ 1 resilient PG environment skip) |
+| **Control Plane Unit, Security & Evaluation** | `backend` | `python -m pytest tests/ -v -m "not playwright"` | **84/84 Passed** (+ 1 resilient PG environment skip) |
 | **Playwright Browser E2E** | `backend` | `python -m pytest tests/test_playwright_admin_console.py -v` | **11/11 Passed** (100% of Admin Console routes verified) |
 | **Acceptance Invariants** | `backend` | `python verify_backend.py` | **5/5 Suites Passed** (100% mathematical invariant fidelity) |
-| **Admin Console Build** | `apps/admin_console` | `npm run build` | **0 errors** (12 static/ISR routes prerendered) |
+| **Admin Console Build** | `apps/admin_console` | `npm run build` | **0 errors** (13 static/ISR routes prerendered) |
 | **Mobile Analysis** | `apps/teacher_mobile` | `dart analyze` | **0 issues found** (Clean static analysis) |
-| **Shared Contracts** | `packages/contracts` | `tsc --noEmit src/index.ts` | **0 errors** (Canonical OpenAPI parity) |
+| **Shared Contracts** | `packages/contracts` | `dart analyze` & `tsc` | **0 issues found** (Full cross-language parity) |
 
 ---
 

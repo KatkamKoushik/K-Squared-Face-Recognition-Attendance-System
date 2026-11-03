@@ -190,3 +190,90 @@ export interface OfferingAttendanceAnalyticsResponse {
   total_conducted_units: number;
   student_stats: StudentAttendanceStat[];
 }
+
+export interface AttendanceRecordResponse {
+  id: string;
+  session_id: string;
+  unit_id: string;
+  student_id: string;
+  status: AttendanceStatus;
+  finalized_by_user_id: string;
+  reason_code: string;
+  committed_at: string;
+}
+
+export interface AttendanceCorrectionRequest {
+  student_id: string;
+  unit_index: number;
+  new_status: AttendanceStatus;
+  action_type: "OVERRIDE" | "APPEAL" | string;
+  reason: string;
+  reference_document?: string | null;
+}
+
+export interface AttendanceCorrectionResponse {
+  record_id: string;
+  session_id: string;
+  student_id: string;
+  unit_index: number;
+  previous_status: AttendanceStatus;
+  new_status: AttendanceStatus;
+  action: string;
+  audit_event_id: string;
+  updated_at: string;
+}
+
+export interface ReceiptVerificationResponse {
+  session_id: string;
+  receipt_id: string;
+  is_valid: boolean;
+  signature_verified: boolean;
+  ledger_records_matched: boolean;
+  total_conducted_units: number;
+  total_present_records: number;
+  total_absent_records: number;
+  receipt_hash: string;
+  verified_at: string;
+}
+
+export interface PurgeRequest {
+  retention_days: number;
+  session_id?: string | null;
+}
+
+export interface PurgeResponse {
+  purged_frames_count: number;
+  freed_bytes: number;
+  retention_days: number;
+  audit_event_id: string;
+  executed_at: string;
+}
+
+export interface StudentConsentStatus {
+  student_id: string;
+  roll_number: string;
+  full_name: string;
+  biometric_consent_active: boolean;
+  profile_version?: number | null;
+  embedding_namespace?: string | null;
+  alternative_roll_call_required: boolean;
+}
+
+export interface ConsentToggleRequest {
+  student_id: string;
+  consent_active: boolean;
+  reason: string;
+}
+
+export interface GovernanceSummaryResponse {
+  total_students: number;
+  students_with_biometric_consent: number;
+  students_withheld_consent: number;
+  consent_compliance_percentage: number;
+  total_captured_frames: number;
+  active_unpurged_frames: number;
+  purged_frames: number;
+  disk_usage_bytes: number;
+  disk_usage_mb: number;
+  retention_policy_days: number;
+}

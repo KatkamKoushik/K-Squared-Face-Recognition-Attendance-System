@@ -41,14 +41,19 @@ cp .env.example .env
 
 ### 2. Launch Container Stack via Docker Compose
 ```bash
+# Local development stack
 docker compose up -d
+
+# Hardened production stack with automated migration gating
+docker compose -f docker-compose.prod.yml up -d
 ```
 
 This launches:
-* `postgres:16-alpine`: PostgreSQL database on port `5432` with automatic health check.
-* `backend-api`: FastAPI control plane on `http://localhost:8000`.
-* `vision-worker`: Background ONNX inference worker polling for vision jobs.
-* `admin-console`: Next.js admin portal on `http://localhost:3000`.
+* `postgres:16-alpine`: PostgreSQL database on internal network with health check.
+* `alembic-migration` (Production only): Init container running `alembic upgrade head` to ensure zero drift before API start.
+* `backend-api`: FastAPI control plane with fail-closed production environment checks.
+* `vision-worker`: Background ONNX inference worker polling for vision jobs with CPU/GPU constraints.
+* `admin-console`: Next.js admin portal running standalone bundle with non-root security.
 
 ### 3. Verify Health & Schema Migrations
 ```bash

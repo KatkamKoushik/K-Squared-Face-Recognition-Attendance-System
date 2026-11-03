@@ -10,12 +10,15 @@ All core components of the V7.1 architecture have been implemented, tested, and 
 
 | Layer | Component | Status | Test Coverage |
 | :--- | :--- | :--- | :--- |
-| **Control Plane** | FastAPI REST Services | **Production-Ready** | 52 automated domain/security/persistence tests passing (+ 1 resilient PG environment skip) |
+| **Control Plane** | FastAPI REST Services | **Production-Ready** | 84 automated domain/security/persistence/eval tests passing (+ 1 resilient PG environment skip) |
 | **Persistence** | PostgreSQL 16 + Alembic | **Production-Ready** | Migration `3a42e90c6daf` active across 27 tables; fail-closed URL validator; pool pre-ping & recycle |
+| **Governance & Purging** | Ephemeral Purge Engine | **Active** | 7-day retention purge with physical frame unlinking, audit event emission, and storage calculation |
+| **Integrity & Receipts** | HMAC-SHA256 Signatures | **Active** | Server-side receipt signing and authoritative verification endpoint matching ledger row counts |
+| **Consent & Compliance** | DPDP Act Guardrails | **Active** | Consent toggle with non-biometric manual roll-call fallback for students withholding biometric consent |
 | **Ingress Guardrails** | Ingress Payload Middleware | **Active** | 15MB request bound (413), executable MIME block (415), sliding-window rate limit |
-| **Worker Queue** | ONNX Vision Worker | **Operational** | Pull-based leasing queue with CUDA & CPU fallback |
-| **Mobile Client** | Flutter Teacher App | **Feature-Complete** | Durable 500-entry `OfflineSyncJournal`, `PermissionManager` lifecycle, `dart analyze` 0 issues |
-| **Web Console** | Next.js 15 Admin Portal | **Feature-Complete** | Production build verified, 12 static/ISR routes exported, cross-tab session sync |
+| **Worker Queue** | ONNX Vision Worker | **Operational** | Pull-based leasing queue with YuNet detector, SFace recognizer, and PAD texture screener |
+| **Mobile Client** | Flutter Teacher App | **Feature-Complete** | Durable 500-entry `OfflineSyncJournal`, reactive sync UI banner, `dart analyze` 0 issues |
+| **Web Console** | Next.js 15 Admin Portal | **Feature-Complete** | Production build verified, 13 static/ISR routes exported, governance and readiness telemetry |
 | **Browser E2E** | Playwright Test Suite | **Operational** | 11/11 routes verified end-to-end against live Next.js compilation |
 | **CI Pipeline** | GitHub Actions | **Active** | Tests Flutter 3.27, Node 22, Python 3.12, conflict markers & secret scans on pull requests |
 | **CD Pipeline** | GHCR Publishing & Rollout | **Active** | Builds multi-stage images, compiles APK, executes host deploy |

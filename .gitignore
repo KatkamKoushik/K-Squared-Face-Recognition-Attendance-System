@@ -142,7 +142,7 @@ mobile_apps_and_websites_exhaustive_master_checklist.md
 # ==============================================================================
 *.onnx
 backend/models/*.onnx
-models/
+/models/
 
 
 
