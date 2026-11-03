@@ -6,9 +6,11 @@ durable receipts, and append-only audit events.
 
 from datetime import datetime, timezone
 import hashlib
+import hmac
 import json
-from sqlalchemy import select, and_
+from sqlalchemy import select, and_, func
 from sqlalchemy.orm import selectinload, Session
+from app.core.config import settings
 from app.core.errors import (
     PermissionDeniedError,
     ResourceNotFoundError,
@@ -25,6 +27,7 @@ from app.schemas.attendance import (
     CommitReceiptResponse,
     AttendanceCorrectionRequest,
     AttendanceCorrectionResponse,
+    ReceiptVerificationResponse,
 )
 
 
@@ -33,6 +36,13 @@ def utc_now() -> datetime:
 
 
 class CommitService:
+
+    @staticmethod
+    def compute_receipt_signature(payload: dict) -> str:
+        """Computes authoritative server HMAC-SHA256 signature for commit receipts."""
+        canonical_bytes = json.dumps(payload, sort_keys=True).encode("utf-8")
+        secret_bytes = settings.SECRET_KEY.encode("utf-8")
+        return hmac.new(secret_bytes, canonical_bytes, hashlib.sha256).hexdigest()
 
     @staticmethod
     def commit_session_attendance(
@@ -200,7 +210,7 @@ class CommitService:
             "total_absent": total_absent,
             "timestamp": session.finalized_at.isoformat(),
         }
-        receipt_hash = hashlib.sha256(json.dumps(receipt_payload, sort_keys=True).encode()).hexdigest()
+        receipt_hash = CommitService.compute_receipt_signature(receipt_payload)
 
         receipt = CommitReceipt(
             session_id=session_id,
@@ -385,4 +395,79 @@ class CommitService:
             action=action_val,
             audit_event_id=audit_event.id,
             updated_at=now,
+        )
+
+    @staticmethod
+    def verify_session_receipt(
+        db: Session,
+        session_id: str,
+        user: User,
+    ) -> ReceiptVerificationResponse:
+        """
+        Cryptographically verifies the authenticity and ledger consistency of a commit receipt.
+        Recomputes HMAC signature and cross-checks actual database attendance records.
+        """
+        receipt_stmt = select(CommitReceipt).where(CommitReceipt.session_id == session_id)
+        receipt = db.execute(receipt_stmt).scalar_one_or_none()
+        if not receipt:
+            raise ResourceNotFoundError(resource="CommitReceipt", identifier=session_id)
+
+        if user.role != UserRole.ADMIN:
+            session = db.get(AttendanceSession, session_id)
+            if not session:
+                raise ResourceNotFoundError(resource="AttendanceSession", identifier=session_id)
+            faculty = db.execute(
+                select(Faculty).where(Faculty.user_id == user.id)
+            ).scalar_one_or_none()
+            if not faculty or session.faculty_id != faculty.id:
+                raise PermissionDeniedError(
+                    message="Only the conducting faculty member or an administrator may verify this receipt.",
+                    reason_code="FACULTY_MISMATCH",
+                )
+
+        # 1. Recompute expected HMAC and fallback legacy SHA256
+        payload = {
+            "session_id": session_id,
+            "idempotency_key": receipt.idempotency_key,
+            "user_id": receipt.committed_by_user_id,
+            "total_conducted": receipt.total_conducted_units,
+            "total_present": receipt.total_present_records,
+            "total_absent": receipt.total_absent_records,
+            "timestamp": receipt.committed_at.isoformat(),
+        }
+        expected_hmac = CommitService.compute_receipt_signature(payload)
+        expected_sha256 = hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()
+
+        signature_verified = (receipt.receipt_hash in [expected_hmac, expected_sha256])
+
+        # 2. Check ledger consistency against actual database rows
+        present_count = db.execute(
+            select(func.count(AttendanceRecord.id)).where(
+                AttendanceRecord.session_id == session_id,
+                AttendanceRecord.status == AttendanceStatus.PRESENT_CONFIRMED,
+            )
+        ).scalar() or 0
+
+        absent_count = db.execute(
+            select(func.count(AttendanceRecord.id)).where(
+                AttendanceRecord.session_id == session_id,
+                AttendanceRecord.status == AttendanceStatus.ABSENT_CONFIRMED,
+            )
+        ).scalar() or 0
+
+        ledger_matched = (
+            present_count == receipt.total_present_records and absent_count == receipt.total_absent_records
+        )
+
+        return ReceiptVerificationResponse(
+            session_id=session_id,
+            receipt_id=receipt.id,
+            is_valid=signature_verified and ledger_matched,
+            signature_verified=signature_verified,
+            ledger_records_matched=ledger_matched,
+            total_conducted_units=receipt.total_conducted_units,
+            total_present_records=receipt.total_present_records,
+            total_absent_records=receipt.total_absent_records,
+            receipt_hash=receipt.receipt_hash,
+            verified_at=utc_now(),
         )

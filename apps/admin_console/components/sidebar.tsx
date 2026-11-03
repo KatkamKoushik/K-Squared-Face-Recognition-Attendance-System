@@ -12,6 +12,7 @@ import {
   Activity,
   LogOut,
   ShieldAlert,
+  ShieldCheck,
 } from "lucide-react";
 
 const navigationItems = [
@@ -22,6 +23,7 @@ const navigationItems = [
   { name: "Joint-Class Groups", href: "/academic/joint-groups", icon: GitMerge },
   { name: "Live Roster Preview", href: "/roster-preview", icon: Eye },
   { name: "Attendance Analytics", href: "/reports/attendance", icon: BarChart3 },
+  { name: "Governance & Privacy", href: "/governance", icon: ShieldCheck },
   { name: "Audit Trail Browser", href: "/audit/logs", icon: FileCheck2 },
   { name: "System Readiness", href: "/system/readiness", icon: Activity },
 ];
