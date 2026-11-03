@@ -1,6 +1,6 @@
 """
 FRS V7.1 K² — Cross-Checklist Traceability Register Generator.
-Parses the 3 source checklists in sources/ and generates docs/engineering/FRS-checklist-coverage.md.
+Parses the 3 source checklists in docs/references/checklists/ and generates docs/engineering/FRS-checklist-coverage.md.
 """
 
 import os
@@ -120,9 +120,9 @@ def classify_control(text, section, source_type):
 
 def main():
     print("Reading source checklists...")
-    spm_meta = get_file_metadata('sources/software_project_master_checklist.md')
-    web_meta = get_file_metadata('sources/production_level_website_app_checklist.md')
-    ci_meta = get_file_metadata('sources/github_actions_ci_tests_exhaustive_checklist_expanded.md')
+    spm_meta = get_file_metadata('docs/references/checklists/software_project_master_checklist.md')
+    web_meta = get_file_metadata('docs/references/checklists/production_level_website_app_checklist.md')
+    ci_meta = get_file_metadata('docs/references/checklists/github_actions_ci_tests_exhaustive_checklist_expanded.md')
 
     # Parse SPM
     spm_items = []

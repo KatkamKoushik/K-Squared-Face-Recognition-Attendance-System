@@ -3,9 +3,12 @@ FRS V7.1 K² — Deterministic Vision Orchestration State Machine & Worker Proce
 Processes queued frames, enforces per-face evidence routing, and prepares candidate proposals.
 """
 
+import logging
 import os
 from typing import Dict, List
 from PIL import Image
+
+logger = logging.getLogger("app.worker")
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload, Session
 from app.domain.enums import EvidenceState, SessionState
@@ -195,14 +198,14 @@ def run_worker_loop(worker_id: str | None = None, poll_interval_seconds: float =
     from app.services.queue_service import QueueService
 
     worker_id = worker_id or f"vision-worker-{uuid.uuid4().hex[:8]}"
-    print(f"[{datetime.now(timezone.utc).isoformat()}] Starting FRS Vision Worker [{worker_id}]...")
+    logger.info(f"Starting FRS Vision Worker [{worker_id}]...")
 
     worker = VisionWorker(worker_id=worker_id)
     running = True
 
     def handle_signal(sig, frame):
         nonlocal running
-        print(f"\nReceived termination signal ({sig}). Initiating graceful worker shutdown...")
+        logger.warning(f"Received termination signal ({sig}). Initiating graceful worker shutdown...")
         running = False
 
     try:
@@ -212,7 +215,7 @@ def run_worker_loop(worker_id: str | None = None, poll_interval_seconds: float =
         # When running in threads or environments where signal handling is restricted
         pass
 
-    print(f"Vision Worker [{worker_id}] initialized. Listening for queued capture frames...")
+    logger.info(f"Vision Worker [{worker_id}] initialized. Listening for queued capture frames...")
 
     while running:
         db = SessionLocal()
@@ -223,14 +226,14 @@ def run_worker_loop(worker_id: str | None = None, poll_interval_seconds: float =
                 for job in claimed_jobs:
                     if not running:
                         break
-                    print(f"Processing vision job {job.id} (type={job.job_type.value}, frame={job.frame_id})...")
+                    logger.info(f"Processing vision job {job.id} (type={job.job_type.value}, frame={job.frame_id})...")
                     try:
                         worker.process_job(db, job)
                         db.commit()
-                        print(f"Job {job.id} SUCCEEDED.")
+                        logger.info(f"Job {job.id} SUCCEEDED.")
                     except Exception as exc:
                         db.rollback()
-                        print(f"Job {job.id} FAILED: {exc}")
+                        logger.error(f"Job {job.id} FAILED: {exc}")
                         QueueService.record_job_failure(db, job.id, str(exc), retryable=True)
                         db.commit()
             else:
@@ -238,7 +241,7 @@ def run_worker_loop(worker_id: str | None = None, poll_interval_seconds: float =
                 time.sleep(poll_interval_seconds)
         except Exception as exc:
             db.rollback()
-            print(f"Worker queue polling error: {exc}")
+            logger.error(f"Worker queue polling error: {exc}")
             time.sleep(poll_interval_seconds)
         finally:
             try:
@@ -246,7 +249,7 @@ def run_worker_loop(worker_id: str | None = None, poll_interval_seconds: float =
             except Exception:
                 pass
 
-    print(f"Vision Worker [{worker_id}] stopped cleanly.")
+    logger.info(f"Vision Worker [{worker_id}] stopped cleanly.")
 
 
 if __name__ == "__main__":

@@ -5,7 +5,7 @@ Validates both unauthenticated rejection (401) and authorized ingestion (200).
 """
 
 import pytest
-from starlette.testclient import TestClient
+from fastapi.testclient import TestClient
 from app.main import create_application
 from app.core.database import get_db
 from app.core.security import create_access_token
