@@ -47,3 +47,40 @@ def test_correlation_id_generated_when_omitted():
     corr_id = response.headers.get("X-Correlation-ID")
     assert corr_id is not None
     assert corr_id.startswith("req-")
+
+
+def test_safe_privacy_formatter_redaction():
+    """Verifies that tokens, secrets, and raw embedding arrays are redacted in log messages."""
+    import logging
+    from app.core.logging import SafePrivacyFormatter
+
+    formatter = SafePrivacyFormatter()
+
+    record1 = logging.LogRecord(
+        name="test", level=logging.INFO, pathname=__file__, lineno=1,
+        msg="Authorization header: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.secretpayload",
+        args=(), exc_info=None
+    )
+    formatted1 = formatter.format(record1)
+    assert "[REDACTED_TOKEN]" in formatted1
+    assert "secretpayload" not in formatted1
+
+    record2 = logging.LogRecord(
+        name="test", level=logging.INFO, pathname=__file__, lineno=1,
+        msg="Extracted biometric vector: [0.12345, -0.67891, 0.45678, -0.98765, 0.11111, 0.22222]",
+        args=(), exc_info=None
+    )
+    formatted2 = formatter.format(record2)
+    assert "[REDACTED_EMBEDDING_VECTOR]" in formatted2
+    assert "0.12345" not in formatted2
+
+    record3 = logging.LogRecord(
+        name="test", level=logging.INFO, pathname=__file__, lineno=1,
+        msg="User payload: password='SuperSecretPassword123' and secret_key='prod_master_key_secret'",
+        args=(), exc_info=None
+    )
+    formatted3 = formatter.format(record3)
+    assert "SuperSecretPassword123" not in formatted3
+    assert "prod_master_key_secret" not in formatted3
+    assert "[REDACTED]" in formatted3
+

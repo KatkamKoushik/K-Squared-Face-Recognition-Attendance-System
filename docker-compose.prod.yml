@@ -1,0 +1,170 @@
+# =============================================================================
+# FRS V7.1 K² — Production Deployment Topology (Docker Compose)
+# KU College of Engineering & Technology (KUCE&T), Warangal
+# Adheres to Phase P6 Production Deployment & Observability Standards
+# =============================================================================
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: frs-k2-postgres-prod
+    restart: always
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-frs_k2_prod}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?CRITICAL_SECURITY_ERROR_POSTGRES_PASSWORD_MUST_BE_SET}
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - postgres_data_prod:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d ${POSTGRES_DB:-frs_k2_prod}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 2048M
+        reservations:
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+
+  alembic-migration:
+    image: ghcr.io/katkamkoushik/k-squared-face-recognition-attendance-system/backend-api:latest
+    container_name: frs-k2-migration-prod
+    restart: "no"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-frs_k2_prod}
+      SECRET_KEY: ${SECRET_KEY:?CRITICAL_SECURITY_ERROR_SECRET_KEY_MUST_BE_SET}
+      ENVIRONMENT: production
+    command: ["alembic", "upgrade", "head"]
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "3"
+
+  backend-api:
+    image: ghcr.io/katkamkoushik/k-squared-face-recognition-attendance-system/backend-api:latest
+    container_name: frs-k2-backend-api-prod
+    restart: always
+    security_opt:
+      - no-new-privileges:true
+    depends_on:
+      postgres:
+        condition: service_healthy
+      alembic-migration:
+        condition: service_completed_successfully
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-frs_k2_prod}
+      SECRET_KEY: ${SECRET_KEY:?CRITICAL_SECURITY_ERROR_SECRET_KEY_MUST_BE_SET}
+      ENVIRONMENT: production
+      PORT: 8000
+      STORAGE_DIR: /data/frames
+      LOG_LEVEL: INFO
+      LOG_FORMAT: json
+      REDACT_SENSITIVE_LOGS: "true"
+      MAX_UPLOAD_SIZE_MB: 15
+    volumes:
+      - frame_storage_prod:/data/frames
+    ports:
+      - "127.0.0.1:8000:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health/liveness"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 1536M
+        reservations:
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "5"
+
+  vision-worker:
+    image: ghcr.io/katkamkoushik/k-squared-face-recognition-attendance-system/vision-worker:latest
+    container_name: frs-k2-vision-worker-prod
+    restart: always
+    security_opt:
+      - no-new-privileges:true
+    depends_on:
+      postgres:
+        condition: service_healthy
+      backend-api:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-frs_k2_prod}
+      SECRET_KEY: ${SECRET_KEY:?CRITICAL_SECURITY_ERROR_SECRET_KEY_MUST_BE_SET}
+      ENVIRONMENT: production
+      STORAGE_DIR: /data/frames
+      LOG_LEVEL: INFO
+      LOG_FORMAT: json
+      JOB_POLL_INTERVAL_SECONDS: 2
+      JOB_LEASE_TIMEOUT_SECONDS: 60
+    volumes:
+      - frame_storage_prod:/data/frames
+    deploy:
+      resources:
+        limits:
+          cpus: "4.0"
+          memory: 3072M
+        reservations:
+          memory: 1024M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "5"
+
+  admin-console:
+    image: ghcr.io/katkamkoushik/k-squared-face-recognition-attendance-system/admin-console:latest
+    container_name: frs-k2-admin-console-prod
+    restart: always
+    security_opt:
+      - no-new-privileges:true
+    depends_on:
+      backend-api:
+        condition: service_healthy
+    environment:
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000/api/v1}
+      NODE_ENV: production
+      PORT: 3000
+    ports:
+      - "127.0.0.1:3000:3000"
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1024M
+        reservations:
+          memory: 256M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+
+volumes:
+  postgres_data_prod:
+    driver: local
+  frame_storage_prod:
+    driver: local
