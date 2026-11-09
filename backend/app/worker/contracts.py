@@ -11,6 +11,7 @@ class DetectionResult(BaseModel):
     box: Tuple[float, float, float, float] = Field(description="Normalized coordinates (x1, y1, x2, y2) in range [0, 1]")
     score: float
     landmarks: Optional[List[Tuple[float, float]]] = None
+    raw_face: Optional[List[float]] = None
     detector_model_hash: str
 
 
@@ -22,8 +23,8 @@ class QualityResult(BaseModel):
 
 class EmbeddingResult(BaseModel):
     vector: List[float]
-    dimension: int = 512
-    namespace: str = "arcface_r50_512d_v1"
+    dimension: int = 128
+    namespace: str = "sface_128d_v1"
     recognizer_model_hash: str
 
 

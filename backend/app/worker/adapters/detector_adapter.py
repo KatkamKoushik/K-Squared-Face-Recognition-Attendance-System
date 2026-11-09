@@ -3,6 +3,7 @@ FRS V7.1 K2 -- Face Detector Adapter Interface.
 Executes rights-cleared YuNet face detector with deterministic fallback.
 """
 
+import os
 from pathlib import Path
 from typing import List, Optional
 import numpy as np
@@ -15,16 +16,34 @@ class DetectorAdapter:
     """
     Standardized face detection adapter.
     Executes rights-cleared OpenCV Zoo YuNet ONNX detector when present,
-    or falls back to calibrated deterministic detections in lightweight test environments.
+    or enforces fail-closed behavior in live-demo / production environments.
     """
 
     MODEL_HASH = "8f2383e4dd3cfbb4553ea8718107fc0423210dc964f9f4280604804ed2552fa4"
-    DEFAULT_MODEL_PATH = Path("backend/models/face_detection_yunet_2023mar.onnx")
+    DEFAULT_FILENAME = "face_detection_yunet_2023mar.onnx"
 
-    def __init__(self, model_path: Optional[Path] = None):
-        self.model_path = model_path or self.DEFAULT_MODEL_PATH
+    def __init__(self, model_path: Optional[Path] = None, strict_mode: Optional[bool] = None):
+        self.strict_mode = strict_mode if strict_mode is not None else (os.getenv("STRICT_INFERENCE", "1") == "1")
+        self.model_path = self._resolve_model_path(model_path)
         self._detector: Optional[cv2.FaceDetectorYN] = None
         self._init_detector()
+
+    def _resolve_model_path(self, explicit_path: Optional[Path]) -> Path:
+        """Discovers the YuNet ONNX model path across local, repo-relative, and container locations."""
+        candidates = []
+        if explicit_path:
+            candidates.append(Path(explicit_path))
+        candidates.extend([
+            Path("backend/models") / self.DEFAULT_FILENAME,
+            Path("models") / self.DEFAULT_FILENAME,
+            Path(__file__).resolve().parent.parent.parent.parent / "models" / self.DEFAULT_FILENAME,
+            Path("/app/models") / self.DEFAULT_FILENAME,
+        ])
+        for p in candidates:
+            resolved = p.resolve()
+            if resolved.is_file():
+                return resolved
+        return explicit_path or (Path("backend/models") / self.DEFAULT_FILENAME)
 
     def _init_detector(self):
         resolved = Path(self.model_path).resolve()
@@ -44,6 +63,8 @@ class DetectorAdapter:
     def detect_faces(self, image: Image.Image) -> List[DetectionResult]:
         """
         Discovers faces in a classroom photo using YuNet ONNX inference.
+        Enforces fail-closed behavior: returns zero detections on blank images,
+        and raises a typed RuntimeError in strict/live mode if the model fails to load.
         """
         w, h = image.size
         if w <= 0 or h <= 0:
@@ -71,7 +92,7 @@ class DetectorAdapter:
                             max(0.0, min(1.0, (fy + fh) / h)),
                         )
 
-                        # Extract 5 landmarks
+                        # Extract 5 landmarks (right eye, left eye, nose tip, right mouth, left mouth)
                         landmarks = [
                             (float(face[4]) / w, float(face[5]) / h),
                             (float(face[6]) / w, float(face[7]) / h),
@@ -85,15 +106,26 @@ class DetectorAdapter:
                                 box=norm_box,
                                 score=round(score, 4),
                                 landmarks=landmarks,
+                                raw_face=[float(x) for x in face],
                                 detector_model_hash=self.MODEL_HASH,
                             )
                         )
-                    if results:
-                        return results
-            except Exception:
-                pass
+                    return results
 
-        # Calibrated fallback for testing / synthetic environments
+                # Detector ran successfully but found zero faces (e.g. blank or empty image)
+                return []
+            except Exception as e:
+                if self.strict_mode:
+                    raise RuntimeError(f"YuNet ONNX inference failed: {e}") from e
+
+        # If model is missing or failed to initialize
+        if self.strict_mode:
+            raise RuntimeError(
+                f"YuNet face detector ONNX model could not be loaded from {self.model_path}. "
+                "Ensure scripts/download_vision_models.py was run to download weights."
+            )
+
+        # Calibrated fallback for lightweight mock tests with strict_mode=False
         return [
             DetectionResult(
                 box=(0.15, 0.20, 0.35, 0.55),

@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'package:crypto/crypto.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -20,10 +19,10 @@ class _CaptureGalleryScreenState extends ConsumerState<CaptureGalleryScreen> {
   final _uuid = const Uuid();
   final _picker = ImagePicker();
 
-  Future<void> _capturePhoto() async {
+  Future<void> _capturePhoto({ImageSource source = ImageSource.camera}) async {
     try {
       final photo = await _picker.pickImage(
-        source: ImageSource.camera,
+        source: source,
         maxWidth: 3840,
         maxHeight: 2160,
         imageQuality: 92,
@@ -37,26 +36,21 @@ class _CaptureGalleryScreenState extends ConsumerState<CaptureGalleryScreen> {
         ref.read(sessionProvider.notifier).addCapturedFrame(
           frameId: frameId,
           hash: hash,
+          path: photo.path,
+          bytes: bytes,
         );
         return;
       }
-    } catch (_) {
-      // Hardware camera unavailable or permission denied; proceed to fallback
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Camera capture failed: ${e.toString()}'),
+            backgroundColor: AppTheme.errorRed,
+          ),
+        );
+      }
     }
-
-    _simulateCapture();
-  }
-
-  void _simulateCapture() {
-    final frameId = 'FRM-${_uuid.v4().substring(0, 8).toUpperCase()}';
-    final timestamp = DateTime.now().toIso8601String();
-    final bytes = utf8.encode('$frameId-$timestamp-${DateTime.now().microsecondsSinceEpoch}');
-    final hash = sha256.convert(bytes).toString();
-
-    ref.read(sessionProvider.notifier).addCapturedFrame(
-      frameId: frameId,
-      hash: hash,
-    );
   }
 
   @override
@@ -99,11 +93,17 @@ class _CaptureGalleryScreenState extends ConsumerState<CaptureGalleryScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Framing & Coverage Guidance', style: theme.textTheme.titleLarge?.copyWith(fontSize: 15)),
-                          const SizedBox(height: 4),
                           Text(
-                            'Capture 2–4 wide photos. Pan across left, center, and back rows in landscape orientation.',
-                            style: theme.textTheme.bodyMedium,
+                            'Classroom Capture Guidance',
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: AppTheme.primaryNavy,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Hold device horizontally in landscape. Capture 2-3 overlapping sweeps to ensure full row-by-row coverage of all students.',
+                            style: theme.textTheme.bodySmall?.copyWith(color: AppTheme.textMutedLight),
                           ),
                         ],
                       ),
@@ -111,64 +111,123 @@ class _CaptureGalleryScreenState extends ConsumerState<CaptureGalleryScreen> {
                   ],
                 ),
               ),
+              const SizedBox(height: 16),
 
+              // Error banner if any
+              if (sessionState.errorMessage != null) ...[
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppTheme.errorRed.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AppTheme.errorRed.withValues(alpha: 0.4)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.error_outline, color: AppTheme.errorRed, size: 20),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          sessionState.errorMessage!,
+                          style: const TextStyle(color: AppTheme.errorRed, fontSize: 13),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
+
+              // Capture Action Buttons
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      icon: const Icon(Icons.camera_alt),
+                      label: const Text('Take Photo'),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        side: const BorderSide(color: AppTheme.primaryNavy),
+                      ),
+                      onPressed: isProcessing ? null : () => _capturePhoto(source: ImageSource.camera),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      icon: const Icon(Icons.photo_library),
+                      label: const Text('Pick Image'),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        side: const BorderSide(color: AppTheme.secondaryBlue),
+                      ),
+                      onPressed: isProcessing ? null : () => _capturePhoto(source: ImageSource.gallery),
+                    ),
+                  ),
+                ],
+              ),
               const SizedBox(height: 20),
 
-              // Captured Frames Header
+              // Photo List Header
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'Captured Frames (${frames.length})',
-                    style: theme.textTheme.headlineMedium?.copyWith(fontSize: 18),
+                    'Captured Photos (${frames.length})',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.primaryNavy,
+                    ),
                   ),
-                  TextButton.icon(
-                    icon: const Icon(Icons.add_a_photo, size: 18),
-                    label: const Text('Add Photo'),
-                    onPressed: isProcessing ? null : _capturePhoto,
-                  ),
+                  if (frames.isNotEmpty)
+                    Text(
+                      'Ready for upload',
+                      style: theme.textTheme.bodySmall?.copyWith(color: AppTheme.statusMatched),
+                    ),
                 ],
               ),
+              const SizedBox(height: 10),
 
-              const SizedBox(height: 12),
-
-              // Frames List / Empty state
+              // Frame List View
               Expanded(
                 child: frames.isEmpty
                     ? Center(
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.camera_alt_outlined, size: 64, color: AppTheme.borderLight),
-                            const SizedBox(height: 16),
-                            Text('No photos captured yet', style: theme.textTheme.titleLarge),
-                            const SizedBox(height: 8),
+                            Icon(Icons.photo_camera_back_outlined, size: 48, color: AppTheme.borderLight),
+                            const SizedBox(height: 12),
                             Text(
-                              'Tap the button below to capture classroom views.',
-                              style: theme.textTheme.bodyMedium,
+                              'No photos captured yet.',
+                              style: theme.textTheme.bodyMedium?.copyWith(color: AppTheme.textMutedLight),
                             ),
-                            const SizedBox(height: 20),
-                            ElevatedButton.icon(
-                              icon: const Icon(Icons.camera_rounded),
-                              label: const Text('Capture First Photo'),
-                              onPressed: _capturePhoto,
+                            const SizedBox(height: 4),
+                            Text(
+                              'Tap Take Photo or Pick Image to begin attendance sweep.',
+                              style: theme.textTheme.bodySmall?.copyWith(color: AppTheme.textMutedLight),
                             ),
                           ],
                         ),
                       )
-                    : ListView.builder(
+                    : ListView.separated(
                         itemCount: frames.length,
+                        separatorBuilder: (_, __) => const SizedBox(height: 10),
                         itemBuilder: (context, index) {
                           final frame = frames[index];
+                          final hashStr = (frame['hash'] as String? ?? '');
                           return Card(
-                            margin: const EdgeInsets.only(bottom: 12),
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                              side: const BorderSide(color: AppTheme.borderLight),
+                            ),
                             child: Padding(
-                              padding: const EdgeInsets.all(14.0),
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                               child: Row(
                                 children: [
                                   Container(
-                                    width: 56,
-                                    height: 56,
+                                    width: 44,
+                                    height: 44,
                                     decoration: BoxDecoration(
                                       color: AppTheme.primaryNavy.withValues(alpha: 0.08),
                                       borderRadius: BorderRadius.circular(8),
@@ -178,7 +237,7 @@ class _CaptureGalleryScreenState extends ConsumerState<CaptureGalleryScreen> {
                                         '#${index + 1}',
                                         style: const TextStyle(
                                           fontWeight: FontWeight.bold,
-                                          fontSize: 18,
+                                          fontSize: 16,
                                           color: AppTheme.primaryNavy,
                                         ),
                                       ),
@@ -190,7 +249,7 @@ class _CaptureGalleryScreenState extends ConsumerState<CaptureGalleryScreen> {
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
                                         Text(
-                                          frame['frameId'] ?? 'FRAME',
+                                          frame['frameId']?.toString() ?? 'FRAME',
                                           style: const TextStyle(
                                             fontWeight: FontWeight.bold,
                                             fontSize: 14,
@@ -198,7 +257,7 @@ class _CaptureGalleryScreenState extends ConsumerState<CaptureGalleryScreen> {
                                         ),
                                         const SizedBox(height: 4),
                                         Text(
-                                          'SHA-256: ${frame['hash']?.substring(0, 16)}...',
+                                          hashStr.length >= 16 ? 'SHA-256: ${hashStr.substring(0, 16)}...' : hashStr,
                                           style: const TextStyle(
                                             fontFamily: 'monospace',
                                             fontSize: 11,
@@ -238,8 +297,12 @@ class _CaptureGalleryScreenState extends ConsumerState<CaptureGalleryScreen> {
                       const LinearProgressIndicator(color: AppTheme.secondaryBlue),
                       const SizedBox(height: 12),
                       Text(
-                        'Uploading frames & vision worker matching roster...',
-                        style: theme.textTheme.bodyMedium?.copyWith(color: AppTheme.primaryNavy),
+                        sessionState.uploadProgress ?? 'Processing photos with vision worker...',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: AppTheme.primaryNavy,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        textAlign: TextAlign.center,
                       ),
                     ],
                   ),
@@ -249,18 +312,22 @@ class _CaptureGalleryScreenState extends ConsumerState<CaptureGalleryScreen> {
                   width: double.infinity,
                   child: ElevatedButton.icon(
                     icon: const Icon(Icons.analytics_outlined),
-                    label: Text(frames.isEmpty ? 'Capture at Least 1 Photo' : 'Process ${frames.length} Photos'),
+                    label: Text(frames.isEmpty ? 'Capture at Least 1 Photo' : 'Upload & Process ${frames.length} Photos'),
                     onPressed: frames.isEmpty
                         ? null
                         : () async {
-                            await ref.read(sessionProvider.notifier).submitBatchForProcessing();
-                            if (context.mounted) {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => const ProposalReviewScreen(),
-                                ),
-                              );
+                            try {
+                              await ref.read(sessionProvider.notifier).submitBatchForProcessing();
+                              if (context.mounted) {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => const ProposalReviewScreen(),
+                                  ),
+                                );
+                              }
+                            } catch (_) {
+                              // Error handled in sessionState.errorMessage
                             }
                           },
                   ),
@@ -273,4 +340,3 @@ class _CaptureGalleryScreenState extends ConsumerState<CaptureGalleryScreen> {
     );
   }
 }
-

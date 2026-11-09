@@ -1,8 +1,8 @@
+import 'dart:io' as io;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 import '../core/network/api_service.dart';
 import '../core/network/offline_sync_journal.dart';
-import '../data/mock/mock_teacher_data.dart';
 import '../data/models/domain_contracts.dart';
 
 class SessionWorkflowState {
@@ -10,12 +10,13 @@ class SessionWorkflowState {
   final String batchId;
   final Map<String, dynamic>? selectedOffering;
   final int conductedUnitsCount;
-  final List<Map<String, String>> capturedFrames;
+  final List<Map<String, dynamic>> capturedFrames;
   final SessionState state;
   final List<CandidateProposalItem> candidates;
   final List<UnassignedFaceObservation> unassignedObservations;
   final CommitReceiptResponse? receipt;
   final String? errorMessage;
+  final String? uploadProgress;
 
   const SessionWorkflowState({
     this.sessionId = '',
@@ -28,6 +29,7 @@ class SessionWorkflowState {
     this.unassignedObservations = const [],
     this.receipt,
     this.errorMessage,
+    this.uploadProgress,
   });
 
   SessionWorkflowState copyWith({
@@ -35,12 +37,13 @@ class SessionWorkflowState {
     String? batchId,
     Map<String, dynamic>? selectedOffering,
     int? conductedUnitsCount,
-    List<Map<String, String>>? capturedFrames,
+    List<Map<String, dynamic>>? capturedFrames,
     SessionState? state,
     List<CandidateProposalItem>? candidates,
     List<UnassignedFaceObservation>? unassignedObservations,
     CommitReceiptResponse? receipt,
     String? errorMessage,
+    String? uploadProgress,
   }) {
     return SessionWorkflowState(
       sessionId: sessionId ?? this.sessionId,
@@ -52,7 +55,8 @@ class SessionWorkflowState {
       candidates: candidates ?? this.candidates,
       unassignedObservations: unassignedObservations ?? this.unassignedObservations,
       receipt: receipt ?? this.receipt,
-      errorMessage: errorMessage ?? this.errorMessage,
+      errorMessage: errorMessage,
+      uploadProgress: uploadProgress,
     );
   }
 }
@@ -79,9 +83,10 @@ class SessionNotifier extends Notifier<SessionWorkflowState> {
       batchId: newBatchId,
       selectedOffering: offering,
       state: SessionState.rosterFrozen,
+      errorMessage: null,
     );
 
-    // Asynchronously register session on control-plane in background
+    // Register session on control-plane
     final offeringId = (offering['id'] ?? offering['offeringId']) as String? ?? 'OFF-CS401-2026';
     try {
       final serverId = await _api.createSession(
@@ -91,8 +96,10 @@ class SessionNotifier extends Notifier<SessionWorkflowState> {
       if (serverId != null && serverId.isNotEmpty) {
         state = state.copyWith(sessionId: serverId);
       }
-    } catch (_) {
-      // Disposed or offline
+    } catch (e) {
+      state = state.copyWith(
+        errorMessage: 'Server session registration warning: ${e.toString().replaceFirst('Exception: ', '')}',
+      );
     }
   }
 
@@ -101,35 +108,124 @@ class SessionNotifier extends Notifier<SessionWorkflowState> {
     state = state.copyWith(conductedUnitsCount: count);
   }
 
-  void addCapturedFrame({required String frameId, required String hash}) {
-    final updated = List<Map<String, String>>.from(state.capturedFrames)
-      ..add({'frameId': frameId, 'hash': hash, 'time': DateTime.now().toIso8601String()});
+  void addCapturedFrame({
+    required String frameId,
+    required String hash,
+    String? path,
+    List<int>? bytes,
+  }) {
+    final updated = List<Map<String, dynamic>>.from(state.capturedFrames)
+      ..add({
+        'frameId': frameId,
+        'hash': hash,
+        'path': path,
+        'bytes': bytes,
+        'time': DateTime.now().toIso8601String(),
+      });
     state = state.copyWith(
       capturedFrames: updated,
       state: SessionState.capturing,
+      errorMessage: null,
     );
   }
 
   void removeFrame(int index) {
-    final updated = List<Map<String, String>>.from(state.capturedFrames)..removeAt(index);
+    final updated = List<Map<String, dynamic>>.from(state.capturedFrames)..removeAt(index);
     state = state.copyWith(capturedFrames: updated);
   }
 
+  /// P0-A: Sequential multipart upload of actual image bytes followed by live proposal polling.
   Future<void> submitBatchForProcessing() async {
-    state = state.copyWith(state: SessionState.processing);
-
-    // Call real asynchronous proposal polling with graceful fallback
-    final candidates = await _api.pollProposal(
-      sessionId: state.sessionId,
-      maxAttempts: 2,
-      interval: const Duration(milliseconds: 500),
-    );
+    if (state.capturedFrames.isEmpty && _api.liveDemoMode) {
+      state = state.copyWith(errorMessage: 'Please capture at least one classroom photograph.');
+      return;
+    }
 
     state = state.copyWith(
-      state: SessionState.inReview,
-      candidates: candidates,
-      unassignedObservations: MockTeacherData.getUnassignedObservations(),
+      state: SessionState.processing,
+      uploadProgress: state.capturedFrames.isNotEmpty
+          ? 'Preparing ${state.capturedFrames.length} photos for upload...'
+          : 'Processing classroom proposal...',
+      errorMessage: null,
     );
+
+    try {
+      // 1. Upload every frame's real image bytes
+      for (int i = 0; i < state.capturedFrames.length; i++) {
+        final frame = state.capturedFrames[i];
+        state = state.copyWith(
+          uploadProgress: 'Uploading classroom photo ${i + 1} of ${state.capturedFrames.length}...',
+        );
+
+        List<int>? bytes = frame['bytes'] as List<int>?;
+        if (bytes == null && frame['path'] != null) {
+          final file = io.File(frame['path'] as String);
+          if (await file.exists()) {
+            bytes = await file.readAsBytes();
+          }
+        }
+
+        if (bytes == null || bytes.isEmpty) {
+          throw Exception('Could not read image bytes for frame ${frame['frameId']}.');
+        }
+
+        final success = await _api.uploadFrame(
+          sessionId: state.sessionId,
+          batchId: state.batchId,
+          frameIndex: i,
+          imageBytes: bytes,
+          filename: 'frame_$i.jpg',
+        );
+
+        if (!success) {
+          throw Exception('Upload failed for photo ${i + 1} (${frame['frameId']}). Server rejected or unreachable.');
+        }
+      }
+
+      // 2. Poll proposal for live worker reconciliation
+      state = state.copyWith(
+        uploadProgress: 'Vision worker analyzing classroom faces (YuNet + SFace)...',
+      );
+
+      final proposalData = await _api.pollProposalData(
+        sessionId: state.sessionId,
+        maxAttempts: 6,
+        interval: const Duration(seconds: 1),
+      );
+
+      final List<dynamic> rawCandidates = proposalData['candidates'] ?? [];
+      final candidates = rawCandidates.map((item) {
+        final c = CandidateProposalItem.fromJson(item as Map<String, dynamic>);
+        if (c.unitAttendance.isEmpty && c.proposalStatus != null) {
+          final defaultUnits = <int, AttendanceStatus>{};
+          for (int u = 1; u <= state.conductedUnitsCount; u++) {
+            defaultUnits[u] = c.proposalStatus!;
+          }
+          return c.copyWith(unitAttendance: defaultUnits);
+        }
+        return c;
+      }).toList();
+
+      final List<dynamic> rawUnknowns = proposalData['unknown_faces'] ?? [];
+      final unknowns = rawUnknowns
+          .map((item) => UnassignedFaceObservation.fromJson(item as Map<String, dynamic>))
+          .toList();
+
+      state = state.copyWith(
+        state: SessionState.inReview,
+        candidates: candidates,
+        unassignedObservations: unknowns,
+        uploadProgress: null,
+        errorMessage: null,
+      );
+    } catch (e) {
+      state = state.copyWith(
+        state: _api.liveDemoMode ? SessionState.capturing : SessionState.inReview,
+        uploadProgress: null,
+        errorMessage: e.toString().replaceFirst('Exception: ', ''),
+      );
+      if (_api.liveDemoMode) rethrow;
+    }
   }
 
   void updateStudentUnitAttendance(String studentId, int unitIdx, AttendanceStatus status) {
@@ -172,12 +268,21 @@ class SessionNotifier extends Notifier<SessionWorkflowState> {
     const uuid = Uuid();
     final idempotencyKey = 'IDEMP-${uuid.v4().replaceAll('-', '')}';
 
-    // Attempt real HTTP commit against FastAPI control plane
+    // Ensure all decisions are populated from proposalStatus if untouched
+    final resolvedCandidates = state.candidates.map((c) {
+      final units = Map<int, AttendanceStatus>.from(c.unitAttendance);
+      for (int i = 1; i <= state.conductedUnitsCount; i++) {
+        units[i] ??= c.proposalStatus ?? AttendanceStatus.absentConfirmed;
+      }
+      return c.copyWith(unitAttendance: units);
+    }).toList();
+    state = state.copyWith(candidates: resolvedCandidates);
+
     final serverReceipt = await _api.commitSession(
       sessionId: state.sessionId,
       idempotencyKey: idempotencyKey,
       conductedUnitsCount: state.conductedUnitsCount,
-      candidates: state.candidates,
+      candidates: resolvedCandidates,
     );
 
     if (serverReceipt != null) {
@@ -189,9 +294,6 @@ class SessionNotifier extends Notifier<SessionWorkflowState> {
       return serverReceipt;
     }
 
-    // P0.4: Eliminate client-minted offline receipts.
-    // Client is forbidden from entering SessionState.finalized without an authoritative server-issued receipt.
-    // Record pending mutation in offline sync journal for durable reconciliation upon reconnect.
     _journal.enqueueMutation(
       QueuedMutation(
         id: 'MUT-${uuid.v4().substring(0, 8).toUpperCase()}',
@@ -207,7 +309,6 @@ class SessionNotifier extends Notifier<SessionWorkflowState> {
       ),
     );
 
-    // Retain inReview state and set descriptive error message.
     state = state.copyWith(
       errorMessage:
           'Commit failed or server unreachable. Client-minted offline receipts are prohibited by institutional governance policy. Mutation queued in offline journal.',
@@ -215,7 +316,6 @@ class SessionNotifier extends Notifier<SessionWorkflowState> {
     return null;
   }
 
-  /// Synchronizes pending mutations queued in the offline journal with the server.
   Future<int> syncOfflineJournal() async {
     final pending = _journal.getPendingMutationsForAccount('FACULTY-KUCET');
     int syncedCount = 0;
@@ -245,7 +345,6 @@ class SessionNotifier extends Notifier<SessionWorkflowState> {
     return syncedCount;
   }
 
-  /// P0.4: Explicit server query to verify/recover durable commit receipt without fabricating local state.
   Future<CommitReceiptResponse?> checkCommitReceiptStatus() async {
     if (state.sessionId.isEmpty) return null;
     final serverReceipt = await _api.getSessionReceipt(state.sessionId);
@@ -268,7 +367,6 @@ class SessionNotifier extends Notifier<SessionWorkflowState> {
 final sessionProvider = NotifierProvider<SessionNotifier, SessionWorkflowState>(SessionNotifier.new);
 
 final assignedOfferingsProvider = FutureProvider<List<Map<String, dynamic>>>((ref) async {
-  final api = FrsApiService();
+  final api = ref.watch(apiProvider);
   return api.getAssignedOfferings();
 });
-

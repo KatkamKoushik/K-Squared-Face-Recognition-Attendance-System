@@ -71,9 +71,26 @@ def readiness_probe(db: Session = Depends(get_db)):
         detector_approved = True
         recognizer_approved = True
 
+    # P0-H: Physical model files and ONNX runtime initialization verification
+    models_verified = {
+        "yunet_loaded": False,
+        "sface_loaded": False,
+        "runtime_ready": False,
+    }
+    try:
+        from app.worker.adapters.detector_adapter import DetectorAdapter
+        from app.worker.adapters.recognizer_adapter import RecognizerAdapter
+        det = DetectorAdapter(strict_mode=False)
+        rec = RecognizerAdapter(strict_mode=False)
+        models_verified["yunet_loaded"] = (det._detector is not None)
+        models_verified["sface_loaded"] = (rec._recognizer is not None)
+        models_verified["runtime_ready"] = (models_verified["yunet_loaded"] and models_verified["sface_loaded"])
+    except Exception:
+        pass
+
     return ResponseEnvelope(
         data={
-            "status": "READY",
+            "status": "READY" if (db_ready and (not detector_approved or models_verified["runtime_ready"])) else "DEGRADED",
             "api_status": "READY",
             "database": "CONNECTED",
             "worker_queue": "ACTIVE",
@@ -81,6 +98,7 @@ def readiness_probe(db: Session = Depends(get_db)):
                 "detector_approved": detector_approved,
                 "recognizer_approved": recognizer_approved,
             },
+            "models_runtime": models_verified,
         },
         correlation_id="readiness-check",
     )

@@ -13,7 +13,6 @@ class HomeScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final offeringsAsync = ref.watch(assignedOfferingsProvider);
-    final offerings = offeringsAsync.asData?.value ?? MockTeacherData.sampleOfferings;
     final journal = ref.watch(offlineSyncJournalProvider);
 
     return Scaffold(
@@ -222,7 +221,7 @@ class HomeScreen extends ConsumerWidget {
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
-                        '${offerings.length} Active',
+                        '${offeringsAsync.valueOrNull?.length ?? 0} Active',
                         style: const TextStyle(
                           color: AppTheme.secondaryBlue,
                           fontWeight: FontWeight.w600,
@@ -240,105 +239,188 @@ class HomeScreen extends ConsumerWidget {
 
                 const SizedBox(height: 16),
 
-                // Offerings List
-                ...offerings.map((offering) {
-                  final isJoint = offering['isJointClass'] as bool? ?? false;
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 16.0),
-                    child: Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(18.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    color: AppTheme.primaryNavy.withValues(alpha: 0.08),
-                                    borderRadius: BorderRadius.circular(6),
-                                  ),
-                                  child: Text(
-                                    offering['subjectCode'] as String? ?? 'SUB',
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 12,
-                                      color: AppTheme.primaryNavy,
-                                    ),
-                                  ),
-                                ),
-                                const Spacer(),
-                                if (isJoint)
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                    decoration: BoxDecoration(
-                                      color: AppTheme.accentGold.withValues(alpha: 0.15),
-                                      borderRadius: BorderRadius.circular(6),
-                                    ),
-                                    child: const Text(
-                                      'Approved Joint Union',
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 11,
-                                        color: AppTheme.accentGold,
-                                      ),
-                                    ),
-                                  ),
-                              ],
-                            ),
-                            const SizedBox(height: 10),
-                            Text(
-                              offering['subjectName'] as String? ?? 'Subject Offering',
-                              style: theme.textTheme.titleLarge?.copyWith(fontSize: 17),
-                            ),
-                            const SizedBox(height: 6),
-                            Text(
-                              offering['cohort'] as String? ?? 'Active Cohort',
-                              style: theme.textTheme.bodyMedium?.copyWith(color: AppTheme.textMutedLight),
-                            ),
-                            const SizedBox(height: 16),
-                            const Divider(height: 1),
-                            const SizedBox(height: 14),
-                            Wrap(
-                              alignment: WrapAlignment.spaceBetween,
-                              crossAxisAlignment: WrapCrossAlignment.center,
-                              spacing: 8,
-                              runSpacing: 10,
-                              children: [
-                                Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    const Icon(Icons.people_outline, size: 18, color: AppTheme.textMutedLight),
-                                    const SizedBox(width: 6),
-                                    Text(
-                                      '${offering['enrolledCount'] ?? 42} Enrolled Students',
-                                      style: theme.textTheme.bodyMedium,
-                                    ),
-                                  ],
-                                ),
-                                ElevatedButton.icon(
-                                  icon: const Icon(Icons.camera_alt_outlined, size: 18),
-                                  label: const Text('Start Session'),
-                                  onPressed: () {
-                                    ref.read(sessionProvider.notifier).selectOffering(offering);
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (_) => const SessionSetupScreen(),
-                                      ),
-                                    );
-                                  },
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
+                // Live Offerings List from Server
+                offeringsAsync.when(
+                  loading: () => const Center(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(vertical: 32.0),
+                      child: Column(
+                        children: [
+                          CircularProgressIndicator(),
+                          SizedBox(height: 12),
+                          Text('Loading assigned subject offerings from server...'),
+                        ],
                       ),
                     ),
-                  );
-                }),
+                  ),
+                  error: (err, stack) => Card(
+                    color: AppTheme.errorRed.withValues(alpha: 0.05),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      side: BorderSide(color: AppTheme.errorRed.withValues(alpha: 0.3)),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: const [
+                              Icon(Icons.cloud_off, color: AppTheme.errorRed, size: 20),
+                              SizedBox(width: 8),
+                              Text(
+                                'Unable to Load Live Offerings',
+                                style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.errorRed),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            err.toString().replaceFirst('Exception: ', ''),
+                            style: const TextStyle(fontSize: 12, color: AppTheme.textMutedLight),
+                          ),
+                          const SizedBox(height: 12),
+                          ElevatedButton.icon(
+                            icon: const Icon(Icons.refresh, size: 16),
+                            label: const Text('Retry Fetching Offerings'),
+                            onPressed: () => ref.refresh(assignedOfferingsProvider),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  data: (offerings) {
+                    if (offerings.isEmpty) {
+                      return Card(
+                        child: Padding(
+                          padding: const EdgeInsets.all(24.0),
+                          child: Column(
+                            children: [
+                              const Icon(Icons.school_outlined, size: 36, color: AppTheme.textMutedLight),
+                              const SizedBox(height: 12),
+                              const Text(
+                                'No Assigned Offerings Found',
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                              const SizedBox(height: 4),
+                              const Text(
+                                'Verify faculty assignment on server or run demo seeder.',
+                                style: TextStyle(fontSize: 12, color: AppTheme.textMutedLight),
+                              ),
+                              const SizedBox(height: 12),
+                              OutlinedButton.icon(
+                                icon: const Icon(Icons.refresh, size: 16),
+                                label: const Text('Refresh'),
+                                onPressed: () => ref.refresh(assignedOfferingsProvider),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }
+
+                    return Column(
+                      children: offerings.map((offering) {
+                        final isJoint = offering['isJointClass'] as bool? ?? false;
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 16.0),
+                          child: Card(
+                            child: Padding(
+                              padding: const EdgeInsets.all(18.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                        decoration: BoxDecoration(
+                                          color: AppTheme.primaryNavy.withValues(alpha: 0.08),
+                                          borderRadius: BorderRadius.circular(6),
+                                        ),
+                                        child: Text(
+                                          offering['subjectCode'] as String? ?? 'SUB',
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 12,
+                                            color: AppTheme.primaryNavy,
+                                          ),
+                                        ),
+                                      ),
+                                      const Spacer(),
+                                      if (isJoint)
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                          decoration: BoxDecoration(
+                                            color: AppTheme.accentGold.withValues(alpha: 0.15),
+                                            borderRadius: BorderRadius.circular(6),
+                                          ),
+                                          child: const Text(
+                                            'Approved Joint Union',
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 11,
+                                              color: AppTheme.accentGold,
+                                            ),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Text(
+                                    offering['subjectName'] as String? ?? 'Subject Offering',
+                                    style: theme.textTheme.titleLarge?.copyWith(fontSize: 17),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    offering['cohort'] as String? ?? 'Active Cohort',
+                                    style: theme.textTheme.bodyMedium?.copyWith(color: AppTheme.textMutedLight),
+                                  ),
+                                  const SizedBox(height: 16),
+                                  const Divider(height: 1),
+                                  const SizedBox(height: 14),
+                                  Wrap(
+                                    alignment: WrapAlignment.spaceBetween,
+                                    crossAxisAlignment: WrapCrossAlignment.center,
+                                    spacing: 8,
+                                    runSpacing: 10,
+                                    children: [
+                                      Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const Icon(Icons.people_outline, size: 18, color: AppTheme.textMutedLight),
+                                          const SizedBox(width: 6),
+                                          Text(
+                                            '${offering['enrolledCount'] ?? 42} Enrolled Students',
+                                            style: theme.textTheme.bodyMedium,
+                                          ),
+                                        ],
+                                      ),
+                                      ElevatedButton.icon(
+                                        icon: const Icon(Icons.camera_alt_outlined, size: 18),
+                                        label: const Text('Start Session'),
+                                        onPressed: () {
+                                          ref.read(sessionProvider.notifier).selectOffering(offering);
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (_) => const SessionSetupScreen(),
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    );
+                  },
+                ),
               ],
             ),
           ),

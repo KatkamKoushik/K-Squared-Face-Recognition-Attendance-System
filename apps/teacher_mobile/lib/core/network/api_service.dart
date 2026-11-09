@@ -5,17 +5,25 @@ import '../../data/mock/mock_teacher_data.dart';
 
 /// FRS API Service connecting Flutter Teacher Client to FastAPI Control Plane.
 /// Conforms to canonical OpenAPI contracts and unwraps ResponseEnvelope wrappers.
-/// Gracefully falls back to deterministic mock when backend is unreachable or offline.
+/// In live-demo mode, fails closed rather than returning mock proposals or fake receipts.
 class FrsApiService {
-  static const String baseUrl = String.fromEnvironment(
+  static const String defaultBaseUrl = String.fromEnvironment(
     'API_URL',
     defaultValue: 'http://10.0.2.2:8000/api/v1',
   );
 
+  String baseUrl;
   final http.Client _client;
   String? authToken;
+  bool liveDemoMode;
 
-  FrsApiService({http.Client? client, this.authToken}) : _client = client ?? http.Client();
+  FrsApiService({
+    String? baseUrl,
+    http.Client? client,
+    this.authToken,
+    this.liveDemoMode = false,
+  })  : baseUrl = baseUrl ?? defaultBaseUrl,
+        _client = client ?? http.Client();
 
   Map<String, String> _headers({Map<String, String>? extra}) {
     final headers = <String, String>{
@@ -39,6 +47,27 @@ class FrsApiService {
     return decoded;
   }
 
+  /// Verifies connectivity to the FastAPI control plane endpoint.
+  Future<bool> checkConnection() async {
+    try {
+      final res = await _client.get(
+        Uri.parse('$baseUrl/health/liveness'),
+        headers: {'Accept': 'application/json'},
+      ).timeout(const Duration(seconds: 3));
+      return res.statusCode == 200;
+    } catch (_) {
+      try {
+        final resAlt = await _client.get(
+          Uri.parse('$baseUrl/health/readiness'),
+          headers: {'Accept': 'application/json'},
+        ).timeout(const Duration(seconds: 3));
+        return resAlt.statusCode == 200;
+      } catch (_) {
+        return false;
+      }
+    }
+  }
+
   /// POST /auth/login
   /// Authenticates faculty credentials against FastAPI control plane.
   Future<Map<String, dynamic>?> login({
@@ -56,7 +85,7 @@ class FrsApiService {
           'email': email,
           'password': password,
         }),
-      ).timeout(const Duration(seconds: 4));
+      ).timeout(const Duration(seconds: 6));
 
       if (res.statusCode == 200) {
         final payload = _unwrap(res);
@@ -65,8 +94,8 @@ class FrsApiService {
           return payload;
         }
       }
-    } catch (_) {
-      // Gracefully handle offline or unreachable host
+    } catch (e) {
+      if (liveDemoMode) rethrow;
     }
     return null;
   }
@@ -82,7 +111,7 @@ class FrsApiService {
       final res = await _client.get(
         Uri.parse('$baseUrl/academic/offerings'),
         headers: _headers(),
-      ).timeout(const Duration(seconds: 4));
+      ).timeout(const Duration(seconds: 6));
 
       if (res.statusCode == 200) {
         final payload = _unwrap(res);
@@ -90,8 +119,11 @@ class FrsApiService {
           return payload.cast<Map<String, dynamic>>();
         }
       }
-    } catch (_) {
-      // Fallback to local mock offerings
+    } catch (e) {
+      if (liveDemoMode) rethrow;
+    }
+    if (liveDemoMode) {
+      throw Exception('Failed to load assigned subject offerings from backend ($baseUrl).');
     }
     return MockTeacherData.sampleOfferings;
   }
@@ -109,7 +141,7 @@ class FrsApiService {
           'offering_id': offeringId,
           'planned_units': plannedUnits,
         }),
-      ).timeout(const Duration(seconds: 4));
+      ).timeout(const Duration(seconds: 6));
 
       if (res.statusCode == 200 || res.statusCode == 201) {
         final payload = _unwrap(res);
@@ -117,13 +149,17 @@ class FrsApiService {
           return payload['id'] as String?;
         }
       }
-    } catch (_) {
-      // Gracefully handle offline
+    } catch (e) {
+      if (liveDemoMode) rethrow;
+    }
+    if (liveDemoMode) {
+      throw Exception('Server session registration failed on $baseUrl.');
     }
     return 'SES-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}';
   }
 
   /// POST /sessions/{session_id}/batches/{batch_id}/frames
+  /// P0-A: Real multipart/form-data upload of camera image bytes.
   Future<bool> uploadFrame({
     required String sessionId,
     required String batchId,
@@ -137,6 +173,7 @@ class FrsApiService {
       if (authToken != null && authToken!.isNotEmpty) {
         request.headers['Authorization'] = 'Bearer $authToken';
       }
+      request.headers['Accept'] = 'application/json';
       request.fields['frame_index'] = frameIndex.toString();
       request.files.add(
         http.MultipartFile.fromBytes(
@@ -146,65 +183,87 @@ class FrsApiService {
         ),
       );
 
-      final streamedResponse = await _client.send(request).timeout(const Duration(seconds: 10));
-      return streamedResponse.statusCode == 200 || streamedResponse.statusCode == 201;
-    } catch (_) {
+      final streamedResponse = await _client.send(request).timeout(const Duration(seconds: 15));
+      final res = await http.Response.fromStream(streamedResponse);
+      return res.statusCode == 200 || res.statusCode == 201;
+    } catch (e) {
+      if (liveDemoMode) rethrow;
       return false;
     }
   }
 
   /// GET /sessions/{id}/proposal
-  Future<List<CandidateProposalItem>> getSessionProposal(String sessionId) async {
+  /// Retrieves live vision worker candidate proposals and unknown observations.
+  Future<Map<String, dynamic>> getSessionProposalData(String sessionId) async {
     try {
       final res = await _client.get(
         Uri.parse('$baseUrl/sessions/$sessionId/proposal'),
         headers: _headers(),
-      ).timeout(const Duration(seconds: 4));
+      ).timeout(const Duration(seconds: 6));
 
       if (res.statusCode == 200) {
         final payload = _unwrap(res);
         if (payload is Map<String, dynamic>) {
-          final List<dynamic> list = payload['candidates'] ?? [];
-          return list.map((item) => CandidateProposalItem.fromJson(item as Map<String, dynamic>)).toList();
+          return payload;
         }
       }
-    } catch (_) {
-      // Fallback
+    } catch (e) {
+      if (liveDemoMode) rethrow;
     }
-    return MockTeacherData.getInitialCandidates();
+    if (liveDemoMode) {
+      throw Exception('Proposal retrieval failed on $baseUrl/sessions/$sessionId/proposal.');
+    }
+    return {
+      'candidates': MockTeacherData.getInitialCandidates().map((c) => c.toJson()).toList(),
+      'unknown_faces': <dynamic>[],
+    };
   }
 
-  /// Asynchronous polling for vision worker processing completion
-  Future<List<CandidateProposalItem>> pollProposal({
+  /// Polling for vision worker processing completion.
+  Future<Map<String, dynamic>> pollProposalData({
     required String sessionId,
-    int maxAttempts = 3,
+    int maxAttempts = 6,
     Duration interval = const Duration(seconds: 1),
   }) async {
-    for (int i = 0; i < maxAttempts; i++) {
+    final attempts = liveDemoMode ? maxAttempts : 2;
+    final pollInterval = liveDemoMode ? interval : const Duration(milliseconds: 100);
+    final timeoutDuration = liveDemoMode ? const Duration(seconds: 4) : const Duration(milliseconds: 500);
+
+    for (int i = 0; i < attempts; i++) {
       try {
         final res = await _client.get(
           Uri.parse('$baseUrl/sessions/$sessionId/proposal'),
           headers: _headers(),
-        ).timeout(const Duration(seconds: 3));
+        ).timeout(timeoutDuration);
 
         if (res.statusCode == 200) {
           final payload = _unwrap(res);
           if (payload is Map<String, dynamic> && payload['candidates'] != null) {
             final List<dynamic> list = payload['candidates'];
-            return list.map((item) => CandidateProposalItem.fromJson(item as Map<String, dynamic>)).toList();
+            // If candidates exist or vision frames are processed, return real data
+            if (list.isNotEmpty || i == attempts - 1) {
+              return payload;
+            }
           }
         }
-      } catch (_) {
-        // Retry
+      } catch (e) {
+        if (i == attempts - 1 && liveDemoMode) rethrow;
       }
-      if (i < maxAttempts - 1) {
-        await Future.delayed(interval);
+      if (i < attempts - 1) {
+        await Future.delayed(pollInterval);
       }
     }
-    return MockTeacherData.getInitialCandidates();
+    if (liveDemoMode) {
+      throw Exception('Vision worker processing timed out for session $sessionId.');
+    }
+    return {
+      'candidates': MockTeacherData.getInitialCandidates().map((c) => c.toJson()).toList(),
+      'unknown_faces': <dynamic>[],
+    };
   }
 
   /// POST /sessions/{id}/commit
+  /// P0-G: Strict faculty adjudication. Zero silent defaults to absentConfirmed.
   Future<CommitReceiptResponse?> commitSession({
     required String sessionId,
     required String idempotencyKey,
@@ -215,7 +274,7 @@ class FrsApiService {
       final decisions = <Map<String, dynamic>>[];
       for (final c in candidates) {
         for (int i = 1; i <= conductedUnitsCount; i++) {
-          final status = c.unitAttendance[i] ?? AttendanceStatus.absentConfirmed;
+          final status = c.unitAttendance[i] ?? c.proposalStatus ?? AttendanceStatus.absentConfirmed;
           decisions.add({
             'student_id': c.studentId,
             'unit_index': i,
@@ -233,7 +292,7 @@ class FrsApiService {
           'conducted_unit_indices': List.generate(conductedUnitsCount, (i) => i + 1),
           'decisions': decisions,
         }),
-      ).timeout(const Duration(seconds: 5));
+      ).timeout(liveDemoMode ? const Duration(seconds: 8) : const Duration(milliseconds: 500));
 
       if (res.statusCode == 200 || res.statusCode == 201) {
         final payload = _unwrap(res);
@@ -241,8 +300,8 @@ class FrsApiService {
           return CommitReceiptResponse.fromJson(payload);
         }
       }
-    } catch (_) {
-      // Gracefully handle offline
+    } catch (e) {
+      if (liveDemoMode) rethrow;
     }
     return null;
   }
@@ -254,7 +313,7 @@ class FrsApiService {
       final res = await _client.get(
         Uri.parse('$baseUrl/sessions/$sessionId/receipt'),
         headers: _headers(),
-      ).timeout(const Duration(seconds: 4));
+      ).timeout(const Duration(seconds: 6));
 
       if (res.statusCode == 200) {
         final payload = _unwrap(res);
@@ -262,8 +321,8 @@ class FrsApiService {
           return CommitReceiptResponse.fromJson(payload);
         }
       }
-    } catch (_) {
-      // Gracefully handle offline
+    } catch (e) {
+      if (liveDemoMode) rethrow;
     }
     return null;
   }

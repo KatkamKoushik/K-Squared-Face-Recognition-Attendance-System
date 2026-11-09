@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_theme.dart';
 import '../../logic/auth_provider.dart';
+import '../../logic/session_provider.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -27,6 +28,127 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     _passwordController.text = 'KucetFaculty@2026';
   }
 
+  void _showServerConfigDialog() {
+    final api = ref.read(apiProvider);
+    final urlController = TextEditingController(text: api.baseUrl);
+    String? testResult;
+    bool isTesting = false;
+
+    showDialog(
+      context: context,
+      builder: (dialogCtx) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          title: const Row(
+            children: [
+              Icon(Icons.dns_outlined, color: AppTheme.primaryNavy),
+              SizedBox(width: 10),
+              Text('Server Endpoint', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Configure the FastAPI control plane endpoint URL (e.g. host machine LAN IP on Wi-Fi or public tunnel):',
+                style: TextStyle(fontSize: 13, color: AppTheme.textMutedLight),
+              ),
+              const SizedBox(height: 14),
+              TextField(
+                controller: urlController,
+                decoration: InputDecoration(
+                  labelText: 'API Base URL',
+                  hintText: 'http://192.168.1.50:8000/api/v1',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                ),
+              ),
+              const SizedBox(height: 12),
+              if (isTesting) ...[
+                const Row(
+                  children: [
+                    SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+                    SizedBox(width: 10),
+                    Text('Pinging server...', style: TextStyle(fontSize: 12)),
+                  ],
+                ),
+              ] else if (testResult != null) ...[
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: testResult!.startsWith('Connected')
+                        ? AppTheme.statusMatched.withValues(alpha: 0.1)
+                        : AppTheme.errorRed.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        testResult!.startsWith('Connected') ? Icons.check_circle : Icons.error_outline,
+                        size: 16,
+                        color: testResult!.startsWith('Connected') ? AppTheme.statusMatched : AppTheme.errorRed,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          testResult!,
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: testResult!.startsWith('Connected') ? AppTheme.statusMatched : AppTheme.errorRed,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: isTesting
+                  ? null
+                  : () async {
+                      setDialogState(() {
+                        isTesting = true;
+                        testResult = null;
+                      });
+                      final prev = api.baseUrl;
+                      api.baseUrl = urlController.text.trim();
+                      final ok = await api.checkConnection();
+                      setDialogState(() {
+                        isTesting = false;
+                        testResult = ok
+                            ? 'Connected successfully (HTTP 200)'
+                            : 'Server unreachable. Verify host IP & port.';
+                        if (!ok) api.baseUrl = prev;
+                      });
+                    },
+              child: const Text('Test Connection'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                setState(() {
+                  api.baseUrl = urlController.text.trim();
+                });
+                Navigator.pop(dialogCtx);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Endpoint updated: ${api.baseUrl}'),
+                    backgroundColor: AppTheme.primaryNavy,
+                  ),
+                );
+              },
+              child: const Text('Apply'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Future<void> _handleLogin() async {
     final email = _emailController.text.trim();
     final password = _passwordController.text;
@@ -41,6 +163,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       return;
     }
 
+    ref.read(apiProvider).liveDemoMode = true;
     final success = await ref.read(authProvider.notifier).login(email, password);
     if (!success && mounted) {
       final err = ref.read(authProvider).errorMessage ?? 'Login failed.';
@@ -48,6 +171,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         SnackBar(
           content: Text(err),
           backgroundColor: AppTheme.errorRed,
+          duration: const Duration(seconds: 4),
         ),
       );
     }
@@ -56,13 +180,25 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
+    final api = ref.watch(apiProvider);
 
     return Scaffold(
       backgroundColor: AppTheme.backgroundLight,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings_outlined, color: AppTheme.primaryNavy),
+            tooltip: 'Server Connection Settings',
+            onPressed: _showServerConfigDialog,
+          ),
+        ],
+      ),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 440),
               child: Column(
@@ -98,57 +234,43 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     ),
                   ),
                   const SizedBox(height: 20),
-                  const Text(
-                    'Kakatiya University',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                      color: AppTheme.primaryNavy,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  const Text(
-                    'College of Engineering & Technology',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: AppTheme.textMutedLight,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Center(
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: AppTheme.surfaceVariantLight,
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: AppTheme.borderLight),
-                      ),
-                      child: const Text(
-                        'FRS V7.1 Faculty Portal',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: AppTheme.primaryNavy,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 32),
 
-                  // Login Card Surface
+                  // Title and Subtitle
+                  const Center(
+                    child: Text(
+                      'FRS V7.1 Faculty Portal',
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.primaryNavy,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  const Center(
+                    child: Text(
+                      'Institutional Classroom Attendance Proposal System',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: AppTheme.textMutedLight,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 28),
+
+                  // Card Container for Login Form
                   Container(
                     padding: const EdgeInsets.all(24),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: AppTheme.surfaceLight,
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(color: AppTheme.borderLight),
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black.withValues(alpha: 0.04),
                           blurRadius: 16,
-                          offset: const Offset(0, 6),
+                          offset: const Offset(0, 4),
                         ),
                       ],
                     ),
@@ -160,26 +282,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
-                            color: AppTheme.textMainLight,
+                            color: AppTheme.primaryNavy,
                           ),
                         ),
-                        const SizedBox(height: 4),
-                        const Text(
-                          'Enter your university credentials to access assigned courses and attendance registers.',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: AppTheme.textMutedLight,
-                          ),
-                        ),
-                        const SizedBox(height: 20),
+                        const SizedBox(height: 16),
 
-                        // Email Field
+                        // Institutional Email Field
                         TextField(
                           controller: _emailController,
                           keyboardType: TextInputType.emailAddress,
+                          autocorrect: false,
                           decoration: InputDecoration(
                             labelText: 'Institutional Email',
-                            hintText: 'ramana.vrb@gmail.com',
+                            hintText: 'name@kucet.ac.in',
                             prefixIcon: const Icon(Icons.email_outlined, size: 20),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(10),
@@ -247,7 +362,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 16),
 
                   // Seeded Demo Account Helper
                   InkWell(
@@ -287,6 +402,39 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             ),
                           ),
                           const Icon(Icons.arrow_forward_ios, size: 12, color: AppTheme.textMutedLight),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+
+                  // Live Server Endpoint Indicator & Configure Link
+                  InkWell(
+                    onTap: _showServerConfigDialog,
+                    borderRadius: BorderRadius.circular(8),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.wifi_tethering, size: 14, color: AppTheme.textMutedLight),
+                          const SizedBox(width: 6),
+                          Flexible(
+                            child: Text(
+                              'Server: ${api.baseUrl}',
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(fontSize: 12, color: AppTheme.textMutedLight),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          const Text(
+                            '[Change]',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: AppTheme.secondaryBlue,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                         ],
                       ),
                     ),

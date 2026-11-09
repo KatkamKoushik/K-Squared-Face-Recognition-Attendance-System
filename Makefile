@@ -60,3 +60,9 @@ down:
 db-migrate:
 	cd backend && alembic upgrade head
 
+download-models:
+	python3 scripts/download_vision_models.py
+
+seed-demo:
+	python3 scripts/seed_demo_volunteers.py
+

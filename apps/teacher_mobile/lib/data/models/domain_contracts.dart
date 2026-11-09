@@ -411,13 +411,24 @@ class UnassignedFaceObservation {
   });
 
   factory UnassignedFaceObservation.fromJson(Map<String, dynamic> json) {
+    List<double>? box;
+    if (json['bounding_box'] is List) {
+      box = (json['bounding_box'] as List<dynamic>).map((e) => (e as num).toDouble()).toList();
+    } else if (json['box_x1'] != null) {
+      box = [
+        (json['box_x1'] as num).toDouble(),
+        (json['box_y1'] as num).toDouble(),
+        (json['box_x2'] as num).toDouble(),
+        (json['box_y2'] as num).toDouble(),
+      ];
+    }
     return UnassignedFaceObservation(
-      observationId: json['observation_id'] as String,
-      frameId: json['frame_id'] as String,
-      issueReason: json['issue_reason'] as String,
-      description: json['description'] as String,
+      observationId: (json['observation_id'] ?? json['evidence_id'] ?? 'OBS-UNKNOWN') as String,
+      frameId: (json['frame_id'] ?? '') as String,
+      issueReason: (json['issue_reason'] ?? json['reason'] ?? 'UNKNOWN_FACE') as String,
+      description: (json['description'] ?? 'Unassigned face observation detected by YuNet in classroom photo') as String,
       qualityScore: (json['quality_score'] as num?)?.toDouble() ?? 0.0,
-      boundingBox: (json['bounding_box'] as List<dynamic>?)?.map((e) => (e as num).toDouble()).toList(),
+      boundingBox: box,
     );
   }
 

@@ -4,6 +4,7 @@ Enforces exact cosine retrieval, margin evaluation, and open-set unknown classif
 Executes rights-cleared OpenCV Zoo SFace ONNX model with deterministic fallback.
 """
 
+import os
 from pathlib import Path
 from typing import List, Dict, Tuple, Optional
 from PIL import Image
@@ -16,12 +17,30 @@ class RecognizerAdapter:
 
     MODEL_HASH = "0ba9fbfa01b5270c96627c4ef784da859931e02f04419c829e83484087c34e79"
     NAMESPACE = "sface_128d_v1"
-    DEFAULT_MODEL_PATH = Path("backend/models/face_recognition_sface_2021dec.onnx")
+    DEFAULT_FILENAME = "face_recognition_sface_2021dec.onnx"
 
-    def __init__(self, model_path: Optional[Path] = None):
-        self.model_path = model_path or self.DEFAULT_MODEL_PATH
+    def __init__(self, model_path: Optional[Path] = None, strict_mode: Optional[bool] = None):
+        self.strict_mode = strict_mode if strict_mode is not None else (os.getenv("STRICT_INFERENCE", "1") == "1")
+        self.model_path = self._resolve_model_path(model_path)
         self._recognizer: Optional[cv2.FaceRecognizerSF] = None
         self._init_recognizer()
+
+    def _resolve_model_path(self, explicit_path: Optional[Path]) -> Path:
+        """Discovers SFace ONNX model path across local, repo-relative, and container locations."""
+        candidates = []
+        if explicit_path:
+            candidates.append(Path(explicit_path))
+        candidates.extend([
+            Path("backend/models") / self.DEFAULT_FILENAME,
+            Path("models") / self.DEFAULT_FILENAME,
+            Path(__file__).resolve().parent.parent.parent.parent / "models" / self.DEFAULT_FILENAME,
+            Path("/app/models") / self.DEFAULT_FILENAME,
+        ])
+        for p in candidates:
+            resolved = p.resolve()
+            if resolved.is_file():
+                return resolved
+        return explicit_path or (Path("backend/models") / self.DEFAULT_FILENAME)
 
     def _init_recognizer(self):
         resolved = Path(self.model_path).resolve()
@@ -33,6 +52,53 @@ class RecognizerAdapter:
                 )
             except Exception:
                 self._recognizer = None
+
+    def align_and_compute_embedding(
+        self,
+        cv_bgr_img: np.ndarray,
+        raw_face: List[float],
+    ) -> EmbeddingResult:
+        """
+        P0-E: Mathematical 5-landmark alignment and 128-D embedding extraction.
+        Applies cv2.FaceRecognizerSF.alignCrop using YuNet's 5 facial landmarks,
+        ensuring parity between enrollment portraits and classroom query sweeps.
+        """
+        if self._recognizer is not None:
+            try:
+                face_arr = np.array(raw_face, dtype=np.float32)
+                aligned_crop = self._recognizer.alignCrop(cv_bgr_img, face_arr)
+                raw_feature = self._recognizer.feature(aligned_crop)
+                vec = raw_feature.flatten().astype(np.float32)
+                norm = np.linalg.norm(vec)
+                if norm > 0:
+                    vec = vec / norm
+                return EmbeddingResult(
+                    vector=vec.tolist(),
+                    dimension=128,
+                    namespace=self.NAMESPACE,
+                    recognizer_model_hash=self.MODEL_HASH,
+                )
+            except Exception as e:
+                if self.strict_mode:
+                    raise RuntimeError(f"SFace alignCrop/feature extraction failed: {e}") from e
+
+        if self.strict_mode:
+            raise RuntimeError(
+                f"SFace face recognizer ONNX model could not be loaded from {self.model_path}. "
+                "Ensure scripts/download_vision_models.py was run to download weights."
+            )
+
+        # Fallback for lightweight testing when strict_mode=False
+        seed = int(sum(raw_face)) % 100000
+        rng = np.random.RandomState(seed)
+        raw_vec = rng.randn(128).astype(np.float32)
+        norm_vec = raw_vec / np.linalg.norm(raw_vec)
+        return EmbeddingResult(
+            vector=norm_vec.tolist(),
+            dimension=128,
+            namespace=self.NAMESPACE,
+            recognizer_model_hash=self.MODEL_HASH,
+        )
 
     def compute_embedding(self, face_crop: Image.Image) -> EmbeddingResult:
         """
@@ -54,8 +120,15 @@ class RecognizerAdapter:
                     namespace=self.NAMESPACE,
                     recognizer_model_hash=self.MODEL_HASH,
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                if self.strict_mode:
+                    raise RuntimeError(f"SFace feature extraction failed: {e}") from e
+
+        if self.strict_mode:
+            raise RuntimeError(
+                f"SFace face recognizer ONNX model could not be loaded from {self.model_path}. "
+                "Ensure scripts/download_vision_models.py was run to download weights."
+            )
 
         # Deterministic feature generation on unit hypersphere S^127 for lightweight testing
         crop_bytes = face_crop.tobytes()

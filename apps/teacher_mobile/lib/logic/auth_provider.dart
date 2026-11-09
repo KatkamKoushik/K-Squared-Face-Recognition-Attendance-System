@@ -57,27 +57,37 @@ class AuthNotifier extends Notifier<AuthState> {
   Future<bool> login(String email, String password) async {
     state = state.copyWith(isLoading: true, errorMessage: null);
 
-    final res = await _api.login(email: email.trim(), password: password);
-    if (res != null && res['access_token'] != null) {
-      final token = res['access_token'] as String;
-      final userId = res['user_id'] as String?;
-      final role = res['role'] as String?;
-      _api.authToken = token;
+    try {
+      final res = await _api.login(email: email.trim(), password: password);
+      if (res != null && res['access_token'] != null) {
+        final token = res['access_token'] as String;
+        final userId = res['user_id'] as String?;
+        final role = res['role'] as String?;
+        _api.authToken = token;
 
-      state = state.copyWith(
-        isAuthenticated: true,
-        isLoading: false,
-        email: email.trim(),
-        userId: userId,
-        role: role,
-        token: token,
-        isOfflineDemo: false,
-      );
-      return true;
+        state = state.copyWith(
+          isAuthenticated: true,
+          isLoading: false,
+          email: email.trim(),
+          userId: userId,
+          role: role,
+          token: token,
+          isOfflineDemo: false,
+        );
+        return true;
+      }
+    } catch (e) {
+      if (_api.liveDemoMode) {
+        state = state.copyWith(
+          isLoading: false,
+          errorMessage: 'Connection to ${_api.baseUrl} failed. Tap Settings to verify host IP.',
+        );
+        return false;
+      }
     }
 
-    // Check if matching seeded faculty credentials for offline fallback
-    if (email.trim() == 'ramana.vrb@gmail.com' && password == 'KucetFaculty@2026') {
+    // Explicit offline demo fallback only when liveDemoMode is disabled
+    if (!_api.liveDemoMode && email.trim() == 'ramana.vrb@gmail.com' && password == 'KucetFaculty@2026') {
       const demoToken = 'jwt-kucet-offline-demo-ramana';
       _api.authToken = demoToken;
       state = state.copyWith(
@@ -94,7 +104,7 @@ class AuthNotifier extends Notifier<AuthState> {
 
     state = state.copyWith(
       isLoading: false,
-      errorMessage: 'Invalid institutional credentials or server unreachable.',
+      errorMessage: 'Invalid institutional credentials or server (${_api.baseUrl}) unreachable.',
     );
     return false;
   }

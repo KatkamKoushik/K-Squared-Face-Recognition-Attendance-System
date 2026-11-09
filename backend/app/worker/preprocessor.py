@@ -34,6 +34,14 @@ class Preprocessor:
         return crop.resize(target_size, Image.Resampling.BILINEAR)
 
     @staticmethod
+    def align_face_crop(cv_bgr_img: np.ndarray, raw_face: list, recognizer) -> np.ndarray:
+        """
+        P0-E: Canonical 5-landmark face alignment transform via FaceRecognizerSF.alignCrop.
+        """
+        face_arr = np.array(raw_face, dtype=np.float32)
+        return recognizer.alignCrop(cv_bgr_img, face_arr)
+
+    @staticmethod
     def to_normalized_tensor(crop: Image.Image) -> np.ndarray:
         """Normalizes image pixels to standard [-1.0, 1.0] or [0.0, 1.0] float tensor."""
         arr = np.asarray(crop, dtype=np.float32)

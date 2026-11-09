@@ -6,6 +6,8 @@ Processes queued frames, enforces per-face evidence routing, and prepares candid
 import logging
 import os
 from typing import Dict, List
+import numpy as np
+import cv2
 from PIL import Image
 
 logger = logging.getLogger("app.worker")
@@ -116,8 +118,15 @@ class VisionWorker:
                 db.add(evidence)
                 continue
 
-            # 6. Extract embedding
-            emb = self.recognizer.compute_embedding(crop)
+            # 6. Extract embedding (P0-E: 5-landmark aligned SFace embedding)
+            if det.raw_face is not None:
+                try:
+                    cv_img = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
+                    emb = self.recognizer.align_and_compute_embedding(cv_img, det.raw_face)
+                except Exception:
+                    emb = self.recognizer.compute_embedding(crop)
+            else:
+                emb = self.recognizer.compute_embedding(crop)
 
             # 7. Exact roster 1:N search
             candidate = self.recognizer.search_exact_roster(

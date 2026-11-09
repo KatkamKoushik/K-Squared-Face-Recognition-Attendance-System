@@ -129,6 +129,15 @@ jobs:
           path: apps/teacher_mobile/build/app/outputs/flutter-apk/app-release.apk
           retention-days: 14
 
+      - name: Publish Release APK to GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if gh release view v7.1.0 >/dev/null 2>&1; then
+            echo "Publishing APK to GitHub Release v7.1.0..."
+            gh release upload v7.1.0 build/app/outputs/flutter-apk/app-release.apk#frs-teacher-app-v7.1.0.apk --clobber
+          fi
+
   # ============================================================================
   # 3. Deploy Live Stack to Target Host / Cloud Infrastructure
   # ============================================================================
