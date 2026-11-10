@@ -2,6 +2,7 @@ import React from "react";
 import Link from "next/link";
 import { UserPlus, Search, Filter, ShieldAlert, Database } from "lucide-react";
 import { getStudents } from "@/lib/api";
+import StudentImportButton from "./StudentImportButton";
 
 interface StudentDirectoryRow {
   studentId: string;
@@ -45,6 +46,7 @@ export default async function StudentsDirectoryPage() {
               {isLive ? "LIVE ACADEMIC REGISTRY" : "REGISTRY SNAPSHOT"}
             </span>
           </div>
+          <StudentImportButton />
           <Link
             href="/enroll"
             className="inline-flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium bg-institutional-navy text-white hover:bg-institutional-navy/90 transition-colors shadow-xs"

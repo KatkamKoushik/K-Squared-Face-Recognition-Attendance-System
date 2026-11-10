@@ -51,6 +51,9 @@ class AuthNotifier extends Notifier<AuthState> {
 
   @override
   AuthState build() {
+    _api.onSessionExpired = () {
+      logout();
+    };
     return const AuthState();
   }
 

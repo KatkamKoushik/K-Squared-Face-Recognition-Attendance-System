@@ -11,7 +11,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     pathname === "/login" ||
     pathname === "/admin/login" ||
     pathname === "/enroll" ||
-    pathname === "/enrollment";
+    pathname === "/enrollment" ||
+    pathname === "/student/login" ||
+    pathname.startsWith("/student");
 
   if (isPublicRoute) {
     return (

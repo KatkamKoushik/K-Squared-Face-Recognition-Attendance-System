@@ -18,6 +18,7 @@ from app.domain.models.session import AttendanceSession, RosterSnapshot
 from app.domain.models.capture import Frame, FaceEvidence
 from app.domain.models.student import EnrollmentProfile
 from app.domain.models.job import VisionJob
+from app.domain.models.model_registry import PolicyVersion
 from app.services.queue_service import QueueService
 from app.worker.preprocessor import Preprocessor
 from app.worker.adapters.detector_adapter import DetectorAdapter
@@ -74,6 +75,14 @@ class VisionWorker:
 
         eligible_student_ids = [item.student_id for item in session.snapshot.items]
 
+        # Fetch active operational policy bound to session
+        policy = db.get(PolicyVersion, session.policy_version_id) if session.policy_version_id else None
+        match_thresh = policy.match_cosine_threshold if policy else 0.363
+        margin_thresh = policy.margin_threshold if policy else 0.10
+        min_size = policy.min_face_size_pixels if policy else 24
+        pad_mandatory = policy.pad_mandatory if policy else True
+        pad_thresh = policy.pad_threshold if policy else 0.85
+
         # Fetch enrolled profile vectors for eligible students
         profiles_stmt = select(EnrollmentProfile).where(
             EnrollmentProfile.student_id.in_(eligible_student_ids),
@@ -98,7 +107,7 @@ class VisionWorker:
             crop = Preprocessor.extract_face_crop(image, det.box)
 
             # 5. Assess quality
-            quality = self.recognizer.assess_quality(crop)
+            quality = self.recognizer.assess_quality(crop, min_variance=50.0, min_size=min_size)
 
             if not quality.is_usable:
                 # Poor quality face -> route to INSUFFICIENT_EVIDENCE (Never absent)
@@ -132,12 +141,12 @@ class VisionWorker:
             candidate = self.recognizer.search_exact_roster(
                 query_vector=emb.vector,
                 enrolled_profiles=roster_gallery,
-                match_threshold=0.45,
-                margin_threshold=0.10,
+                match_threshold=match_thresh,
+                margin_threshold=margin_thresh,
             )
 
             # 8. Active PAD liveness security gate (Fail-Closed)
-            sec = self.pad.verify_liveness(crop, mandatory=True, threshold=0.85)
+            sec = self.pad.verify_liveness(crop, mandatory=pad_mandatory, threshold=pad_thresh)
             if sec.status in ["FAIL", "UNCERTAIN", "ERROR"]:
                 pad_state = (
                     EvidenceState.SECURITY_FAIL if sec.status == "FAIL"

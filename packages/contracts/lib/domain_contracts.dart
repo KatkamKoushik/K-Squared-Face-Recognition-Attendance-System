@@ -6,8 +6,15 @@ library;
 enum UserRole {
   admin,
   faculty,
+  student,
   operator,
   worker,
+}
+
+enum AppealStatus {
+  pending,
+  approved,
+  rejected,
 }
 
 enum EnrollmentStatus {
@@ -402,6 +409,8 @@ class CommitReceiptResponse {
   final int totalPresentRecords;
   final int totalAbsentRecords;
   final String receiptHash;
+  final String? modelVersion;
+  final double? calibrationThreshold;
   final DateTime committedAt;
 
   const CommitReceiptResponse({
@@ -413,6 +422,8 @@ class CommitReceiptResponse {
     required this.totalPresentRecords,
     required this.totalAbsentRecords,
     required this.receiptHash,
+    this.modelVersion,
+    this.calibrationThreshold,
     required this.committedAt,
   });
 
@@ -426,6 +437,8 @@ class CommitReceiptResponse {
       totalPresentRecords: json['total_present_records'] as int,
       totalAbsentRecords: json['total_absent_records'] as int,
       receiptHash: json['receipt_hash'] as String,
+      modelVersion: json['model_version'] as String?,
+      calibrationThreshold: (json['calibration_threshold'] as num?)?.toDouble(),
       committedAt: DateTime.parse(json['committed_at'] as String),
     );
   }
@@ -439,6 +452,8 @@ class CommitReceiptResponse {
     'total_present_records': totalPresentRecords,
     'total_absent_records': totalAbsentRecords,
     'receipt_hash': receiptHash,
+    if (modelVersion != null) 'model_version': modelVersion,
+    if (calibrationThreshold != null) 'calibration_threshold': calibrationThreshold,
     'committed_at': committedAt.toIso8601String(),
   };
 }

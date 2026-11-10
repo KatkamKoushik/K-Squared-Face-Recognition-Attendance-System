@@ -108,3 +108,15 @@ class PipelineExecutionError(AppBaseException):
             reason_code=reason_code,
             details=details,
         )
+
+
+class BusinessRuleViolationError(AppBaseException):
+    def __init__(self, message: str, reason_code: str = "BUSINESS_RULE_VIOLATION", details: Optional[Dict[str, Any]] = None):
+        super().__init__(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            code="UNPROCESSABLE_ENTITY",
+            message=message,
+            reason_code=reason_code,
+            details=details,
+        )
+

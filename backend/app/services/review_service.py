@@ -130,13 +130,13 @@ class ReviewService:
                     requires_manual = True
                     reason = "SAME_FRAME_MULTIPLE_DETECTIONS_CONFLICT"
                     uncertain_count += 1
-                elif best_sighting.evidence_state == EvidenceState.REVIEW or best_margin < 0.08:
+                elif best_sighting.evidence_state == EvidenceState.REVIEW or best_margin < 0.10:
                     proposal_status = None
                     evidence_state = EvidenceState.REVIEW
                     requires_manual = True
                     reason = "LOW_MARGIN_AMBIGUOUS_CANDIDATE"
                     uncertain_count += 1
-                elif highest_sim < 0.70:
+                elif highest_sim < 0.363:
                     proposal_status = None
                     evidence_state = EvidenceState.REVIEW
                     requires_manual = True

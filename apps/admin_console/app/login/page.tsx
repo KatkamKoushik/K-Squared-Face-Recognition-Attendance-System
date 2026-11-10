@@ -41,18 +41,6 @@ export default function LoginPage() {
     }
   };
 
-  const handleFillDemoAdmin = () => {
-    setEmail("principal.kucet@gmail.com");
-    setPassword("KucetFaculty@2026");
-    setError(null);
-  };
-
-  const handleFillDemoFaculty = () => {
-    setEmail("soujanyavedh@gmail.com");
-    setPassword("KucetFaculty@2026");
-    setError(null);
-  };
-
   return (
     <div className="min-h-[80vh] flex flex-col justify-center items-center py-12 px-4 sm:px-6 lg:px-8">
       <div className="w-full max-w-md space-y-8 bg-white p-8 rounded-2xl border border-slate-200 shadow-xl">
@@ -101,7 +89,7 @@ export default function LoginPage() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="principal.kucet@gmail.com"
+                placeholder="name@kucet.ac.in"
                 className="w-full pl-9 pr-3 py-2 text-sm border border-slate-300 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-institutional-blue focus:border-institutional-blue"
               />
             </div>
@@ -146,32 +134,6 @@ export default function LoginPage() {
             <ArrowRight className="w-4 h-4" />
           </button>
         </form>
-
-        {/* Demo Fast-Fill Card */}
-        <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl text-xs space-y-2">
-          <div className="font-semibold text-slate-700">Seeded Institutional Accounts:</div>
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={handleFillDemoAdmin}
-              className="px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-left hover:border-institutional-blue transition-colors shadow-2xs"
-            >
-              <div className="font-semibold text-slate-800">Principal / Admin</div>
-              <div className="text-[10px] text-slate-500 font-mono">principal.kucet@...</div>
-            </button>
-            <button
-              type="button"
-              onClick={handleFillDemoFaculty}
-              className="px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-left hover:border-institutional-blue transition-colors shadow-2xs"
-            >
-              <div className="font-semibold text-slate-800">Faculty (IT - Dr. M. Soujanya)</div>
-              <div className="text-[10px] text-slate-500 font-mono">soujanyavedh@...</div>
-            </button>
-          </div>
-          <p className="text-[10px] text-slate-400">
-            Password: <code className="font-mono text-slate-600">KucetFaculty@2026</code>
-          </p>
-        </div>
       </div>
     </div>
   );

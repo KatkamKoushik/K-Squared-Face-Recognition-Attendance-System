@@ -9,8 +9,15 @@ from enum import Enum
 class UserRole(str, Enum):
     ADMIN = "ADMIN"
     FACULTY = "FACULTY"
+    STUDENT = "STUDENT"
     OPERATOR = "OPERATOR"
     WORKER = "WORKER"
+
+
+class AppealStatus(str, Enum):
+    PENDING = "PENDING"
+    APPROVED = "APPROVED"
+    REJECTED = "REJECTED"
 
 
 class EnrollmentStatus(str, Enum):

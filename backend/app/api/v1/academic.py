@@ -4,7 +4,7 @@ Guarded by ADMIN role. Configuration is represented as data, not code branches.
 """
 
 from typing import List, Optional
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, status, UploadFile, File
 from sqlalchemy.orm import Session
 from app.api.dependencies import get_current_user, require_roles, get_correlation_id
 from app.core.database import get_db
@@ -204,8 +204,8 @@ def list_offerings(
             subjectName=f"{sub_name} ({sub_code})" if sub_code else sub_name,
             cohort_name=cohort_name,
             cohort=cohort_name,
-            enrolled_count=student_count or 42,
-            enrolledCount=student_count or 42,
+            enrolled_count=student_count,
+            enrolledCount=student_count,
         )
         items.append(item)
 
@@ -326,4 +326,60 @@ def seed_kucet(
     from app.seeds.kucet_seed import seed_kucet_institutional_data
     stats = seed_kucet_institutional_data(db)
     return ResponseEnvelope(data=stats, correlation_id=correlation_id)
+
+
+@router.post("/import/students/csv", response_model=ResponseEnvelope[dict], status_code=status.HTTP_200_OK)
+async def import_students_csv(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    admin_user=Depends(require_roles([UserRole.ADMIN])),
+    correlation_id: str = Depends(get_correlation_id),
+):
+    """
+    Bulk import students from CSV file.
+    Expected headers: roll_number,full_name,institutional_email,cohort_id
+    """
+    import csv
+    import io
+    from app.domain.models.student import Student
+
+    content = await file.read()
+    text = content.decode("utf-8-sig")
+    reader = csv.DictReader(io.StringIO(text))
+
+    imported = 0
+    skipped = 0
+    errors = []
+
+    for row_idx, row in enumerate(reader, start=2):
+        roll = (row.get("roll_number") or "").strip()
+        name = (row.get("full_name") or "").strip()
+        email = (row.get("institutional_email") or "").strip() or None
+        cohort_id = (row.get("cohort_id") or "").strip()
+
+        if not roll or not name or not cohort_id:
+            errors.append(f"Row {row_idx}: roll_number, full_name, and cohort_id are required.")
+            skipped += 1
+            continue
+
+        existing = db.query(Student).filter_by(roll_number=roll).first()
+        if existing:
+            skipped += 1
+            continue
+
+        student = Student(
+            roll_number=roll,
+            full_name=name,
+            institutional_email=email,
+            cohort_id=cohort_id,
+        )
+        db.add(student)
+        imported += 1
+
+    db.commit()
+    return ResponseEnvelope(
+        data={"imported_count": imported, "skipped_count": skipped, "errors": errors},
+        correlation_id=correlation_id,
+    )
+
 

@@ -1,6 +1,6 @@
 import React from "react";
 import { Download, Filter, HelpCircle, AlertCircle, Database } from "lucide-react";
-import { getOfferingAnalytics } from "@/lib/api";
+import { getOfferingAnalytics, getOfferingAttendanceExportUrl } from "@/lib/api";
 
 interface StudentReportRow {
   rollNumber: string;
@@ -52,13 +52,14 @@ export default async function AttendanceReportsPage() {
               {isLive ? "LIVE ANALYTICS ENGINE" : "ANALYTICS DATABASE"}
             </span>
           </div>
-          <button
-            type="button"
-            className="inline-flex items-center space-x-2 px-4 py-2 border border-slate-300 rounded-lg text-sm font-medium bg-white text-slate-700 hover:bg-slate-50 transition-colors"
+          <a
+            href={getOfferingAttendanceExportUrl("CS401")}
+            download
+            className="inline-flex items-center space-x-2 px-4 py-2 border border-slate-300 rounded-lg text-sm font-medium bg-white text-slate-700 hover:bg-slate-50 transition-colors shadow-xs"
           >
             <Download className="w-4 h-4 text-slate-500" />
             <span>Export Official Register (CSV)</span>
-          </button>
+          </a>
         </div>
       </div>
 

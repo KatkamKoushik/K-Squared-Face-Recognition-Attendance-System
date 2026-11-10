@@ -12,6 +12,7 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
     Integer,
+    Float,
     UniqueConstraint,
     Index,
 )
@@ -39,6 +40,8 @@ class AttendanceSession(Base):
     state: Mapped[SessionState] = mapped_column(String(20), default=SessionState.DRAFT, nullable=False)
     policy_version_id: Mapped[str] = mapped_column(String(50), default="policy_kucet_v7_1_default", nullable=False)
     planned_units: Mapped[int] = mapped_column(Integer, default=1, nullable=False)  # 1 to 4 units
+    model_version: Mapped[Optional[str]] = mapped_column(String(100), default="yunet_2023mar_sface_2021dec", nullable=True)
+    calibration_threshold: Mapped[Optional[float]] = mapped_column(Float, default=0.363, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
     finalized_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
 

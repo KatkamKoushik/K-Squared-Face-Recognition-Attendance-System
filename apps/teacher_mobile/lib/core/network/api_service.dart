@@ -5,6 +5,13 @@ import '../../data/models/domain_contracts.dart';
 /// FRS API Service connecting Flutter Teacher Client to FastAPI Control Plane.
 /// Conforms to canonical OpenAPI contracts and unwraps ResponseEnvelope wrappers.
 /// In live-demo mode, fails closed rather than returning mock proposals or fake receipts.
+class SessionExpiredException implements Exception {
+  final String message;
+  const SessionExpiredException([this.message = 'Session expired. Please log in again.']);
+  @override
+  String toString() => message;
+}
+
 class FrsApiService {
   static const String defaultBaseUrl = String.fromEnvironment(
     'API_URL',
@@ -16,12 +23,14 @@ class FrsApiService {
   String? authToken;
   bool liveDemoMode;
   String? lastConnectionError;
+  void Function()? onSessionExpired;
 
   FrsApiService({
     String? baseUrl,
     http.Client? client,
     this.authToken,
     this.liveDemoMode = true,
+    this.onSessionExpired,
   })  : baseUrl = baseUrl ?? defaultBaseUrl,
         _client = client ?? http.Client();
 
@@ -38,6 +47,14 @@ class FrsApiService {
       headers.addAll(extra);
     }
     return headers;
+  }
+
+  void _checkAuthError(http.Response res) {
+    if (res.statusCode == 401) {
+      authToken = null;
+      onSessionExpired?.call();
+      throw const SessionExpiredException();
+    }
   }
 
   dynamic _unwrap(http.Response res) {
@@ -120,6 +137,7 @@ class FrsApiService {
       Uri.parse('$baseUrl/academic/offerings'),
       headers: _headers(),
     ).timeout(const Duration(seconds: 8));
+    _checkAuthError(res);
 
     if (res.statusCode == 200) {
       final payload = _unwrap(res);
@@ -143,6 +161,7 @@ class FrsApiService {
         'planned_units': plannedUnits,
       }),
     ).timeout(const Duration(seconds: 8));
+    _checkAuthError(res);
 
     if (res.statusCode == 200 || res.statusCode == 201) {
       final payload = _unwrap(res);
@@ -180,6 +199,7 @@ class FrsApiService {
 
     final streamedResponse = await _client.send(request).timeout(const Duration(seconds: 20));
     final res = await http.Response.fromStream(streamedResponse);
+    _checkAuthError(res);
     if (res.statusCode == 200 || res.statusCode == 201) {
       return true;
     }
@@ -193,6 +213,7 @@ class FrsApiService {
       Uri.parse('$baseUrl/sessions/$sessionId/proposal'),
       headers: _headers(),
     ).timeout(const Duration(seconds: 8));
+    _checkAuthError(res);
 
     if (res.statusCode == 200) {
       final payload = _unwrap(res);
@@ -216,6 +237,7 @@ class FrsApiService {
           Uri.parse('$baseUrl/sessions/$sessionId/proposal'),
           headers: _headers(),
         ).timeout(const Duration(seconds: 4));
+        _checkAuthError(res);
 
         if (res.statusCode == 200) {
           final payload = _unwrap(res);
@@ -273,6 +295,7 @@ class FrsApiService {
         'decisions': decisions,
       }),
     ).timeout(const Duration(seconds: 10));
+    _checkAuthError(res);
 
     if (res.statusCode == 200 || res.statusCode == 201) {
       final payload = _unwrap(res);
@@ -290,6 +313,7 @@ class FrsApiService {
       Uri.parse('$baseUrl/sessions/$sessionId/receipt'),
       headers: _headers(),
     ).timeout(const Duration(seconds: 6));
+    _checkAuthError(res);
 
     if (res.statusCode == 200) {
       final payload = _unwrap(res);

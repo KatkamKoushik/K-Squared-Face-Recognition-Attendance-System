@@ -30,12 +30,27 @@ class AnalyticsService:
         Enforces per-student eligibility: denominator is derived from student's inclusion
         in the frozen session roster snapshots and conducted units.
         """
+        resolved_offering_id = offering_id
+        offering = db.get(SubjectOffering, offering_id)
+        if not offering:
+            from app.domain.models.academic import Subject
+            code_candidate = offering_id.replace("OFF-", "").split("-")[0]
+            matched = (
+                db.execute(
+                    select(SubjectOffering.id)
+                    .join(Subject, Subject.id == SubjectOffering.subject_id)
+                    .where(Subject.code.ilike(f"%{code_candidate}%"))
+                ).scalars().first()
+            )
+            if matched:
+                resolved_offering_id = matched
+
         conducted_units_stmt = (
             select(func.count(AttendanceUnit.id))
             .join(AttendanceSession, AttendanceSession.id == AttendanceUnit.session_id)
             .where(
                 and_(
-                    AttendanceSession.offering_id == offering_id,
+                    AttendanceSession.offering_id == resolved_offering_id,
                     AttendanceUnit.is_conducted == True,
                     AttendanceUnit.status == UnitStatus.COMMITTED,
                 )
@@ -45,7 +60,7 @@ class AnalyticsService:
 
         sessions_stmt = select(func.count(AttendanceSession.id)).where(
             and_(
-                AttendanceSession.offering_id == offering_id,
+                AttendanceSession.offering_id == resolved_offering_id,
                 AttendanceSession.finalized_at.isnot(None),
             )
         )
@@ -56,7 +71,7 @@ class AnalyticsService:
             db.execute(
                 select(func.count(RosterSnapshot.id))
                 .join(AttendanceSession, AttendanceSession.id == RosterSnapshot.session_id)
-                .where(AttendanceSession.offering_id == offering_id)
+                .where(AttendanceSession.offering_id == resolved_offering_id)
             ).scalar()
             or 0
         )
@@ -66,7 +81,7 @@ class AnalyticsService:
             .join(Enrollment, Enrollment.student_id == Student.id)
             .where(
                 and_(
-                    Enrollment.offering_id == offering_id,
+                    Enrollment.offering_id == resolved_offering_id,
                     Enrollment.status == EnrollmentStatus.ACTIVE,
                 )
             )
@@ -82,7 +97,7 @@ class AnalyticsService:
                 .join(AttendanceSession, AttendanceSession.id == AttendanceRecord.session_id)
                 .where(
                     and_(
-                        AttendanceSession.offering_id == offering_id,
+                        AttendanceSession.offering_id == resolved_offering_id,
                         AttendanceRecord.student_id == student.id,
                         AttendanceRecord.status == AttendanceStatus.PRESENT_CONFIRMED,
                     )
@@ -99,7 +114,7 @@ class AnalyticsService:
                     .join(SnapshotStudentItem, SnapshotStudentItem.snapshot_id == RosterSnapshot.id)
                     .where(
                         and_(
-                            AttendanceSession.offering_id == offering_id,
+                            AttendanceSession.offering_id == resolved_offering_id,
                             AttendanceSession.finalized_at.isnot(None),
                             SnapshotStudentItem.student_id == student.id,
                             AttendanceUnit.is_conducted == True,
@@ -130,7 +145,7 @@ class AnalyticsService:
             )
 
         return OfferingAttendanceAnalyticsResponse(
-            offering_id=offering_id,
+            offering_id=resolved_offering_id,
             total_sessions=total_sessions,
             total_conducted_units=total_conducted,
             student_stats=student_stats,

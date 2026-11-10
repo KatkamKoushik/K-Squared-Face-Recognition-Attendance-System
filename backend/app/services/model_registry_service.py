@@ -162,7 +162,7 @@ class ModelRegistryService:
                 policy_name="KUCET Institutional Attendance Policy V7.1",
                 detector_model_hash=yunet_hash,
                 recognizer_model_hash=sface_hash,
-                match_cosine_threshold=0.70,
+                match_cosine_threshold=0.363,
                 margin_threshold=0.10,
                 min_face_size_pixels=32,
                 pad_mandatory=False,
