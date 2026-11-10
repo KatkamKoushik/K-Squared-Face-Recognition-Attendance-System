@@ -105,13 +105,11 @@ class IngressService:
         with open(file_path, "wb") as f:
             f.write(clean_bytes)
 
-        # 6. Ensure batch exists
-        batch_stmt = select(CaptureBatch).where(
-            and_(CaptureBatch.id == batch_id, CaptureBatch.session_id == session_id)
-        )
-        batch = db.execute(batch_stmt).scalar_one_or_none()
+        # 6. Ensure batch exists (session-scoped to avoid cross-session primary key collisions)
+        scoped_batch_id = batch_id if session_id in batch_id else f"{batch_id}_{session_id[:12]}"
+        batch = db.get(CaptureBatch, scoped_batch_id)
         if not batch:
-            batch = CaptureBatch(id=batch_id, session_id=session_id)
+            batch = CaptureBatch(id=scoped_batch_id, session_id=session_id)
             db.add(batch)
             db.flush()
 
