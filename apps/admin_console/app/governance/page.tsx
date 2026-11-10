@@ -190,7 +190,7 @@ export default function GovernancePage() {
           <div className="flex items-center space-x-3">
             <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0" />
             <div>
-              <span className="font-semibold">Live Database Notice:</span> Unable to reach the remote governance endpoint. Check backend status or network connectivity.
+              <span className="font-semibold">Offline Preview Mode:</span> Control plane is unreachable or session token is absent. Showing local status.
             </div>
           </div>
           <button
@@ -456,7 +456,7 @@ export default function GovernancePage() {
             <Users className="w-5 h-5 text-institutional-blue" />
             <div>
               <h2 className="font-serif font-bold text-lg text-slate-900">
-                Student Biometric Consent & Alternative Roll-Call Register
+                Student Biometric Consent & Non-Biometric Alternative Register
               </h2>
               <p className="text-xs text-slate-600">
                 Under the institutional data privacy framework, biometric enrollment is consensual. Students with withheld consent must never be falsely marked absent; their attendance records are routed to manual faculty roll-call.
