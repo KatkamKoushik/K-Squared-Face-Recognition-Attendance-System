@@ -44,8 +44,15 @@ class Settings(BaseSettings):
     ALLOWED_ORIGINS: List[str] = [
         "http://localhost:3000",
         "http://127.0.0.1:3000",
+        "https://k-squared-face-recognition-attendance-system-6rnfk44y10.vercel.app",
+        "https://straddle-deflate-footwear.ngrok-free.dev",
     ]
-    ALLOWED_HOSTS: List[str] = ["localhost", "127.0.0.1", "kucet.ac.in"]
+    ALLOWED_HOSTS: List[str] = [
+        "localhost",
+        "127.0.0.1",
+        "kucet.ac.in",
+        "straddle-deflate-footwear.ngrok-free.dev",
+    ]
 
     # Security & Tokens
     SECRET_KEY: str = Field(
