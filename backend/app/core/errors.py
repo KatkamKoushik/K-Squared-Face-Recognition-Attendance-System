@@ -77,6 +77,17 @@ class IdempotencyConflictError(AppBaseException):
         )
 
 
+class ConflictError(AppBaseException):
+    def __init__(self, resource: str, identifier: Any, message: Optional[str] = None, reason_code: str = "RESOURCE_CONFLICT"):
+        super().__init__(
+            status_code=status.HTTP_409_CONFLICT,
+            code="RESOURCE_CONFLICT",
+            message=message or f"Conflict on {resource} with ID '{identifier}'.",
+            reason_code=reason_code,
+            details={"resource": resource, "identifier": str(identifier)},
+        )
+
+
 class IngressValidationError(AppBaseException):
     def __init__(self, message: str, reason_code: str = "INVALID_IMAGE_PAYLOAD", details: Optional[Dict[str, Any]] = None):
         super().__init__(

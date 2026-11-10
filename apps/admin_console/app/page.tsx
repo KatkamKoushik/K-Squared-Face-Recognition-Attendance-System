@@ -1,11 +1,13 @@
 import React from "react";
+import Link from "next/link";
 import {
   Users,
   BookOpen,
   CheckCircle2,
   ShieldCheck,
   ArrowUpRight,
-  Filter,
+  UserPlus,
+  ShieldAlert,
 } from "lucide-react";
 
 const mockRecentSessions = [
@@ -54,7 +56,7 @@ export default function AdminDashboardPage() {
   return (
     <div className="space-y-8">
       {/* Page Title & Breadcrumb */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="font-serif text-2xl font-bold text-institutional-navy">
             Executive Attendance Overview
@@ -63,21 +65,22 @@ export default function AdminDashboardPage() {
             Campus-wide attendance ledger, active academic offerings, and audit integrity.
           </p>
         </div>
-        <div className="flex space-x-3">
-          <button
-            type="button"
-            className="inline-flex items-center space-x-2 px-4 py-2 border border-slate-300 rounded-lg text-sm font-medium bg-white text-slate-700 hover:bg-slate-50 transition-colors"
+        <div className="flex flex-wrap items-center gap-3">
+          <Link
+            href="/enroll"
+            className="inline-flex items-center space-x-2 px-4 py-2 border border-slate-300 rounded-lg text-sm font-medium bg-white text-slate-700 hover:bg-slate-50 transition-colors shadow-xs"
           >
-            <Filter className="w-4 h-4 text-slate-500" />
-            <span>Filter Term</span>
-          </button>
-          <button
-            type="button"
-            className="inline-flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium bg-institutional-navy text-white hover:bg-institutional-navy/90 transition-colors"
+            <UserPlus className="w-4 h-4 text-institutional-blue" />
+            <span>Student Portal</span>
+          </Link>
+          <Link
+            href="/admin/enrollment"
+            className="inline-flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium bg-institutional-navy text-white hover:bg-institutional-navy/90 transition-colors shadow-sm"
           >
-            <span>Live Audit Snapshot</span>
+            <ShieldAlert className="w-4 h-4 text-institutional-gold" />
+            <span>Biometric Queue</span>
             <ArrowUpRight className="w-4 h-4" />
-          </button>
+          </Link>
         </div>
       </div>
 
@@ -216,4 +219,3 @@ export default function AdminDashboardPage() {
     </div>
   );
 }
-

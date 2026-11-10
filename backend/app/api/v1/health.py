@@ -71,28 +71,31 @@ def readiness_probe(db: Session = Depends(get_db)):
         detector_approved = True
         recognizer_approved = True
 
-    # P0-H: Physical model files and ONNX runtime initialization verification
+    # P0-H & Strict Mode: Physical model files and ONNX runtime initialization verification
     models_verified = {
         "yunet_loaded": False,
         "sface_loaded": False,
         "runtime_ready": False,
+        "error": None,
     }
     try:
         from app.worker.adapters.detector_adapter import DetectorAdapter
         from app.worker.adapters.recognizer_adapter import RecognizerAdapter
-        det = DetectorAdapter(strict_mode=False)
-        rec = RecognizerAdapter(strict_mode=False)
+        det = DetectorAdapter(strict_mode=True)
+        rec = RecognizerAdapter(strict_mode=True)
         models_verified["yunet_loaded"] = (det._detector is not None)
         models_verified["sface_loaded"] = (rec._recognizer is not None)
-        models_verified["runtime_ready"] = (models_verified["yunet_loaded"] and models_verified["sface_loaded"])
-    except Exception:
-        pass
+        models_verified["runtime_ready"] = bool(models_verified["yunet_loaded"] and models_verified["sface_loaded"])
+    except Exception as exc:
+        models_verified["error"] = str(exc)
+        models_verified["runtime_ready"] = False
 
+    is_system_ready = bool(db_ready and models_verified["runtime_ready"])
     return ResponseEnvelope(
         data={
-            "status": "READY" if (db_ready and (not detector_approved or models_verified["runtime_ready"])) else "DEGRADED",
+            "status": "READY" if is_system_ready else "DEGRADED",
             "api_status": "READY",
-            "database": "CONNECTED",
+            "database": "CONNECTED" if db_ready else "DISCONNECTED",
             "worker_queue": "ACTIVE",
             "model_registry": {
                 "detector_approved": detector_approved,

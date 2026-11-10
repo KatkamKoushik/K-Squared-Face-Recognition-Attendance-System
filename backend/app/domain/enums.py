@@ -20,6 +20,14 @@ class EnrollmentStatus(str, Enum):
     SUSPENDED = "SUSPENDED"
 
 
+class EnrollmentSubmissionStatus(str, Enum):
+    PENDING_REVIEW = "PENDING_REVIEW"
+    RECAPTURE_REQUIRED = "RECAPTURE_REQUIRED"
+    APPROVED = "APPROVED"
+    REJECTED = "REJECTED"
+    WITHDRAWN = "WITHDRAWN"
+
+
 class AcademicTerm(str, Enum):
     ODD = "ODD"
     EVEN = "EVEN"

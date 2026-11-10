@@ -1,8 +1,9 @@
 """
 FRS V7.1 K2 -- Face Detector Adapter Interface.
-Executes rights-cleared YuNet face detector with deterministic fallback.
+Executes rights-cleared YuNet face detector with strict fail-closed inference.
 """
 
+import hashlib
 import os
 from pathlib import Path
 from typing import List, Optional
@@ -15,8 +16,8 @@ from app.worker.contracts import DetectionResult
 class DetectorAdapter:
     """
     Standardized face detection adapter.
-    Executes rights-cleared OpenCV Zoo YuNet ONNX detector when present,
-    or enforces fail-closed behavior in live-demo / production environments.
+    Executes rights-cleared OpenCV Zoo YuNet ONNX detector with strict SHA-256
+    integrity verification and strict fail-closed behavior.
     """
 
     MODEL_HASH = "8f2383e4dd3cfbb4553ea8718107fc0423210dc964f9f4280604804ed2552fa4"
@@ -28,115 +29,121 @@ class DetectorAdapter:
         self._detector: Optional[cv2.FaceDetectorYN] = None
         self._init_detector()
 
+    def _compute_sha256(self, path: Path) -> str:
+        h = hashlib.sha256()
+        with open(path, "rb") as f:
+            while chunk := f.read(65536):
+                h.update(chunk)
+        return h.hexdigest()
+
     def _resolve_model_path(self, explicit_path: Optional[Path]) -> Path:
         """Discovers the YuNet ONNX model path across local, repo-relative, and container locations."""
-        candidates = []
         if explicit_path:
-            candidates.append(Path(explicit_path))
-        candidates.extend([
+            return Path(explicit_path)
+        candidates = [
             Path("backend/models") / self.DEFAULT_FILENAME,
             Path("models") / self.DEFAULT_FILENAME,
             Path(__file__).resolve().parent.parent.parent.parent / "models" / self.DEFAULT_FILENAME,
             Path("/app/models") / self.DEFAULT_FILENAME,
-        ])
+        ]
         for p in candidates:
             resolved = p.resolve()
             if resolved.is_file():
                 return resolved
-        return explicit_path or (Path("backend/models") / self.DEFAULT_FILENAME)
+        return Path("backend/models") / self.DEFAULT_FILENAME
 
     def _init_detector(self):
         resolved = Path(self.model_path).resolve()
-        if resolved.is_file():
-            try:
-                self._detector = cv2.FaceDetectorYN.create(
-                    model=str(resolved),
-                    config="",
-                    input_size=(320, 320),
-                    score_threshold=0.6,
-                    nms_threshold=0.3,
-                    top_k=5000,
+        if not resolved.is_file():
+            if self.strict_mode:
+                raise FileNotFoundError(
+                    f"YuNet face detector ONNX model file not found at {resolved}. "
+                    "Run scripts/download_vision_models.py to download weights."
                 )
-            except Exception:
-                self._detector = None
+            self._detector = None
+            return
+
+        actual_hash = self._compute_sha256(resolved)
+        if actual_hash != self.MODEL_HASH:
+            if self.strict_mode:
+                raise ValueError(
+                    f"YuNet model SHA-256 hash mismatch: expected {self.MODEL_HASH}, got {actual_hash}"
+                )
+            self._detector = None
+            return
+
+        try:
+            self._detector = cv2.FaceDetectorYN.create(
+                model=str(resolved),
+                config="",
+                input_size=(320, 320),
+                score_threshold=0.6,
+                nms_threshold=0.3,
+                top_k=5000,
+            )
+        except Exception as exc:
+            if self.strict_mode:
+                raise RuntimeError(f"Failed to initialize cv2.FaceDetectorYN from {resolved}: {exc}") from exc
+            self._detector = None
 
     def detect_faces(self, image: Image.Image) -> List[DetectionResult]:
         """
-        Discovers faces in a classroom photo using YuNet ONNX inference.
+        Discovers faces in an image using YuNet ONNX inference.
         Enforces fail-closed behavior: returns zero detections on blank images,
-        and raises a typed RuntimeError in strict/live mode if the model fails to load.
+        and raises a typed RuntimeError in strict mode if the model is unavailable.
         """
         w, h = image.size
         if w <= 0 or h <= 0:
             return []
 
-        if self._detector is not None:
-            try:
-                # Convert PIL RGB to OpenCV BGR
-                cv_img = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
-                self._detector.setInputSize((w, h))
-                _, faces = self._detector.detect(cv_img)
-
-                if faces is not None and len(faces) > 0:
-                    results: List[DetectionResult] = []
-                    for face in faces:
-                        # face format: [x, y, w_box, h_box, x_re, y_re, x_le, y_le, x_nt, y_nt, x_rc, y_rc, x_lc, y_lc, score]
-                        fx, fy, fw, fh = float(face[0]), float(face[1]), float(face[2]), float(face[3])
-                        score = float(face[14])
-
-                        # Normalize box
-                        norm_box = (
-                            max(0.0, min(1.0, fx / w)),
-                            max(0.0, min(1.0, fy / h)),
-                            max(0.0, min(1.0, (fx + fw) / w)),
-                            max(0.0, min(1.0, (fy + fh) / h)),
-                        )
-
-                        # Extract 5 landmarks (right eye, left eye, nose tip, right mouth, left mouth)
-                        landmarks = [
-                            (float(face[4]) / w, float(face[5]) / h),
-                            (float(face[6]) / w, float(face[7]) / h),
-                            (float(face[8]) / w, float(face[9]) / h),
-                            (float(face[10]) / w, float(face[11]) / h),
-                            (float(face[12]) / w, float(face[13]) / h),
-                        ]
-
-                        results.append(
-                            DetectionResult(
-                                box=norm_box,
-                                score=round(score, 4),
-                                landmarks=landmarks,
-                                raw_face=[float(x) for x in face],
-                                detector_model_hash=self.MODEL_HASH,
-                            )
-                        )
-                    return results
-
-                # Detector ran successfully but found zero faces (e.g. blank or empty image)
-                return []
-            except Exception as e:
-                if self.strict_mode:
-                    raise RuntimeError(f"YuNet ONNX inference failed: {e}") from e
-
-        # If model is missing or failed to initialize
-        if self.strict_mode:
+        if self._detector is None:
             raise RuntimeError(
-                f"YuNet face detector ONNX model could not be loaded from {self.model_path}. "
-                "Ensure scripts/download_vision_models.py was run to download weights."
+                f"YuNet face detector ONNX model is not available or failed to initialize from {self.model_path}. "
+                "Ensure model weights are present and valid."
             )
 
-        # Calibrated fallback for lightweight mock tests with strict_mode=False
-        return [
-            DetectionResult(
-                box=(0.15, 0.20, 0.35, 0.55),
-                score=0.985,
-                landmarks=[(0.20, 0.30), (0.30, 0.30), (0.25, 0.40), (0.22, 0.48), (0.28, 0.48)],
-                detector_model_hash=self.MODEL_HASH,
-            ),
-            DetectionResult(
-                box=(0.55, 0.25, 0.75, 0.60),
-                score=0.962,
-                landmarks=[(0.60, 0.35), (0.70, 0.35), (0.65, 0.45), (0.62, 0.52), (0.68, 0.52)],
-                detector_model_hash=self.MODEL_HASH,
-            ),
-        ]
+        try:
+            # Convert PIL RGB to OpenCV BGR
+            cv_img = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
+            self._detector.setInputSize((w, h))
+            _, faces = self._detector.detect(cv_img)
+
+            if faces is not None and len(faces) > 0:
+                results: List[DetectionResult] = []
+                for face in faces:
+                    # face format: [x, y, w_box, h_box, x_re, y_re, x_le, y_le, x_nt, y_nt, x_rc, y_rc, x_lc, y_lc, score]
+                    fx, fy, fw, fh = float(face[0]), float(face[1]), float(face[2]), float(face[3])
+                    score = float(face[14])
+
+                    # Normalize box
+                    norm_box = (
+                        max(0.0, min(1.0, fx / w)),
+                        max(0.0, min(1.0, fy / h)),
+                        max(0.0, min(1.0, (fx + fw) / w)),
+                        max(0.0, min(1.0, (fy + fh) / h)),
+                    )
+
+                    # Extract 5 landmarks (right eye, left eye, nose tip, right mouth, left mouth)
+                    landmarks = [
+                        (float(face[4]) / w, float(face[5]) / h),
+                        (float(face[6]) / w, float(face[7]) / h),
+                        (float(face[8]) / w, float(face[9]) / h),
+                        (float(face[10]) / w, float(face[11]) / h),
+                        (float(face[12]) / w, float(face[13]) / h),
+                    ]
+
+                    results.append(
+                        DetectionResult(
+                            box=norm_box,
+                            score=round(score, 4),
+                            landmarks=landmarks,
+                            raw_face=[float(x) for x in face],
+                            detector_model_hash=self.MODEL_HASH,
+                        )
+                    )
+                return results
+
+            # Detector ran successfully but found zero faces (e.g. blank or empty image)
+            return []
+        except Exception as e:
+            raise RuntimeError(f"YuNet ONNX inference failed: {e}") from e

@@ -114,13 +114,33 @@ void main() {
       expect(state.candidates, isNotEmpty);
     });
 
-    test('P0.4: Committing offline forbids client-minted receipt and retains inReview state', () async {
+    test('P0-G: Missing faculty adjudication rejects commit without silent absent defaults', () async {
       final container = ProviderContainer();
       addTearDown(container.dispose);
 
       final notifier = container.read(sessionProvider.notifier);
       await notifier.selectOffering({'id': 'OFF-CS401-2026'});
       await notifier.submitBatchForProcessing();
+
+      // Attempt commit while unassigned/unmatched candidates are unadjudicated
+      final receipt = await notifier.commitFinalAttendance();
+      final state = container.read(sessionProvider);
+
+      expect(receipt, isNull);
+      expect(state.state, SessionState.inReview);
+      expect(state.errorMessage, contains('Adjudication incomplete'));
+    });
+
+    test('P0.4: Committing offline after adjudication forbids client-minted receipt and retains inReview state', () async {
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+
+      final notifier = container.read(sessionProvider.notifier);
+      await notifier.selectOffering({'id': 'OFF-CS401-2026'});
+      await notifier.submitBatchForProcessing();
+
+      // Explicitly adjudicate unconfirmed candidates
+      notifier.markAllUnadjudicatedAsAbsent();
 
       // Attempt commit without backend server running
       final receipt = await notifier.commitFinalAttendance();
@@ -133,7 +153,7 @@ void main() {
       expect(state.errorMessage, contains('Client-minted offline receipts are prohibited'));
     });
 
-    test('P0.4: Committing with authoritative server receipt transitions to finalized', () async {
+    test('P0.4 & P0-G: Committing after explicit adjudication transitions to finalized', () async {
       final container = ProviderContainer(
         overrides: [
           apiProvider.overrideWithValue(MockServerSuccessApiService()),
@@ -144,6 +164,9 @@ void main() {
       final notifier = container.read(sessionProvider.notifier);
       await notifier.selectOffering({'id': 'OFF-CS401-2026'});
       await notifier.submitBatchForProcessing();
+
+      // Explicitly adjudicate unconfirmed candidates
+      notifier.markAllUnadjudicatedAsAbsent();
 
       final receipt = await notifier.commitFinalAttendance();
       final state = container.read(sessionProvider);

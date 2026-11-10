@@ -264,25 +264,45 @@ class SessionNotifier extends Notifier<SessionWorkflowState> {
     state = state.copyWith(candidates: updatedCandidates);
   }
 
+  /// Explicit faculty action: Deliberately records ABSENT_CONFIRMED for all unadjudicated candidate units.
+  void markAllUnadjudicatedAsAbsent() {
+    final updated = state.candidates.map((c) {
+      final units = Map<int, AttendanceStatus>.from(c.unitAttendance);
+      for (int i = 1; i <= state.conductedUnitsCount; i++) {
+        units[i] ??= AttendanceStatus.absentConfirmed;
+      }
+      return c.copyWith(unitAttendance: units);
+    }).toList();
+    state = state.copyWith(candidates: updated, errorMessage: null);
+  }
+
   Future<CommitReceiptResponse?> commitFinalAttendance() async {
     const uuid = Uuid();
     final idempotencyKey = 'IDEMP-${uuid.v4().replaceAll('-', '')}';
 
-    // Ensure all decisions are populated from proposalStatus if untouched
-    final resolvedCandidates = state.candidates.map((c) {
-      final units = Map<int, AttendanceStatus>.from(c.unitAttendance);
+    // Invariant FR-08 / P0-G: Strict faculty adjudication. Zero silent defaults to absentConfirmed.
+    // Verify every candidate has an explicit decision for every conducted unit.
+    final unadjudicatedRolls = <String>[];
+    for (final c in state.candidates) {
       for (int i = 1; i <= state.conductedUnitsCount; i++) {
-        units[i] ??= c.proposalStatus ?? AttendanceStatus.absentConfirmed;
+        if (c.unitAttendance[i] == null) {
+          unadjudicatedRolls.add(c.rollNumber);
+          break;
+        }
       }
-      return c.copyWith(unitAttendance: units);
-    }).toList();
-    state = state.copyWith(candidates: resolvedCandidates);
+    }
+
+    if (unadjudicatedRolls.isNotEmpty) {
+      final err = 'Adjudication incomplete: ${unadjudicatedRolls.length} student(s) require explicit faculty decision across all conducted units.';
+      state = state.copyWith(errorMessage: err);
+      return null;
+    }
 
     final serverReceipt = await _api.commitSession(
       sessionId: state.sessionId,
       idempotencyKey: idempotencyKey,
       conductedUnitsCount: state.conductedUnitsCount,
-      candidates: resolvedCandidates,
+      candidates: state.candidates,
     );
 
     if (serverReceipt != null) {

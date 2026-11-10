@@ -1,0 +1,29 @@
+experiment:
+  name: "FRS_V7_1_Kaggle_T4x2_Inference_Benchmark"
+  institution: "KU College of Engineering & Technology (KUCET)"
+  target_hardware: "Kaggle GPU T4 x 2 (2x NVIDIA Tesla T4 16GB)"
+  framework: "OpenCV Zoo C++ & Python Runtime + ONNX Runtime"
+  
+thresholds:
+  face_detection_confidence: 0.60
+  face_detection_nms: 0.30
+  cosine_match_threshold: 0.45
+  high_confidence_match_threshold: 0.70
+  ambiguity_margin_threshold: 0.10
+  pad_liveness_threshold: 0.85
+
+benchmark:
+  batch_sizes: [1, 4, 8, 16, 32]
+  warmup_iterations: 5
+  timed_iterations: 30
+  input_resolution:
+    width: 640
+    height: 480
+    channels: 3
+
+privacy_and_governance:
+  allow_synthetic_smoke_tests: true
+  allow_consented_volunteers: true
+  export_raw_photos_to_output: false
+  export_embeddings_to_output: false
+  compliance_framework: "KUCET Biometric Governance Policy Section 4.3"

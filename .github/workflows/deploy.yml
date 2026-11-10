@@ -44,6 +44,14 @@ jobs:
         run: |
           echo "IMAGE_OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
 
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Download & Verify Approved Vision Models
+        run: python scripts/download_vision_models.py
+
       # Build & Push Backend API
       - name: Build & Push Backend API Image
         uses: docker/build-push-action@v7
@@ -106,21 +114,33 @@ jobs:
           channel: "stable"
           cache: true
 
-      - name: Configure Production Keystore (if secret provided)
+      - name: Validate & Configure Production Keystore
         run: |
-          if [ -n "${{ secrets.KEYSTORE_BASE64 }}" ]; then
-            echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > android/app/upload-keystore.jks
-            echo "KEYSTORE_PATH=android/app/upload-keystore.jks" >> $GITHUB_ENV
-            echo "KEYSTORE_PASSWORD=${{ secrets.KEYSTORE_PASSWORD }}" >> $GITHUB_ENV
-            echo "KEY_ALIAS=${{ secrets.KEY_ALIAS }}" >> $GITHUB_ENV
-            echo "KEY_PASSWORD=${{ secrets.KEY_PASSWORD }}" >> $GITHUB_ENV
+          if [ -z "${{ secrets.KEYSTORE_BASE64 }}" ] || [ -z "${{ secrets.KEYSTORE_PASSWORD }}" ] || [ -z "${{ secrets.KEY_ALIAS }}" ] || [ -z "${{ secrets.KEY_PASSWORD }}" ]; then
+            echo "::error::Release build halted: Required signing secrets (KEYSTORE_BASE64, KEYSTORE_PASSWORD, KEY_ALIAS, KEY_PASSWORD) are not configured."
+            echo "See docs/operations/RELEASE_SIGNING_SETUP.md for secret setup instructions."
+            exit 1
           fi
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > android/app/upload-keystore.jks
+          echo "KEYSTORE_PATH=android/app/upload-keystore.jks" >> $GITHUB_ENV
+          echo "KEYSTORE_PASSWORD=${{ secrets.KEYSTORE_PASSWORD }}" >> $GITHUB_ENV
+          echo "KEY_ALIAS=${{ secrets.KEY_ALIAS }}" >> $GITHUB_ENV
+          echo "KEY_PASSWORD=${{ secrets.KEY_PASSWORD }}" >> $GITHUB_ENV
 
       - name: Install Dependencies
         run: flutter pub get
 
       - name: Build Release APK
         run: flutter build apk --release --dart-define=API_URL=${{ secrets.PROD_API_URL || 'https://api.frs.kucet.ac.in/api/v1' }}
+
+      - name: Verify Signed Release APK
+        run: |
+          APK_FILE="build/app/outputs/flutter-apk/app-release.apk"
+          if [ ! -f "$APK_FILE" ]; then
+            echo "::error::Release APK was not generated at $APK_FILE"
+            exit 1
+          fi
+          echo "Release APK generated successfully: $(ls -lh $APK_FILE)"
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4

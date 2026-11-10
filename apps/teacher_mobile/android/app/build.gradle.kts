@@ -40,29 +40,23 @@ android {
                 keyAlias = System.getenv("KEY_ALIAS") ?: project.findProperty("KEY_ALIAS") as String? ?: ""
                 keyPassword = System.getenv("KEY_PASSWORD") ?: project.findProperty("KEY_PASSWORD") as String? ?: ""
             } else {
-                // In CI / dev when no custom keystore is provided, generate or use debug keystore
-                val debugKeystore = file("${System.getProperty("user.home")}/.android/debug.keystore")
-                if (!debugKeystore.exists()) {
-                    debugKeystore.parentFile?.mkdirs()
-                    val keytool = "${System.getProperty("java.home")}/bin/keytool"
-                    ProcessBuilder(
-                        keytool, "-genkey", "-v",
-                        "-keystore", debugKeystore.absolutePath,
-                        "-alias", "androiddebugkey",
-                        "-keyalg", "RSA", "-keysize", "2048", "-validity", "10000",
-                        "-storepass", "android", "-keypass", "android",
-                        "-dname", "CN=Android Debug,O=Android,C=US"
-                    ).inheritIO().start().waitFor()
+                // Strict FRS V7.1 Security Policy: Release APKs must NEVER fall back to debug keystore
+                val isReleaseBuild = gradle.startParameter.taskNames.any { it.contains("Release", ignoreCase = true) }
+                if (isReleaseBuild) {
+                    throw GradleException(
+                        "Release build failed: Release keystore secrets (KEYSTORE_PATH, KEYSTORE_PASSWORD, KEY_ALIAS, KEY_PASSWORD) " +
+                        "are not configured. Silent fallback to debug keystore for production releases is strictly prohibited. " +
+                        "See docs/operations/RELEASE_SIGNING_SETUP.md"
+                    )
                 }
-                storeFile = debugKeystore
-                storePassword = "android"
-                keyAlias = "androiddebugkey"
-                keyPassword = "android"
             }
         }
     }
 
     buildTypes {
+        debug {
+            signingConfig = signingConfigs.getByName("debug")
+        }
         release {
             signingConfig = signingConfigs.getByName("release")
         }

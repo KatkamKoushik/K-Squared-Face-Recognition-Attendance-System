@@ -39,5 +39,5 @@ class RetrievalCandidate(BaseModel):
 class SecurityResult(BaseModel):
     is_live: bool
     score: float
-    status: str  # "PASS", "FAIL", "UNCERTAIN", "SKIPPED"
+    status: str  # "PASS", "FAIL", "UNCERTAIN", "ERROR", "NOT_CONFIGURED", "SKIPPED"
     reason_code: str

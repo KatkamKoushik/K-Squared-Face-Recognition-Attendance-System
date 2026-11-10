@@ -11,7 +11,7 @@ from app.domain.models.academic import (
     Faculty,
     FacultyAssignment,
 )
-from app.domain.models.student import Student, Enrollment, EnrollmentProfile
+from app.domain.models.student import Student, Enrollment, EnrollmentProfile, EnrollmentSubmission
 from app.domain.models.session import (
     AttendanceSession,
     AttendanceUnit,
@@ -39,6 +39,7 @@ __all__ = [
     "Student",
     "Enrollment",
     "EnrollmentProfile",
+    "EnrollmentSubmission",
     "AttendanceSession",
     "AttendanceUnit",
     "RosterSnapshot",

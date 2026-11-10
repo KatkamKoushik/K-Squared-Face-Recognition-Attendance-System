@@ -1,12 +1,11 @@
 import React from "react";
 import type { Metadata } from "next";
 import "./globals.css";
-import { AdminSidebar } from "@/components/sidebar";
-import { AdminHeader } from "@/components/header";
+import { AppShell } from "@/components/app-shell";
 
 export const metadata: Metadata = {
-  title: "FRS V7.1 K² — Admin Console",
-  description: "Academic Administration and Attendance Ledger for KUCET",
+  title: "FRS V7.1 K² — Attendance Portal & Admin Console",
+  description: "Academic Biometric Enrollment and Attendance Ledger for KUCE&T",
 };
 
 export default function RootLayout({
@@ -16,7 +15,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="min-h-screen bg-slate-50 antialiased flex">
+      <body className="min-h-screen bg-slate-50 antialiased">
         {/* Accessible Skip to Content Link (Checklist Section 38) */}
         <a
           href="#main-content"
@@ -24,17 +23,8 @@ export default function RootLayout({
         >
           Skip to main content
         </a>
-        <AdminSidebar />
-        <div className="flex-1 flex flex-col min-h-screen overflow-x-hidden">
-          <AdminHeader />
-
-          {/* Main Workspace Surface */}
-          <main id="main-content" tabIndex={-1} className="flex-1 p-8 outline-hidden">
-            {children}
-          </main>
-        </div>
+        <AppShell>{children}</AppShell>
       </body>
     </html>
   );
 }
-

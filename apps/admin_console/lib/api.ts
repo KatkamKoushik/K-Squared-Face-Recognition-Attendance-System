@@ -391,3 +391,122 @@ export async function getAuthorizedGroups(): Promise<AuthorizedClassGroupItem[] 
 export async function getFacultyAssignments(): Promise<FacultyAssignmentItem[] | null> {
   return fetchFromApi<FacultyAssignmentItem[]>("/academic/faculty-assignments");
 }
+
+export interface EnrollmentSubmissionItem {
+  id: string;
+  roll_number: string;
+  full_name: string;
+  institutional_email: string;
+  department: string;
+  academic_year: string;
+  cohort_id?: string;
+  status: "PENDING_REVIEW" | "RECAPTURE_REQUIRED" | "APPROVED" | "REJECTED" | "WITHDRAWN";
+  consent_acknowledged: boolean;
+  rejection_reason?: string;
+  photo_sha256: string;
+  reviewed_by_user_id?: string;
+  reviewed_at?: string;
+  created_at: string;
+}
+
+export interface AdminDashboardMetrics {
+  total_enrolled_students: number;
+  total_active_offerings: number;
+  pending_submissions_count: number;
+  finalized_sessions_count: number;
+  recent_sessions: Array<{
+    session_id: string;
+    offering_id: string;
+    finalized_at?: string;
+    state: string;
+  }>;
+  system_readiness: string;
+}
+
+export async function submitStudentEnrollment(formData: FormData): Promise<EnrollmentSubmissionItem> {
+  const url = `${API_BASE}/enrollment/submit`;
+  const res = await fetch(url, {
+    method: "POST",
+    body: formData,
+  });
+
+  const body = await res.json().catch(() => null);
+  if (!res.ok) {
+    const errorMsg = body?.detail || body?.message || "Failed to submit enrollment application.";
+    throw new Error(errorMsg);
+  }
+  return body.data;
+}
+
+export async function getEnrollmentSubmissions(
+  statusFilter?: string,
+  search?: string
+): Promise<EnrollmentSubmissionItem[] | null> {
+  const params = new URLSearchParams();
+  if (statusFilter) params.append("status_filter", statusFilter);
+  if (search) params.append("search", search);
+  const qs = params.toString() ? `?${params.toString()}` : "";
+  return fetchFromApi<EnrollmentSubmissionItem[]>(`/enrollment/submissions${qs}`);
+}
+
+export async function getEnrollmentSubmission(id: string): Promise<EnrollmentSubmissionItem | null> {
+  return fetchFromApi<EnrollmentSubmissionItem>(`/enrollment/submissions/${id}`);
+}
+
+export function getSubmissionPhotoUrl(id: string): string {
+  return `${API_BASE}/enrollment/submissions/${id}/photo`;
+}
+
+export async function approveEnrollmentSubmission(id: string): Promise<EnrollmentSubmissionItem> {
+  const token = getAuthToken();
+  const res = await fetch(`${API_BASE}/enrollment/submissions/${id}/approve`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+  });
+  const body = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new Error(body?.detail || body?.message || "Approval failed");
+  }
+  return body.data;
+}
+
+export async function rejectEnrollmentSubmission(id: string, reason: string): Promise<EnrollmentSubmissionItem> {
+  const token = getAuthToken();
+  const res = await fetch(`${API_BASE}/enrollment/submissions/${id}/reject`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ reason }),
+  });
+  const body = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new Error(body?.detail || body?.message || "Rejection failed");
+  }
+  return body.data;
+}
+
+export async function requestRecaptureEnrollmentSubmission(id: string, reason: string): Promise<EnrollmentSubmissionItem> {
+  const token = getAuthToken();
+  const res = await fetch(`${API_BASE}/enrollment/submissions/${id}/recapture`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ reason }),
+  });
+  const body = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new Error(body?.detail || body?.message || "Recapture request failed");
+  }
+  return body.data;
+}
+
+export async function getAdminDashboardMetrics(): Promise<AdminDashboardMetrics | null> {
+  return fetchFromApi<AdminDashboardMetrics>("/enrollment/dashboard/stats");
+}

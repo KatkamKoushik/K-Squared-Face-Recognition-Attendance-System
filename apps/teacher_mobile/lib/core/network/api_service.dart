@@ -274,7 +274,10 @@ class FrsApiService {
       final decisions = <Map<String, dynamic>>[];
       for (final c in candidates) {
         for (int i = 1; i <= conductedUnitsCount; i++) {
-          final status = c.unitAttendance[i] ?? c.proposalStatus ?? AttendanceStatus.absentConfirmed;
+          final status = c.unitAttendance[i];
+          if (status == null) {
+            throw Exception('Cannot commit: Student ${c.rollNumber} has no explicit attendance decision for conducted unit $i.');
+          }
           decisions.add({
             'student_id': c.studentId,
             'unit_index': i,

@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 export function AdminHeader() {
   const pathname = usePathname();
 
-  if (pathname === "/login") {
+  if (pathname === "/login" || pathname === "/admin/login" || pathname === "/enroll" || pathname === "/enrollment") {
     return null;
   }
 

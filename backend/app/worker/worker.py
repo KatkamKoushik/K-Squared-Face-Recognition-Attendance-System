@@ -136,9 +136,13 @@ class VisionWorker:
                 margin_threshold=0.10,
             )
 
-            # 8. Active PAD liveness security gate
+            # 8. Active PAD liveness security gate (Fail-Closed)
             sec = self.pad.verify_liveness(crop, mandatory=True, threshold=0.85)
-            if sec.status == "FAIL":
+            if sec.status in ["FAIL", "UNCERTAIN", "ERROR"]:
+                pad_state = (
+                    EvidenceState.SECURITY_FAIL if sec.status == "FAIL"
+                    else (EvidenceState.SECURITY_UNCERTAIN if sec.status == "UNCERTAIN" else EvidenceState.PIPELINE_ERROR)
+                )
                 evidence = FaceEvidence(
                     frame_id=frame.id,
                     box_x1=det.box[0],
@@ -151,8 +155,8 @@ class VisionWorker:
                     candidate_student_id=candidate.student_id if candidate.is_matched else None,
                     similarity_score=candidate.similarity_score,
                     score_margin=candidate.margin_to_second,
-                    evidence_state=EvidenceState.SECURITY_FAIL,
-                    reason_code="PAD_SPOOF_DETECTED",
+                    evidence_state=pad_state,
+                    reason_code=sec.reason_code or f"PAD_{sec.status}",
                     model_artifact_hash=emb.recognizer_model_hash,
                 )
                 db.add(evidence)

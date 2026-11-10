@@ -46,33 +46,23 @@ def test_model_registry_seeding_and_integrity(db_session: Session):
 
 def test_detector_adapter_inference_and_normalization():
     """
-    P0.2: Detector produces valid normalized bounding boxes [0.0 - 1.0]
-    and 5 facial landmarks. Blank image returns zero detections.
+    P0.2 & Strict Mode: Detector operates in strict fail-closed mode.
+    Blank image must return zero detections.
     """
-    adapter = DetectorAdapter(strict_mode=False)
+    adapter = DetectorAdapter(strict_mode=True)
     blank_image = Image.new("RGB", (640, 480), color=(128, 128, 128))
 
-    # If real YuNet is loaded, a blank image contains zero faces
-    if adapter._detector is not None:
-        detections = adapter.detect_faces(blank_image)
-        assert len(detections) == 0, "Blank image must return 0 detections"
-    else:
-        # Fallback test mode
-        detections = adapter.detect_faces(blank_image)
-        assert len(detections) >= 1
-        for det in detections:
-            box = det.box
-            assert 0.0 <= box[0] < box[2] <= 1.0, f"Invalid x bounds: {box}"
-            assert 0.0 <= box[1] < box[3] <= 1.0, f"Invalid y bounds: {box}"
-            assert 0.0 <= det.score <= 1.0
-            assert len(det.landmarks) == 5
+    assert adapter._detector is not None, "Real YuNet detector must be initialized"
+    detections = adapter.detect_faces(blank_image)
+    assert len(detections) == 0, "Blank image must return exactly 0 detections in strict mode"
 
 
 def test_recognizer_5_landmark_alignment_and_embedding():
     """
-    P0-E: Mathematical 5-landmark alignment and SFace 128-D feature extraction.
+    P0-E & Strict Mode: Mathematical 5-landmark alignment and SFace 128-D feature extraction.
     """
-    adapter = RecognizerAdapter(strict_mode=False)
+    adapter = RecognizerAdapter(strict_mode=True)
+    assert adapter._recognizer is not None, "Real SFace recognizer must be initialized"
     raw_face = [100.0, 100.0, 120.0, 120.0, 130.0, 140.0, 190.0, 140.0, 160.0, 170.0, 140.0, 200.0, 180.0, 200.0, 0.95]
     bgr_img = np.zeros((480, 640, 3), dtype=np.uint8)
 

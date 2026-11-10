@@ -40,6 +40,11 @@ The complete institutional technical manual and architecture guide is hosted dir
 
 Comprehensive system documentation, runbooks, and specifications:
 
+* **[Student Enrollment & Gallery Flow](docs/architecture/STUDENT_ENROLLMENT_AND_GALLERY_FLOW.md)**: Public enrollment, informed consent, EXIF stripping, SFace 128D embedding extraction, and gallery invariants.
+* **[Website Architecture: Student & Admin Portal](docs/architecture/WEBSITE_ADMIN_AND_STUDENT_PORTAL.md)**: Public mobile-first registration portal (`/`) and protected institutional admin console (`/admin`).
+* **[Model Artifact Delivery Runbook](docs/operations/MODEL_ARTIFACT_DELIVERY.md)**: Cryptographic SHA-256 verification, Docker volume mounts, CI/CD artifact pipeline, and fail-closed readiness.
+* **[Release Signing Setup Runbook](docs/operations/RELEASE_SIGNING_SETUP.md)**: Android release keystore requirements, GitHub Actions secret configuration, and debug fallback prevention.
+* **[Kaggle Model Lab](research/kaggle_model_lab/README.md)**: Reproducible Jupyter notebook and scripts for model evaluation, calibration, and ONNX export.
 * **[Official GitHub Technical Wiki](https://github.com/KatkamKoushik/K-Squared-Face-Recognition-Attendance-System/wiki)**: Full 8-article architecture and domain guide hosted live on GitHub with persistent navigation sidebar.
 * **[Production Operations Runbook](docs/OPERATIONS_RUNBOOK.md)**: Disaster recovery, RPO/RTO targets, database restore drills, model rotation gates, and incident severity SLA matrix.
 * **[Production Engineering Readiness Audit](docs/PRODUCTION_READINESS_AUDIT.md)**: 62-section lifecycle evaluation against enterprise engineering standards.
@@ -232,17 +237,30 @@ frs-v7-1-k2/
 │   ├── app/
 │   │   ├── api/v1/                    # REST routers (academic, sessions, capture, review, ledger, governance, health)
 │   │   ├── core/                      # Configuration, rate limiter, security headers, privacy log redaction, async DB pool
-│   │   ├── domain/                    # SQLAlchemy ORM models and canonical state enums (27 tables)
+│   │   ├── domain/                    # SQLAlchemy ORM models and canonical state enums (28 tables)
 │   │   ├── schemas/                   # Pydantic V2 request, response, governance, and envelope contracts
 │   │   ├── seeds/                     # Authentic KUCET institutional seeder & approved model registry
-│   │   ├── services/                  # Business logic (session, roster, ACID commit, governance, review, analytics)
-│   │   └── worker/                    # ONNX background worker (leasing queue, YuNet detector, SFace recognizer, PAD)
-│   ├── tests/                         # Pytest automated test suite (84 unit/security/persistence/eval + 11 Playwright E2E)
+│   │   ├── services/                  # Business logic (session, roster, ACID commit, enrollment, governance, review)
+│   │   └── worker/                    # ONNX background worker (leasing queue, YOLOv8n-Face detector, SFace recognizer, PAD)
+│   ├── tests/                         # Pytest automated test suite (102 unit/security/persistence/eval + Playwright E2E)
 │   ├── verify_backend.py              # 5-suite mathematical invariant & acceptance test runner
 │   ├── alembic.ini                    # Alembic environment and driver configuration
 │   ├── Dockerfile                     # Multi-stage production API image
 │   ├── Dockerfile.worker              # Multi-stage production vision worker image
 │   └── pyproject.toml                 # Python dependencies & build metadata
+│
+├── research/
+│   └── kaggle_model_lab/              # Standalone Kaggle environment for model evaluation & ONNX export
+│       ├── FRS_Kaggle_Model_Lab.ipynb # 17-cell standalone Jupyter evaluation notebook
+│       ├── 00_environment_audit.py    # GPU and runtime dependency check
+│       ├── 01_prepare_dataset.py      # LFW benchmark dataset download & verification
+│       ├── 02_download_weights.py     # Cryptographic SHA-256 weight acquisition
+│       ├── 03_evaluate_detection.py   # Precision, Recall, and mAP@0.5 evaluation
+│       ├── 04_evaluate_recognition.py # ROC, TAR@FAR, and cosine similarity benchmarks
+│       ├── 05_calibrate_thresholds.py # Youden J and FAR-constrained optimal operational operating points
+│       ├── 06_export_model_manifest.py# Provenance metadata and manifest export
+│       ├── config/                    # Experiment configuration & model manifest
+│       └── README.md                  # Kaggle execution instructions & benchmark expectations
 │
 ├── docs/                              # Formal architectural documentation & operational runbooks
 │   ├── adr/                           # Architecture Decision Records (ADR 0001 – 0005)
@@ -297,6 +315,14 @@ frs-v7-1-k2/
 | `POST` | `/api/v1/governance/consent` | `ADMIN` | Toggles student biometric consent status under the DPDP Act framework. |
 | `GET` | `/api/v1/offerings/{id}/analytics` | Authenticated | Computes official attendance analytics per conducted unit. |
 | `GET` | `/api/v1/audit/events` | `ADMIN` | Institutional audit log browser (biometrics redacted). |
+| `POST` | `/api/v1/enrollment/submit` | Public | Ingests student enrollment with EXIF-stripped photo & verified DPDP consent. |
+| `GET` | `/api/v1/enrollment/submissions` | `ADMIN` / `FACULTY` | Retrieves enrollment review queue filtered by status (PENDING, APPROVED, etc.). |
+| `GET` | `/api/v1/enrollment/submissions/{id}` | `ADMIN` / `FACULTY` | Retrieves full enrollment submission metadata and quality assessment. |
+| `GET` | `/api/v1/enrollment/submissions/{id}/photo` | `ADMIN` / `FACULTY` | Authenticated streaming of student enrollment portrait with private caching headers. |
+| `POST` | `/api/v1/enrollment/submissions/{id}/approve` | `ADMIN` | Extracts 128-D SFace embedding, registers student, and promotes to gallery. |
+| `POST` | `/api/v1/enrollment/submissions/{id}/reject` | `ADMIN` | Rejects enrollment application with structured audit rationale. |
+| `POST` | `/api/v1/enrollment/submissions/{id}/recapture` | `ADMIN` | Flags submission for recapture with specific quality improvement guidance. |
+| `GET` | `/api/v1/enrollment/dashboard-stats` | `ADMIN` / `FACULTY` | Live institutional KPI statistics directly from database queries. |
 
 ---
 
@@ -308,7 +334,7 @@ frs-v7-1-k2/
 4. **Ephemeral Storage Purge Engine:** Raw classroom sweep frames are stored ephemerally on local disk and physically unlinked via automated background tasks or administrative governance controls post-retention window (default 7 days).
 5. **Cryptographic Receipt Verification:** Attendance commitments emit an authoritative HMAC-SHA256 receipt signed with server secret key. The control plane provides tamper-evident receipt verification against the immutable attendance ledger.
 6. **Ingress Protection & Payload Guardrails:** Responses enforce `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy`, and production HSTS. Inbound requests enforce 15MB bounded `Content-Length` (`413 Payload Too Large`), prohibited MIME type filtering (`415 Unsupported Media Type`), and sliding-window rate limiting.
-7. **PostgreSQL Persistence Foundation & Pooling:** 27 normalized relational tables managed via Alembic baseline revision `3a42e90c6daf`. Fail-closed production URL validation prevents insecure defaults; credentials are masked in logs and health endpoints; connection pooling enforces `pool_pre_ping=True` and `pool_recycle=1800` to prevent connection leaks and stale sockets.
+7. **PostgreSQL Persistence Foundation & Pooling:** 28 normalized relational tables managed via Alembic migrations (revisions `3a42e90c6daf` baseline and `4b51cc1e9e8f` enrollment). Fail-closed production URL validation prevents insecure defaults; credentials are masked in logs and health endpoints; connection pooling enforces `pool_pre_ping=True` and `pool_recycle=1800` to prevent connection leaks and stale sockets.
 8. **Offline Sync Resilience & Session Security:** Teacher mobile app buffers up to 500 actions in a durable, faculty-scoped `OfflineSyncJournal` with reactive UI banners, jittered exponential backoff, and logout purge. Admin Console syncs auth across tabs and completely clears browser session and local storage on logout.
 9. **Log Privacy Redaction:** `SafePrivacyFormatter` filters Bearer tokens, passwords, secrets, embedding vector coordinates, and base64 image strings from application and container logs.
 10. **Biometric Redaction:** Facial crops, landmark coordinates, and raw embedding arrays are strictly excluded from administrative dashboards, application logs, and audit tables.

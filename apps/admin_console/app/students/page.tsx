@@ -12,87 +12,19 @@ interface StudentDirectoryRow {
   effectiveStartDate: string;
 }
 
-const mockStudents: StudentDirectoryRow[] = [
-  {
-    studentId: "STU-KUCET-00622501",
-    rollNumber: "00622501",
-    fullName: "Katkam Koushik",
-    department: "Computer Science & Engineering",
-    cohort: "B.Tech CSE - Final Year (IV/IV Sec A)",
-    enrollmentStatus: "ACTIVE",
-    effectiveStartDate: "2022-08-01",
-  },
-  {
-    studentId: "STU-KUCET-00622502",
-    rollNumber: "00622502",
-    fullName: "A. Sai Teja",
-    department: "Computer Science & Engineering",
-    cohort: "B.Tech CSE - Final Year (IV/IV Sec A)",
-    enrollmentStatus: "ACTIVE",
-    effectiveStartDate: "2022-08-01",
-  },
-  {
-    studentId: "STU-KUCET-00622503",
-    rollNumber: "00622503",
-    fullName: "B. Manasa Reddy",
-    department: "Computer Science & Engineering",
-    cohort: "B.Tech CSE - Final Year (IV/IV Sec A)",
-    enrollmentStatus: "ACTIVE",
-    effectiveStartDate: "2022-08-01",
-  },
-  {
-    studentId: "STU-KUCET-00622504",
-    rollNumber: "00622504",
-    fullName: "Ch. Rahul",
-    department: "Computer Science & Engineering",
-    cohort: "B.Tech CSE - Final Year (IV/IV Sec A)",
-    enrollmentStatus: "ACTIVE",
-    effectiveStartDate: "2022-08-01",
-  },
-  {
-    studentId: "STU-KUCET-00622505",
-    rollNumber: "00622505",
-    fullName: "D. Ananya",
-    department: "Computer Science & Engineering",
-    cohort: "B.Tech CSE - Final Year (IV/IV Sec A)",
-    enrollmentStatus: "ACTIVE",
-    effectiveStartDate: "2022-08-01",
-  },
-  {
-    studentId: "STU-KUCET-00622506",
-    rollNumber: "00622506",
-    fullName: "E. Srikanth",
-    department: "Computer Science & Engineering",
-    cohort: "B.Tech CSE - Final Year (IV/IV Sec A)",
-    enrollmentStatus: "ACTIVE",
-    effectiveStartDate: "2022-08-01",
-  },
-  {
-    studentId: "STU-KUCET-00622507",
-    rollNumber: "00622507",
-    fullName: "G. Akhil Kumar",
-    department: "Computer Science & Engineering",
-    cohort: "B.Tech CSE - Final Year (IV/IV Sec A)",
-    enrollmentStatus: "ACTIVE",
-    effectiveStartDate: "2022-08-01",
-  },
-];
-
 export default async function StudentsDirectoryPage() {
   const serverStudents = await getStudents();
-  const isLive = serverStudents !== null && serverStudents.length > 0;
+  const isLive = serverStudents !== null;
 
-  const students: StudentDirectoryRow[] = isLive
-    ? serverStudents.map((s) => ({
-        studentId: s.id,
-        rollNumber: s.roll_number,
-        fullName: s.full_name,
-        department: "Computer Science & Engineering",
-        cohort: `Term ${s.current_term}`,
-        enrollmentStatus: (s.status as any) || "ACTIVE",
-        effectiveStartDate: s.enrollment_date || "2023-08-01",
-      }))
-    : mockStudents;
+  const students: StudentDirectoryRow[] = (serverStudents || []).map((s) => ({
+    studentId: s.id,
+    rollNumber: s.roll_number,
+    fullName: s.full_name,
+    department: "Computer Science & Engineering",
+    cohort: `Term ${s.current_term}`,
+    enrollmentStatus: (s.status as any) || "ACTIVE",
+    effectiveStartDate: s.enrollment_date || "2023-08-01",
+  }));
 
   return (
     <div className="space-y-6">
@@ -169,30 +101,38 @@ export default async function StudentsDirectoryPage() {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-200">
-            {students.map((student) => (
-              <tr key={student.studentId} className="hover:bg-slate-50/80 transition-colors">
-                <td className="px-6 py-4 font-mono font-medium text-xs text-institutional-navy">
-                  {student.rollNumber}
-                </td>
-                <td className="px-6 py-4 font-medium text-slate-900">
-                  {student.fullName}
-                </td>
-                <td className="px-6 py-4 text-slate-600 text-xs">
-                  {student.department}
-                </td>
-                <td className="px-6 py-4 text-slate-600 text-xs">
-                  {student.cohort}
-                </td>
-                <td className="px-6 py-4 font-mono text-xs text-slate-500">
-                  {student.effectiveStartDate}
-                </td>
-                <td className="px-6 py-4">
-                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                    {student.enrollmentStatus}
-                  </span>
+            {students.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="px-6 py-12 text-center text-slate-500 text-xs">
+                  No enrolled student records found in database. Students appear here after biometric application review and approval.
                 </td>
               </tr>
-            ))}
+            ) : (
+              students.map((student) => (
+                <tr key={student.studentId} className="hover:bg-slate-50/80 transition-colors">
+                  <td className="px-6 py-4 font-mono font-medium text-xs text-institutional-navy">
+                    {student.rollNumber}
+                  </td>
+                  <td className="px-6 py-4 font-medium text-slate-900">
+                    {student.fullName}
+                  </td>
+                  <td className="px-6 py-4 text-slate-600 text-xs">
+                    {student.department}
+                  </td>
+                  <td className="px-6 py-4 text-slate-600 text-xs">
+                    {student.cohort}
+                  </td>
+                  <td className="px-6 py-4 font-mono text-xs text-slate-500">
+                    {student.effectiveStartDate}
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                      {student.enrollmentStatus}
+                    </span>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>

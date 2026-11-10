@@ -79,12 +79,15 @@ services:
       ENVIRONMENT: production
       PORT: 8000
       STORAGE_DIR: /data/frames
+      MODEL_DIR: /app/models
+      STRICT_INFERENCE: "1"
       LOG_LEVEL: INFO
       LOG_FORMAT: json
       REDACT_SENSITIVE_LOGS: "true"
       MAX_UPLOAD_SIZE_MB: 15
     volumes:
       - frame_storage_prod:/data/frames
+      - ./backend/models:/app/models:ro
     ports:
       - "127.0.0.1:8000:8000"
     healthcheck:
@@ -109,7 +112,7 @@ services:
   vision-worker:
     build:
       context: ./backend
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.worker
     image: ghcr.io/katkamkoushik/k-squared-face-recognition-attendance-system/vision-worker:latest
     container_name: frs-k2-vision-worker-prod
     restart: always
@@ -125,12 +128,15 @@ services:
       SECRET_KEY: ${SECRET_KEY:?CRITICAL_SECURITY_ERROR_SECRET_KEY_MUST_BE_SET}
       ENVIRONMENT: production
       STORAGE_DIR: /data/frames
+      MODEL_DIR: /app/models
+      STRICT_INFERENCE: "1"
       LOG_LEVEL: INFO
       LOG_FORMAT: json
       JOB_POLL_INTERVAL_SECONDS: 2
       JOB_LEASE_TIMEOUT_SECONDS: 60
     volumes:
       - frame_storage_prod:/data/frames
+      - ./backend/models:/app/models:ro
     deploy:
       resources:
         limits:

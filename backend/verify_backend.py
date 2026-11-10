@@ -7,6 +7,8 @@ from pathlib import Path
 import sys
 import tempfile
 import uuid
+from PIL import Image
+import numpy as np
 
 # Windows console encoding safeguard
 if sys.stdout.encoding != "utf-8":
@@ -220,11 +222,17 @@ def main():
         assert cand_c.reason_code == "AMBIGUOUS_LOOKALIKE_CONFLICT"
         print(f"  [OK] Ambiguous look-alikes routed to faculty review (margin={cand_c.margin_to_second} < 0.10)")
 
-        # Case D: Independent PAD Gate
+        # Case D: Independent PAD Gate (Fail-Closed)
         pad = PadAdapter()
-        sec = pad.verify_liveness(None, mandatory=True, threshold=0.85)
-        assert sec.status == "PASS"
-        print(f"  [OK] Independent PAD liveness verification confirmed: {sec.status}")
+        sec_missing = pad.verify_liveness(None, mandatory=True, threshold=0.85)
+        assert sec_missing.status == "ERROR"
+        assert sec_missing.is_live is False
+        print(f"  [OK] Independent PAD fail-closed verified: missing crop -> {sec_missing.status} ({sec_missing.reason_code})")
+
+        test_crop = Image.fromarray(np.random.randint(50, 200, (112, 112, 3), dtype=np.uint8))
+        sec_live = pad.verify_liveness(test_crop, mandatory=True, threshold=0.50)
+        assert sec_live.status in ["PASS", "UNCERTAIN"]
+        print(f"  [OK] Independent PAD liveness verification confirmed: {sec_live.status}")
 
         # ------------------------------------------------------------------
         # TEST 4: Atomic Attendance Commit & Idempotency

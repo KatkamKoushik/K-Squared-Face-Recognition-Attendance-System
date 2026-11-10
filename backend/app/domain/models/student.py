@@ -18,7 +18,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.core.database import Base
-from app.domain.enums import EnrollmentStatus
+from app.domain.enums import EnrollmentStatus, EnrollmentSubmissionStatus
 
 
 def utc_now() -> datetime:
@@ -83,4 +83,43 @@ class EnrollmentProfile(Base):
 
     __table_args__ = (
         Index("idx_profile_search", "student_id", "embedding_namespace", "is_active"),
+    )
+
+
+class EnrollmentSubmission(Base):
+    """
+    Staged student biometric enrollment submission for administrative verification.
+    Follows strict lifecycle: PENDING_REVIEW -> APPROVED / REJECTED / RECAPTURE_REQUIRED / WITHDRAWN.
+    Stored photographs reside in private access-controlled storage; never served publicly.
+    """
+    __tablename__ = "enrollment_submissions"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    roll_number: Mapped[str] = mapped_column(String(50), index=True, nullable=False)
+    full_name: Mapped[str] = mapped_column(String(100), nullable=False)
+    institutional_email: Mapped[str] = mapped_column(String(255), nullable=False)
+    department: Mapped[str] = mapped_column(String(100), nullable=False)
+    academic_year: Mapped[str] = mapped_column(String(50), nullable=False)
+    cohort_id: Mapped[Optional[str]] = mapped_column(String(36), ForeignKey("cohorts.id"), nullable=True)
+
+    photo_storage_path: Mapped[str] = mapped_column(String(500), nullable=False)
+    photo_sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+    photo_mime: Mapped[str] = mapped_column(String(50), nullable=False)
+
+    status: Mapped[EnrollmentSubmissionStatus] = mapped_column(
+        String(30), default=EnrollmentSubmissionStatus.PENDING_REVIEW, nullable=False, index=True
+    )
+    consent_acknowledged: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    rejection_reason: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+
+    reviewed_by_user_id: Mapped[Optional[str]] = mapped_column(String(36), ForeignKey("users.id"), nullable=True)
+    reviewed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+
+    cohort = relationship("Cohort")
+    reviewed_by = relationship("User")
+
+    __table_args__ = (
+        Index("idx_submission_status_created", "status", "created_at"),
+        Index("idx_submission_roll", "roll_number"),
     )

@@ -218,7 +218,7 @@ def test_get_db_session_rollback_on_exception(monkeypatch):
 # ==============================================================================
 
 def test_all_domain_models_registered_in_base_metadata():
-    """Guarantees all 27 domain entity tables are registered in Base.metadata."""
+    """Guarantees all 28 domain entity tables are registered in Base.metadata."""
     table_names = set(Base.metadata.tables.keys())
     expected_tables = {
         "academic_years",
@@ -233,6 +233,7 @@ def test_all_domain_models_registered_in_base_metadata():
         "commit_receipts",
         "departments",
         "enrollment_profiles",
+        "enrollment_submissions",
         "enrollments",
         "face_evidences",
         "faculty",

@@ -43,7 +43,7 @@ def enroll_face(roll_number: str, image_path: Path):
         sys.exit(1)
 
     # 2. Detect face using YuNet
-    detector = DetectorAdapter(strict_mode=False)
+    detector = DetectorAdapter(strict_mode=True)
     detections = detector.detect_faces(pil_img)
 
     if not detections:
@@ -57,7 +57,7 @@ def enroll_face(roll_number: str, image_path: Path):
     # 3. Extract 128-D embedding with 5-landmark alignment
     import cv2
     cv_img = cv2.cvtColor(np.array(pil_img), cv2.COLOR_RGB2BGR)
-    recognizer = RecognizerAdapter(strict_mode=False)
+    recognizer = RecognizerAdapter(strict_mode=True)
 
     if best_det.raw_face is not None:
         print("[INFO] Computing 5-landmark aligned SFace 128-D embedding (FaceRecognizerSF.alignCrop)...")
