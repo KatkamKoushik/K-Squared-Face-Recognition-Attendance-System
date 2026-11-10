@@ -104,18 +104,22 @@ class CommitService:
             )
 
         # 3. State Machine Guardrail
-        if session.state == SessionState.FINALIZED:
+        current_state_str = session.state.value if hasattr(session.state, "value") else str(session.state)
+        finalized_val = SessionState.FINALIZED.value if hasattr(SessionState.FINALIZED, "value") else str(SessionState.FINALIZED)
+        in_review_val = SessionState.IN_REVIEW.value if hasattr(SessionState.IN_REVIEW, "value") else str(SessionState.IN_REVIEW)
+
+        if current_state_str == finalized_val:
             raise StateTransitionError(
                 message="Attendance for this session has already been finalized.",
-                current_state=session.state.value,
+                current_state=current_state_str,
                 attempted_state="FINALIZED",
                 reason_code="SESSION_ALREADY_FINALIZED",
             )
 
-        if session.state != SessionState.IN_REVIEW:
+        if current_state_str != in_review_val:
             raise StateTransitionError(
-                message=f"Session must be in IN_REVIEW state before attendance can be committed (current: {session.state.value}).",
-                current_state=session.state.value,
+                message=f"Session must be in IN_REVIEW state before attendance can be committed (current: {current_state_str}).",
+                current_state=current_state_str,
                 attempted_state="FINALIZED",
                 reason_code="ILLEGAL_STATE_TRANSITION",
             )
@@ -307,10 +311,12 @@ class CommitService:
                 )
 
         # 2. State Guard
-        if session.state != SessionState.FINALIZED:
+        curr_state_val = session.state.value if hasattr(session.state, "value") else str(session.state)
+        fin_val = SessionState.FINALIZED.value if hasattr(SessionState.FINALIZED, "value") else str(SessionState.FINALIZED)
+        if curr_state_val != fin_val:
             raise StateTransitionError(
-                message=f"Attendance corrections can only be applied to FINALIZED sessions (current state: {session.state.value}).",
-                current_state=session.state.value,
+                message=f"Attendance corrections can only be applied to FINALIZED sessions (current state: {curr_state_val}).",
+                current_state=curr_state_val,
                 attempted_state="FINALIZED",
                 reason_code="SESSION_NOT_FINALIZED",
             )

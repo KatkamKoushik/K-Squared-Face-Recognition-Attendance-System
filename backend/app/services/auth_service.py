@@ -36,16 +36,18 @@ class AuthService:
         if faculty_id:
             claims["faculty_id"] = faculty_id
 
+        role_str = user.role.value if hasattr(user.role, "value") else str(user.role)
+        role_enum = user.role if isinstance(user.role, UserRole) else UserRole(role_str)
         token = create_access_token(
             subject=user.email,
-            role=user.role.value,
+            role=role_str,
             additional_claims=claims,
         )
         return TokenResponse(
             access_token=token,
             expires_in_minutes=60,
             user_id=user.id,
-            role=user.role,
+            role=role_enum,
             email=user.email,
         )
 
