@@ -4,7 +4,8 @@
  * Handles client-side bearer token injection for authenticated endpoints.
  */
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+const DEFAULT_REMOTE_API = "https://straddle-deflate-footwear.ngrok-free.dev/api/v1";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || (typeof window !== "undefined" ? "http://localhost:8000/api/v1" : DEFAULT_REMOTE_API);
 
 const AUTH_TOKEN_KEY = "kucet_frs_auth_token";
 const AUTH_USER_KEY = "kucet_frs_auth_user";
@@ -136,6 +137,7 @@ export async function fetchFromApi<T>(endpoint: string, options?: RequestInit): 
     const token = getAuthToken();
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
+      "ngrok-skip-browser-warning": "1",
       ...(options?.headers as Record<string, string> || {}),
     };
 
@@ -150,7 +152,6 @@ export async function fetchFromApi<T>(endpoint: string, options?: RequestInit): 
     });
 
     if (!res.ok) {
-      console.warn(`API error ${res.status} on ${endpoint}`);
       return null;
     }
 
@@ -159,8 +160,11 @@ export async function fetchFromApi<T>(endpoint: string, options?: RequestInit): 
       return json.data as T;
     }
     return json as T;
-  } catch (error) {
-    console.warn(`Fetch failure on ${endpoint}:`, error);
+  } catch (error: any) {
+    const msg = error?.cause?.code || error?.message || String(error);
+    if (process.env.NODE_ENV === "development") {
+      console.info(`[API Fallback] ${endpoint} unreachable (${msg}); using static snapshot.`);
+    }
     return null;
   }
 }

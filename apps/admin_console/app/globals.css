@@ -1,6 +1,26 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+@theme {
+  --color-institutional-navy: #1E3A5F;
+  --color-institutional-blue: #0284C7;
+  --color-institutional-gold: #A16207;
+  --color-institutional-bg: #F8FAFC;
+  --color-institutional-surface: #FFFFFF;
+  --color-institutional-border: #CBD5E1;
+  --color-institutional-text: #0F172A;
+  --color-institutional-muted: #475569;
+
+  --color-status-matched: #16A34A;
+  --color-status-review: #D97706;
+  --color-status-recapture: #EA580C;
+  --color-status-unknown: #64748B;
+  --color-status-error: #DC2626;
+  --color-status-committed: #0D9488;
+
+  --font-serif: "Crimson Text", Georgia, Cambria, "Times New Roman", serif;
+  --font-sans: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
 
 :root {
   --color-primary: #1e3a5f;
