@@ -1,6 +1,7 @@
 import React from "react";
 import { Building2, Calendar, Layers, ShieldCheck, Database, Plus } from "lucide-react";
 import { getDepartments, getCohorts, getTerms, DepartmentItem, CohortItem, TermItem } from "@/lib/api";
+import AcademicStructureActions from "./AcademicStructureActions";
 
 export default async function AcademicStructurePage() {
   const [serverDepts, serverCohorts, serverTerms] = await Promise.all([
@@ -33,13 +34,7 @@ export default async function AcademicStructurePage() {
               {isLive ? "LIVE CONTROL PLANE" : "STRUCTURAL DATABASE"}
             </span>
           </div>
-          <button
-            type="button"
-            className="inline-flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium bg-institutional-navy text-white hover:bg-institutional-navy/90 transition-colors shadow-xs"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Add Cohort</span>
-          </button>
+          <AcademicStructureActions departments={departments} />
         </div>
       </div>
 

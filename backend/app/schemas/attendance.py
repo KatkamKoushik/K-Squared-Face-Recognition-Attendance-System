@@ -5,7 +5,7 @@ FRS V7.1 K² — Atomic Attendance Commit & Analytics Schemas.
 from datetime import datetime
 from typing import Optional, List
 from pydantic import BaseModel, ConfigDict, Field
-from app.domain.enums import AttendanceStatus
+from app.domain.enums import AttendanceStatus, AppealStatus
 
 
 class StudentUnitDecision(BaseModel):
@@ -97,3 +97,27 @@ class ReceiptVerificationResponse(BaseModel):
     total_absent_records: int
     receipt_hash: str
     verified_at: datetime
+
+
+class AttendanceAppealCreate(BaseModel):
+    session_id: str
+    unit_id: str
+    reason: str = Field(..., min_length=5, max_length=500)
+    evidence_path: Optional[str] = None
+
+
+class AttendanceAppealResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    student_id: str
+    session_id: str
+    unit_id: str
+    reason: str
+    evidence_path: Optional[str] = None
+    status: AppealStatus
+    review_notes: Optional[str] = None
+    reviewed_by_user_id: Optional[str] = None
+    reviewed_at: Optional[datetime] = None
+    created_at: datetime
+

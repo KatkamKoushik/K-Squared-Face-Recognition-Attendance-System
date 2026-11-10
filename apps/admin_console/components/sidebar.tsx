@@ -18,13 +18,15 @@ import {
   ShieldCheck,
   FlaskConical,
   LogIn,
+  FileText,
 } from "lucide-react";
 import { logout, getStoredUser, StoredAuthUser } from "@/lib/api";
 
 const navigationItems = [
   { name: "Executive Overview", href: "/", icon: LayoutDashboard },
   { name: "Biometric Queue", href: "/admin/enrollment", icon: ShieldAlert },
-  { name: "Student Portal", href: "/enroll", icon: LogIn },
+  { name: "Attendance Appeals", href: "/admin/appeals", icon: FileText },
+  { name: "Student Portal", href: "/student/login", icon: LogIn },
   { name: "Academic Structure", href: "/academic/structure", icon: Building2 },
   { name: "Student Enrolment", href: "/students", icon: Users },
   { name: "Course Offerings", href: "/academic/offerings", icon: BookOpen },
@@ -46,7 +48,14 @@ export function AdminSidebar() {
     setUser(getStoredUser());
   }, [pathname]);
 
-  if (pathname === "/login" || pathname === "/admin/login" || pathname === "/enroll" || pathname === "/enrollment") {
+  if (
+    pathname === "/login" ||
+    pathname === "/admin/login" ||
+    pathname === "/enroll" ||
+    pathname === "/enrollment" ||
+    pathname === "/student/login" ||
+    pathname.startsWith("/student")
+  ) {
     return null;
   }
 

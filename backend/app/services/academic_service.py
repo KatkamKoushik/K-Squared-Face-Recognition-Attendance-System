@@ -71,7 +71,7 @@ class AcademicService:
 
     @staticmethod
     def get_academic_years(db: Session) -> List[AcademicYear]:
-        result = db.execute(select(AcademicYear).order_by(AcademicYear.name.desc()))
+        result = db.execute(select(AcademicYear).order_by(AcademicYear.year_code.desc()))
         return list(result.scalars().all())
 
     @staticmethod

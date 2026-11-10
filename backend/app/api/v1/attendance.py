@@ -2,7 +2,7 @@
 FRS V7.1 K² — Atomic Attendance Commit & Institutional Analytics Endpoints.
 """
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, status, Response
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from app.api.dependencies import get_current_user, get_current_faculty, get_correlation_id
@@ -161,3 +161,75 @@ def get_offering_analytics(
 
     analytics = AnalyticsService.get_offering_attendance_analytics(db, offering_id)
     return ResponseEnvelope(data=analytics, correlation_id=correlation_id)
+
+
+@router.get("/offerings/{offering_id}/export/csv")
+def export_offering_attendance_csv(
+    offering_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Exports finalized attendance records for an academic offering formatted as CSV.
+    Adheres strictly to the institutional denominator: attended_units / eligible_units.
+    """
+    import csv
+    import io
+
+    if current_user.role != UserRole.ADMIN:
+        faculty = db.execute(
+            select(Faculty).where(Faculty.user_id == current_user.id)
+        ).scalar_one_or_none()
+        if not faculty:
+            raise PermissionDeniedError(
+                message="User does not have an active faculty profile.",
+                reason_code="FACULTY_PROFILE_NOT_FOUND",
+            )
+        AcademicService.verify_faculty_assignment(
+            db=db,
+            faculty_id=faculty.id,
+            offering_id=offering_id,
+        )
+
+    analytics = AnalyticsService.get_offering_attendance_analytics(db, offering_id)
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow([
+        "Roll Number",
+        "Student Name",
+        "Attended Units",
+        "Conducted Units",
+        "Attendance Percentage",
+        "Institutional Status",
+    ])
+
+    for stat in analytics.student_stats:
+        pct_str = f"{stat.attendance_percent:.2f}%" if stat.attendance_percent is not None else "N/A"
+        status_label = "NOT_EVALUATED"
+        if stat.attendance_percent is not None:
+            if stat.attendance_percent >= 75.0:
+                status_label = "ELIGIBLE"
+            elif stat.attendance_percent >= 65.0:
+                status_label = "CONDONATION_REQUIRED"
+            else:
+                status_label = "DETENTION_RISK"
+
+        writer.writerow([
+            stat.roll_number,
+            stat.full_name,
+            stat.attended_conducted_units,
+            stat.eligible_conducted_units,
+            pct_str,
+            status_label,
+        ])
+
+    csv_data = output.getvalue()
+    return Response(
+        content=csv_data,
+        media_type="text/csv",
+        headers={
+            "Content-Disposition": f'attachment; filename="attendance_{offering_id[:8]}.csv"'
+        },
+    )
+

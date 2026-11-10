@@ -351,6 +351,9 @@ export interface SubjectOfferingItem {
   section: string;
   planned_units_default: number;
   is_active: boolean;
+  subject_code?: string;
+  subject_name?: string;
+  cohort_name?: string;
 }
 
 export interface AuthorizedClassGroupItem {
@@ -526,3 +529,202 @@ export async function requestRecaptureEnrollmentSubmission(id: string, reason: s
 export async function getAdminDashboardMetrics(): Promise<AdminDashboardMetrics | null> {
   return fetchFromApi<AdminDashboardMetrics>("/enrollment/dashboard/stats");
 }
+
+export interface StudentProfile {
+  id: string;
+  roll_number: string;
+  full_name: string;
+  institutional_email?: string;
+  cohort_name: string;
+  department_name: string;
+}
+
+export interface StudentAttendanceItem {
+  offering_id: string;
+  subject_code: string;
+  subject_name: string;
+  section: string;
+  total_sessions: number;
+  eligible_conducted_units: number;
+  attended_conducted_units: number;
+  attendance_percent: number | null;
+  eligibility_status: string;
+}
+
+export interface AttendanceAppealItem {
+  id: string;
+  student_id: string;
+  session_id: string;
+  unit_id: string;
+  reason: string;
+  evidence_path?: string;
+  status: "PENDING" | "APPROVED" | "REJECTED";
+  review_notes?: string;
+  reviewed_at?: string;
+  created_at: string;
+}
+
+export async function getStudentProfile(): Promise<StudentProfile | null> {
+  return fetchFromApi<StudentProfile>("/student/me");
+}
+
+export async function getStudentAttendanceSummary(): Promise<StudentAttendanceItem[] | null> {
+  return fetchFromApi<StudentAttendanceItem[]>("/student/me/attendance");
+}
+
+export async function getStudentOfferingLedger(offeringId: string): Promise<any | null> {
+  return fetchFromApi<any>(`/student/me/attendance/offerings/${offeringId}`);
+}
+
+export async function submitStudentAppeal(sessionId: string, unitId: string, reason: string): Promise<AttendanceAppealItem> {
+  const token = getAuthToken();
+  const res = await fetch(`${API_BASE}/student/me/appeals`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ session_id: sessionId, unit_id: unitId, reason }),
+  });
+  const body = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new Error(body?.detail || body?.message || "Failed to submit appeal");
+  }
+  return body.data;
+}
+
+export async function getStudentAppeals(): Promise<AttendanceAppealItem[] | null> {
+  return fetchFromApi<AttendanceAppealItem[]>("/student/me/appeals");
+}
+
+export async function getAllAppeals(): Promise<AttendanceAppealItem[] | null> {
+  return fetchFromApi<AttendanceAppealItem[]>("/student/appeals/all");
+}
+
+export async function reviewAppeal(appealId: string, approved: boolean, reviewNotes: string): Promise<AttendanceAppealItem> {
+  const token = getAuthToken();
+  const res = await fetch(`${API_BASE}/student/appeals/${appealId}/review`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ approved, review_notes: reviewNotes }),
+  });
+  const body = await res.json().catch(() => null);
+  if (!res.ok) {
+    throw new Error(body?.detail || body?.message || "Failed to review appeal");
+  }
+  return body.data;
+}
+
+export async function createDepartment(code: string, name: string): Promise<DepartmentItem> {
+  const token = getAuthToken();
+  const res = await fetch(`${API_BASE}/academic/departments`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ code, name }),
+  });
+  const body = await res.json().catch(() => null);
+  if (!res.ok) throw new Error(body?.detail || "Failed to create department");
+  return body.data;
+}
+
+export async function createCohort(departmentId: string, name: string, admissionYear: number, graduationYear: number): Promise<CohortItem> {
+  const token = getAuthToken();
+  const res = await fetch(`${API_BASE}/academic/cohorts`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ department_id: departmentId, name, admission_year: admissionYear, graduation_year: graduationYear }),
+  });
+  const body = await res.json().catch(() => null);
+  if (!res.ok) throw new Error(body?.detail || "Failed to create cohort");
+  return body.data;
+}
+
+export async function createTerm(academicYearId: string, termType: string, startDate: string, endDate: string): Promise<TermItem> {
+  const token = getAuthToken();
+  const res = await fetch(`${API_BASE}/academic/terms`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ academic_year_id: academicYearId, term_type: termType, start_date: startDate, end_date: endDate }),
+  });
+  const body = await res.json().catch(() => null);
+  if (!res.ok) throw new Error(body?.detail || "Failed to create term");
+  return body.data;
+}
+
+export async function createSubject(code: string, name: string, departmentId: string, credits: number = 3): Promise<any> {
+  const token = getAuthToken();
+  const res = await fetch(`${API_BASE}/academic/subjects`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ code, name, department_id: departmentId, credits }),
+  });
+  const body = await res.json().catch(() => null);
+  if (!res.ok) throw new Error(body?.detail || "Failed to create subject");
+  return body.data;
+}
+
+export async function createOffering(subjectId: string, termId: string, primaryCohortId: string, section: string = "A"): Promise<SubjectOfferingItem> {
+  const token = getAuthToken();
+  const res = await fetch(`${API_BASE}/academic/offerings`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ subject_id: subjectId, term_id: termId, primary_cohort_id: primaryCohortId, section }),
+  });
+  const body = await res.json().catch(() => null);
+  if (!res.ok) throw new Error(body?.detail || "Failed to create offering");
+  return body.data;
+}
+
+export async function assignFaculty(facultyId: string, offeringId: string, startDate: string, endDate: string): Promise<FacultyAssignmentItem> {
+  const token = getAuthToken();
+  const res = await fetch(`${API_BASE}/academic/faculty-assignments`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ faculty_id: facultyId, offering_id: offeringId, start_date: startDate, end_date: endDate }),
+  });
+  const body = await res.json().catch(() => null);
+  if (!res.ok) throw new Error(body?.detail || "Failed to assign faculty");
+  return body.data;
+}
+
+export async function importStudentsCsv(file: File): Promise<{ imported_count: number; skipped_count: number; errors: string[] }> {
+  const token = getAuthToken();
+  const formData = new FormData();
+  formData.append("file", file);
+  const res = await fetch(`${API_BASE}/academic/import/students/csv`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: formData,
+  });
+  const body = await res.json().catch(() => null);
+  if (!res.ok) throw new Error(body?.detail || "CSV import failed");
+  return body.data;
+}
+
+export function getOfferingAttendanceExportUrl(offeringId: string): string {
+  return `${API_BASE}/offerings/${offeringId}/export/csv`;
+}
+

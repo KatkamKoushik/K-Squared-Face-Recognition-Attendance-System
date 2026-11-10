@@ -6,8 +6,15 @@
 export enum UserRole {
   ADMIN = "ADMIN",
   FACULTY = "FACULTY",
+  STUDENT = "STUDENT",
   OPERATOR = "OPERATOR",
   WORKER = "WORKER",
+}
+
+export enum AppealStatus {
+  PENDING = "PENDING",
+  APPROVED = "APPROVED",
+  REJECTED = "REJECTED",
 }
 
 export enum EnrollmentStatus {

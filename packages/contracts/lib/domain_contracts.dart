@@ -6,8 +6,15 @@ library;
 enum UserRole {
   admin,
   faculty,
+  student,
   operator,
   worker,
+}
+
+enum AppealStatus {
+  pending,
+  approved,
+  rejected,
 }
 
 enum EnrollmentStatus {

@@ -1,6 +1,7 @@
 import React from "react";
 import { BookOpen, UserCheck, Shield, Database, Plus, Clock } from "lucide-react";
 import { getOfferings, getFacultyAssignments, SubjectOfferingItem, FacultyAssignmentItem } from "@/lib/api";
+import CourseOfferingsActions from "./CourseOfferingsActions";
 
 export default async function CourseOfferingsPage() {
   const [serverOfferings, serverAssignments] = await Promise.all([
@@ -31,13 +32,7 @@ export default async function CourseOfferingsPage() {
               {isLive ? "LIVE OFFERINGS REGISTRY" : "OFFERINGS DATABASE"}
             </span>
           </div>
-          <button
-            type="button"
-            className="inline-flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium bg-institutional-navy text-white hover:bg-institutional-navy/90 transition-colors shadow-xs"
-          >
-            <Plus className="w-4 h-4" />
-            <span>New Course Offering</span>
-          </button>
+          <CourseOfferingsActions offerings={offerings} />
         </div>
       </div>
 
