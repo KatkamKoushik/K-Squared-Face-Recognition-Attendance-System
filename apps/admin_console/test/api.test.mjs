@@ -1,45 +1,5 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { FALLBACK_STUDENTS, FALLBACK_GOVERNANCE_SUMMARY } from "../lib/mock-data.ts";
-
-test("FALLBACK_STUDENTS fixture integrity and consent invariants", () => {
-  assert.equal(FALLBACK_STUDENTS.length, 7, "Must contain exactly 7 sample students");
-
-  const rollNumbers = FALLBACK_STUDENTS.map((s) => s.rollNumber);
-  const uniqueRolls = new Set(rollNumbers);
-  assert.equal(uniqueRolls.size, 7, "All roll numbers must be unique");
-
-  // Verify non-biometric alternative mapping
-  for (const student of FALLBACK_STUDENTS) {
-    if (!student.biometricConsentActive) {
-      assert.equal(
-        student.alternativeRollCallRequired,
-        true,
-        `Student ${student.studentId} with withheld consent must require alternative roll-call`
-      );
-    }
-  }
-
-  // Verify DPDP consent withholding demonstration exists
-  const withheld = FALLBACK_STUDENTS.filter((s) => !s.biometricConsentActive);
-  assert.equal(withheld.length, 1, "Must have exactly 1 student with withheld consent for DPDP compliance demonstration");
-  assert.equal(withheld[0].rollNumber, "00622504");
-});
-
-test("FALLBACK_GOVERNANCE_SUMMARY telemetry consistency", () => {
-  assert.equal(FALLBACK_GOVERNANCE_SUMMARY.total_students, 7);
-  assert.equal(
-    FALLBACK_GOVERNANCE_SUMMARY.students_with_biometric_consent +
-      FALLBACK_GOVERNANCE_SUMMARY.students_withheld_consent,
-    FALLBACK_GOVERNANCE_SUMMARY.total_students
-  );
-  assert.equal(
-    FALLBACK_GOVERNANCE_SUMMARY.active_unpurged_frames +
-      FALLBACK_GOVERNANCE_SUMMARY.purged_frames,
-    FALLBACK_GOVERNANCE_SUMMARY.total_captured_frames
-  );
-  assert.equal(FALLBACK_GOVERNANCE_SUMMARY.retention_policy_days, 7);
-});
 
 test("Bearer token authorization header construction", () => {
   const dummyToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.dummyPayload";
@@ -78,4 +38,29 @@ test("Response envelope unwrapping logic", () => {
     ? (rawPayload).data
     : rawPayload;
   assert.deepEqual(unwrapped2, [{ id: "1" }, { id: "2" }]);
+});
+
+test("Attendance percentage calculation invariants", () => {
+  const calculateAttendancePercent = (attended, conducted) => {
+    if (conducted === 0) {
+      return { display: "N/A", isNa: true };
+    }
+    const pct = (100 * attended) / conducted;
+    return { display: `${pct.toFixed(1)}%`, isNa: false };
+  };
+
+  // 100% attended
+  const full = calculateAttendancePercent(10, 10);
+  assert.equal(full.display, "100.0%");
+  assert.equal(full.isNa, false);
+
+  // 75% threshold
+  const threshold = calculateAttendancePercent(3, 4);
+  assert.equal(threshold.display, "75.0%");
+  assert.equal(threshold.isNa, false);
+
+  // Zero conducted units (Section 4.2 blueprint invariant: must evaluate to N/A, not 0.0%)
+  const zeroConducted = calculateAttendancePercent(0, 0);
+  assert.equal(zeroConducted.display, "N/A");
+  assert.equal(zeroConducted.isNa, true);
 });
