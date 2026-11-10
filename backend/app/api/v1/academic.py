@@ -204,8 +204,8 @@ def list_offerings(
             subjectName=f"{sub_name} ({sub_code})" if sub_code else sub_name,
             cohort_name=cohort_name,
             cohort=cohort_name,
-            enrolled_count=student_count or 42,
-            enrolledCount=student_count or 42,
+            enrolled_count=student_count,
+            enrolledCount=student_count,
         )
         items.append(item)
 

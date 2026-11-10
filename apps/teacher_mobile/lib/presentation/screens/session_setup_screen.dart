@@ -65,7 +65,7 @@ class SessionSetupScreen extends ConsumerWidget {
                         runSpacing: 6,
                         children: [
                           _ContextPill(label: 'Term: ${offering['term'] ?? 'Current Term'}'),
-                          _ContextPill(label: '${offering['enrolledCount'] ?? 66} Roster Size'),
+                          _ContextPill(label: '${offering['enrolledCount'] ?? offering['enrolled_count'] ?? 0} Roster Size'),
                         ],
                       ),
                     ],
