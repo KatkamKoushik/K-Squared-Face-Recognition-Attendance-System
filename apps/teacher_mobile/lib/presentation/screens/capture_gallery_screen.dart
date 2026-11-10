@@ -30,6 +30,9 @@ class _CaptureGalleryScreenState extends ConsumerState<CaptureGalleryScreen> {
 
       if (photo != null) {
         final bytes = await photo.readAsBytes();
+        if (bytes.isEmpty) {
+          throw Exception('Captured photo was empty (0 bytes). Check camera/storage permissions and retry.');
+        }
         final hash = sha256.convert(bytes).toString();
         final frameId = 'FRM-${_uuid.v4().substring(0, 8).toUpperCase()}';
 
@@ -45,8 +48,9 @@ class _CaptureGalleryScreenState extends ConsumerState<CaptureGalleryScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Camera capture failed: ${e.toString()}'),
+            content: Text('Camera/Picker failed: ${e.toString().replaceFirst('Exception: ', '')}'),
             backgroundColor: AppTheme.errorRed,
+            duration: const Duration(seconds: 4),
           ),
         );
       }
@@ -326,8 +330,16 @@ class _CaptureGalleryScreenState extends ConsumerState<CaptureGalleryScreen> {
                                   ),
                                 );
                               }
-                            } catch (_) {
-                              // Error handled in sessionState.errorMessage
+                            } catch (e) {
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('Processing failed: ${e.toString().replaceFirst('Exception: ', '')}'),
+                                    backgroundColor: AppTheme.errorRed,
+                                    duration: const Duration(seconds: 5),
+                                  ),
+                                );
+                              }
                             }
                           },
                   ),

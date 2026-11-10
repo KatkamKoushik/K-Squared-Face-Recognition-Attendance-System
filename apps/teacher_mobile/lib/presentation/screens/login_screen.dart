@@ -122,7 +122,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         isTesting = false;
                         testResult = ok
                             ? 'Connected successfully (HTTP 200)'
-                            : 'Server unreachable. Verify host IP & port.';
+                            : (api.lastConnectionError != null
+                                ? 'Unreachable: ${api.lastConnectionError}'
+                                : 'Server unreachable. Verify host IP & port.');
                         if (!ok) api.baseUrl = prev;
                       });
                     },

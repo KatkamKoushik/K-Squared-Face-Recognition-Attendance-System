@@ -220,11 +220,11 @@ class SessionNotifier extends Notifier<SessionWorkflowState> {
       );
     } catch (e) {
       state = state.copyWith(
-        state: _api.liveDemoMode ? SessionState.capturing : SessionState.inReview,
+        state: SessionState.capturing,
         uploadProgress: null,
         errorMessage: e.toString().replaceFirst('Exception: ', ''),
       );
-      if (_api.liveDemoMode) rethrow;
+      rethrow;
     }
   }
 
@@ -298,20 +298,43 @@ class SessionNotifier extends Notifier<SessionWorkflowState> {
       return null;
     }
 
-    final serverReceipt = await _api.commitSession(
-      sessionId: state.sessionId,
-      idempotencyKey: idempotencyKey,
-      conductedUnitsCount: state.conductedUnitsCount,
-      candidates: state.candidates,
-    );
-
-    if (serverReceipt != null) {
-      state = state.copyWith(
-        state: SessionState.finalized,
-        receipt: serverReceipt,
-        errorMessage: null,
+    try {
+      final serverReceipt = await _api.commitSession(
+        sessionId: state.sessionId,
+        idempotencyKey: idempotencyKey,
+        conductedUnitsCount: state.conductedUnitsCount,
+        candidates: state.candidates,
       );
-      return serverReceipt;
+
+      if (serverReceipt != null) {
+        state = state.copyWith(
+          state: SessionState.finalized,
+          receipt: serverReceipt,
+          errorMessage: null,
+        );
+        return serverReceipt;
+      }
+    } catch (e) {
+      final err = e.toString().replaceFirst('Exception: ', '');
+      _journal.enqueueMutation(
+        QueuedMutation(
+          id: 'MUT-${uuid.v4().substring(0, 8).toUpperCase()}',
+          mutationType: 'SESSION_COMMIT',
+          accountId: 'FACULTY-KUCET',
+          sessionId: state.sessionId,
+          idempotencyKey: idempotencyKey,
+          payload: {
+            'session_id': state.sessionId,
+            'conducted_units_count': state.conductedUnitsCount,
+          },
+          createdAt: DateTime.now(),
+        ),
+      );
+
+      state = state.copyWith(
+        errorMessage: 'Commit failed: $err. Mutation queued in offline journal.',
+      );
+      return null;
     }
 
     _journal.enqueueMutation(
@@ -341,24 +364,28 @@ class SessionNotifier extends Notifier<SessionWorkflowState> {
     int syncedCount = 0;
     for (final mutation in pending) {
       if (mutation.mutationType == 'SESSION_COMMIT') {
-        final serverReceipt = await _api.commitSession(
-          sessionId: mutation.sessionId,
-          idempotencyKey: mutation.idempotencyKey,
-          conductedUnitsCount: mutation.payload['conducted_units_count'] as int? ?? state.conductedUnitsCount,
-          candidates: state.candidates,
-        );
-        if (serverReceipt != null) {
-          _journal.markSynced(mutation.id);
-          syncedCount++;
-          if (mutation.sessionId == state.sessionId) {
-            state = state.copyWith(
-              state: SessionState.finalized,
-              receipt: serverReceipt,
-              errorMessage: null,
-            );
+        try {
+          final serverReceipt = await _api.commitSession(
+            sessionId: mutation.sessionId,
+            idempotencyKey: mutation.idempotencyKey,
+            conductedUnitsCount: mutation.payload['conducted_units_count'] as int? ?? state.conductedUnitsCount,
+            candidates: state.candidates,
+          );
+          if (serverReceipt != null) {
+            _journal.markSynced(mutation.id);
+            syncedCount++;
+            if (mutation.sessionId == state.sessionId) {
+              state = state.copyWith(
+                state: SessionState.finalized,
+                receipt: serverReceipt,
+                errorMessage: null,
+              );
+            }
+          } else {
+            _journal.recordFailure(mutation.id, 'Connection unreachable during background sync');
           }
-        } else {
-          _journal.recordFailure(mutation.id, 'Connection unreachable during background sync');
+        } catch (e) {
+          _journal.recordFailure(mutation.id, e.toString().replaceFirst('Exception: ', ''));
         }
       }
     }
@@ -367,14 +394,20 @@ class SessionNotifier extends Notifier<SessionWorkflowState> {
 
   Future<CommitReceiptResponse?> checkCommitReceiptStatus() async {
     if (state.sessionId.isEmpty) return null;
-    final serverReceipt = await _api.getSessionReceipt(state.sessionId);
-    if (serverReceipt != null) {
+    try {
+      final serverReceipt = await _api.getSessionReceipt(state.sessionId);
+      if (serverReceipt != null) {
+        state = state.copyWith(
+          state: SessionState.finalized,
+          receipt: serverReceipt,
+          errorMessage: null,
+        );
+        return serverReceipt;
+      }
+    } catch (e) {
       state = state.copyWith(
-        state: SessionState.finalized,
-        receipt: serverReceipt,
-        errorMessage: null,
+        errorMessage: 'Receipt status check failed: ${e.toString().replaceFirst('Exception: ', '')}',
       );
-      return serverReceipt;
     }
     return null;
   }

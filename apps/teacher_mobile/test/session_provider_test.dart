@@ -3,8 +3,40 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:frs_teacher_app/core/network/api_service.dart';
 import 'package:frs_teacher_app/logic/session_provider.dart';
 import 'package:frs_teacher_app/data/models/domain_contracts.dart';
+import 'package:frs_teacher_app/data/mock/mock_teacher_data.dart';
 
 class MockServerSuccessApiService extends FrsApiService {
+  @override
+  Future<String?> createSession({
+    required String offeringId,
+    required int plannedUnits,
+  }) async {
+    return 'SES-MOCK-001';
+  }
+
+  @override
+  Future<bool> uploadFrame({
+    required String sessionId,
+    required String batchId,
+    required int frameIndex,
+    required List<int> imageBytes,
+    required String filename,
+  }) async {
+    return true;
+  }
+
+  @override
+  Future<Map<String, dynamic>> pollProposalData({
+    required String sessionId,
+    int maxAttempts = 6,
+    Duration interval = const Duration(seconds: 1),
+  }) async {
+    return {
+      'candidates': MockTeacherData.getInitialCandidates().map((c) => c.toJson()).toList(),
+      'unknown_faces': MockTeacherData.getUnassignedObservations().map((o) => o.toJson()).toList(),
+    };
+  }
+
   @override
   Future<CommitReceiptResponse?> commitSession({
     required String sessionId,
@@ -41,6 +73,18 @@ class MockServerSuccessApiService extends FrsApiService {
   }
 }
 
+class MockServerOfflineCommitFailureApiService extends MockServerSuccessApiService {
+  @override
+  Future<CommitReceiptResponse?> commitSession({
+    required String sessionId,
+    required String idempotencyKey,
+    required int conductedUnitsCount,
+    required List<CandidateProposalItem> candidates,
+  }) async {
+    throw Exception('Connection refused (OS Error: Connection refused, errno = 111)');
+  }
+}
+
 void main() {
   group('Session Workflow Riverpod State Machine', () {
     test('Initial state is draft with 2 conducted units default', () {
@@ -55,7 +99,11 @@ void main() {
     });
 
     test('Selecting offering transitions state to rosterFrozen and assigns session IDs', () async {
-      final container = ProviderContainer();
+      final container = ProviderContainer(
+        overrides: [
+          apiProvider.overrideWithValue(MockServerSuccessApiService()),
+        ],
+      );
       addTearDown(container.dispose);
 
       await container.read(sessionProvider.notifier).selectOffering({
@@ -90,7 +138,10 @@ void main() {
       addTearDown(container.dispose);
 
       final notifier = container.read(sessionProvider.notifier);
-      notifier.addCapturedFrame(frameId: 'FRM-01', hash: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855');
+      notifier.addCapturedFrame(
+        frameId: 'FRM-01',
+        hash: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+      );
 
       var state = container.read(sessionProvider);
       expect(state.state, SessionState.capturing);
@@ -101,25 +152,69 @@ void main() {
       expect(state.capturedFrames, isEmpty);
     });
 
-    test('Submitting batch updates state to inReview with populated candidates', () async {
-      final container = ProviderContainer();
+    test('Submitting batch updates state to inReview with populated candidates on server success', () async {
+      final container = ProviderContainer(
+        overrides: [
+          apiProvider.overrideWithValue(MockServerSuccessApiService()),
+        ],
+      );
       addTearDown(container.dispose);
 
       final notifier = container.read(sessionProvider.notifier);
       await notifier.selectOffering({'id': 'OFF-CS401-2026'});
+      notifier.addCapturedFrame(
+        frameId: 'FRM-01',
+        hash: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+        bytes: [1, 2, 3],
+      );
+
       await notifier.submitBatchForProcessing();
 
       final state = container.read(sessionProvider);
       expect(state.state, SessionState.inReview);
       expect(state.candidates, isNotEmpty);
+      expect(state.errorMessage, isNull);
     });
 
-    test('P0-G: Missing faculty adjudication rejects commit without silent absent defaults', () async {
-      final container = ProviderContainer();
+    test('Submitting batch failure when backend is unreachable stays in capturing and records real error without silent mock fallback', () async {
+      final container = ProviderContainer(); // Uses default FrsApiService with no server running
       addTearDown(container.dispose);
 
       final notifier = container.read(sessionProvider.notifier);
       await notifier.selectOffering({'id': 'OFF-CS401-2026'});
+
+      notifier.addCapturedFrame(
+        frameId: 'FRM-01',
+        hash: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+        bytes: [1, 2, 3],
+      );
+
+      await expectLater(
+        notifier.submitBatchForProcessing(),
+        throwsA(isA<Exception>()),
+      );
+
+      final state = container.read(sessionProvider);
+      expect(state.state, SessionState.capturing);
+      expect(state.errorMessage, isNotNull);
+      expect(state.candidates, isEmpty);
+    });
+
+    test('P0-G: Missing faculty adjudication rejects commit without silent absent defaults', () async {
+      final container = ProviderContainer(
+        overrides: [
+          apiProvider.overrideWithValue(MockServerSuccessApiService()),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      final notifier = container.read(sessionProvider.notifier);
+      await notifier.selectOffering({'id': 'OFF-CS401-2026'});
+      notifier.addCapturedFrame(
+        frameId: 'FRM-01',
+        hash: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+        bytes: [1, 2, 3],
+      );
       await notifier.submitBatchForProcessing();
 
       // Attempt commit while unassigned/unmatched candidates are unadjudicated
@@ -131,26 +226,37 @@ void main() {
       expect(state.errorMessage, contains('Adjudication incomplete'));
     });
 
-    test('P0.4: Committing offline after adjudication forbids client-minted receipt and retains inReview state', () async {
-      final container = ProviderContainer();
+    test('P0.4: Committing offline after adjudication forbids client-minted receipt, records real error and enqueues to journal', () async {
+      final container = ProviderContainer(
+        overrides: [
+          apiProvider.overrideWithValue(MockServerOfflineCommitFailureApiService()),
+        ],
+      );
       addTearDown(container.dispose);
 
       final notifier = container.read(sessionProvider.notifier);
       await notifier.selectOffering({'id': 'OFF-CS401-2026'});
+      notifier.addCapturedFrame(
+        frameId: 'FRM-01',
+        hash: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+        bytes: [1, 2, 3],
+      );
       await notifier.submitBatchForProcessing();
 
       // Explicitly adjudicate unconfirmed candidates
       notifier.markAllUnadjudicatedAsAbsent();
 
-      // Attempt commit without backend server running
+      // Attempt commit with failing/offline server
       final receipt = await notifier.commitFinalAttendance();
       final state = container.read(sessionProvider);
+      final journal = container.read(offlineSyncJournalProvider);
 
       // P0.4: Forbid client from entering SessionState.finalized without authoritative server receipt
       expect(receipt, isNull);
       expect(state.state, SessionState.inReview);
       expect(state.receipt, isNull);
-      expect(state.errorMessage, contains('Client-minted offline receipts are prohibited'));
+      expect(state.errorMessage, contains('Commit failed: Connection refused'));
+      expect(journal.pendingCount, 1);
     });
 
     test('P0.4 & P0-G: Committing after explicit adjudication transitions to finalized', () async {
@@ -163,6 +269,11 @@ void main() {
 
       final notifier = container.read(sessionProvider.notifier);
       await notifier.selectOffering({'id': 'OFF-CS401-2026'});
+      notifier.addCapturedFrame(
+        frameId: 'FRM-01',
+        hash: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+        bytes: [1, 2, 3],
+      );
       await notifier.submitBatchForProcessing();
 
       // Explicitly adjudicate unconfirmed candidates

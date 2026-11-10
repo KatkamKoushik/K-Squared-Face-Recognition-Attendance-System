@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../../data/models/domain_contracts.dart';
-import '../../data/mock/mock_teacher_data.dart';
 
 /// FRS API Service connecting Flutter Teacher Client to FastAPI Control Plane.
 /// Conforms to canonical OpenAPI contracts and unwraps ResponseEnvelope wrappers.
@@ -16,12 +15,13 @@ class FrsApiService {
   final http.Client _client;
   String? authToken;
   bool liveDemoMode;
+  String? lastConnectionError;
 
   FrsApiService({
     String? baseUrl,
     http.Client? client,
     this.authToken,
-    this.liveDemoMode = false,
+    this.liveDemoMode = true,
   })  : baseUrl = baseUrl ?? defaultBaseUrl,
         _client = client ?? http.Client();
 
@@ -49,22 +49,29 @@ class FrsApiService {
 
   /// Verifies connectivity to the FastAPI control plane endpoint.
   Future<bool> checkConnection() async {
+    lastConnectionError = null;
     try {
       final res = await _client.get(
         Uri.parse('$baseUrl/health/liveness'),
         headers: {'Accept': 'application/json'},
-      ).timeout(const Duration(seconds: 3));
-      return res.statusCode == 200;
-    } catch (_) {
-      try {
-        final resAlt = await _client.get(
-          Uri.parse('$baseUrl/health/readiness'),
-          headers: {'Accept': 'application/json'},
-        ).timeout(const Duration(seconds: 3));
-        return resAlt.statusCode == 200;
-      } catch (_) {
-        return false;
-      }
+      ).timeout(const Duration(seconds: 4));
+      if (res.statusCode == 200) return true;
+      lastConnectionError = 'Liveness probe returned HTTP ${res.statusCode}: ${res.body}';
+    } catch (e) {
+      lastConnectionError = 'Liveness probe failed: ${e.toString().replaceFirst("Exception: ", "")}';
+    }
+
+    try {
+      final resAlt = await _client.get(
+        Uri.parse('$baseUrl/health/readiness'),
+        headers: {'Accept': 'application/json'},
+      ).timeout(const Duration(seconds: 4));
+      if (resAlt.statusCode == 200) return true;
+      lastConnectionError = 'Readiness probe returned HTTP ${resAlt.statusCode}: ${resAlt.body}';
+      return false;
+    } catch (eAlt) {
+      lastConnectionError = eAlt.toString().replaceFirst("Exception: ", "");
+      return false;
     }
   }
 
@@ -74,30 +81,34 @@ class FrsApiService {
     required String email,
     required String password,
   }) async {
-    try {
-      final res = await _client.post(
-        Uri.parse('$baseUrl/auth/login'),
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode({
-          'email': email,
-          'password': password,
-        }),
-      ).timeout(const Duration(seconds: 6));
+    final res = await _client.post(
+      Uri.parse('$baseUrl/auth/login'),
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        'email': email,
+        'password': password,
+      }),
+    ).timeout(const Duration(seconds: 8));
 
-      if (res.statusCode == 200) {
-        final payload = _unwrap(res);
-        if (payload is Map<String, dynamic>) {
-          authToken = payload['access_token'] as String?;
-          return payload;
-        }
+    if (res.statusCode == 200) {
+      final payload = _unwrap(res);
+      if (payload is Map<String, dynamic>) {
+        authToken = payload['access_token'] as String?;
+        return payload;
       }
-    } catch (e) {
-      if (liveDemoMode) rethrow;
     }
-    return null;
+
+    String detail = 'HTTP ${res.statusCode}';
+    try {
+      final err = jsonDecode(res.body);
+      if (err is Map && err.containsKey('detail')) {
+        detail = err['detail'].toString();
+      }
+    } catch (_) {}
+    throw Exception('Login rejected ($detail)');
   }
 
   /// Clears active JWT session token.
@@ -107,25 +118,18 @@ class FrsApiService {
 
   /// GET /academic/offerings
   Future<List<Map<String, dynamic>>> getAssignedOfferings() async {
-    try {
-      final res = await _client.get(
-        Uri.parse('$baseUrl/academic/offerings'),
-        headers: _headers(),
-      ).timeout(const Duration(seconds: 6));
+    final res = await _client.get(
+      Uri.parse('$baseUrl/academic/offerings'),
+      headers: _headers(),
+    ).timeout(const Duration(seconds: 8));
 
-      if (res.statusCode == 200) {
-        final payload = _unwrap(res);
-        if (payload is List) {
-          return payload.cast<Map<String, dynamic>>();
-        }
+    if (res.statusCode == 200) {
+      final payload = _unwrap(res);
+      if (payload is List) {
+        return payload.cast<Map<String, dynamic>>();
       }
-    } catch (e) {
-      if (liveDemoMode) rethrow;
     }
-    if (liveDemoMode) {
-      throw Exception('Failed to load assigned subject offerings from backend ($baseUrl).');
-    }
-    return MockTeacherData.sampleOfferings;
+    throw Exception('Failed to load assigned subject offerings from $baseUrl (HTTP ${res.statusCode}): ${res.body}');
   }
 
   /// POST /sessions
@@ -133,29 +137,22 @@ class FrsApiService {
     required String offeringId,
     required int plannedUnits,
   }) async {
-    try {
-      final res = await _client.post(
-        Uri.parse('$baseUrl/sessions'),
-        headers: _headers(),
-        body: jsonEncode({
-          'offering_id': offeringId,
-          'planned_units': plannedUnits,
-        }),
-      ).timeout(const Duration(seconds: 6));
+    final res = await _client.post(
+      Uri.parse('$baseUrl/sessions'),
+      headers: _headers(),
+      body: jsonEncode({
+        'offering_id': offeringId,
+        'planned_units': plannedUnits,
+      }),
+    ).timeout(const Duration(seconds: 8));
 
-      if (res.statusCode == 200 || res.statusCode == 201) {
-        final payload = _unwrap(res);
-        if (payload is Map<String, dynamic>) {
-          return payload['id'] as String?;
-        }
+    if (res.statusCode == 200 || res.statusCode == 201) {
+      final payload = _unwrap(res);
+      if (payload is Map<String, dynamic>) {
+        return payload['id'] as String?;
       }
-    } catch (e) {
-      if (liveDemoMode) rethrow;
     }
-    if (liveDemoMode) {
-      throw Exception('Server session registration failed on $baseUrl.');
-    }
-    return 'SES-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}';
+    throw Exception('Server session registration failed on $baseUrl (HTTP ${res.statusCode}): ${res.body}');
   }
 
   /// POST /sessions/{session_id}/batches/{batch_id}/frames
@@ -167,56 +164,44 @@ class FrsApiService {
     required List<int> imageBytes,
     required String filename,
   }) async {
-    try {
-      final uri = Uri.parse('$baseUrl/sessions/$sessionId/batches/$batchId/frames');
-      final request = http.MultipartRequest('POST', uri);
-      if (authToken != null && authToken!.isNotEmpty) {
-        request.headers['Authorization'] = 'Bearer $authToken';
-      }
-      request.headers['Accept'] = 'application/json';
-      request.fields['frame_index'] = frameIndex.toString();
-      request.files.add(
-        http.MultipartFile.fromBytes(
-          'file',
-          imageBytes,
-          filename: filename,
-        ),
-      );
-
-      final streamedResponse = await _client.send(request).timeout(const Duration(seconds: 15));
-      final res = await http.Response.fromStream(streamedResponse);
-      return res.statusCode == 200 || res.statusCode == 201;
-    } catch (e) {
-      if (liveDemoMode) rethrow;
-      return false;
+    final uri = Uri.parse('$baseUrl/sessions/$sessionId/batches/$batchId/frames');
+    final request = http.MultipartRequest('POST', uri);
+    if (authToken != null && authToken!.isNotEmpty) {
+      request.headers['Authorization'] = 'Bearer $authToken';
     }
+    request.headers['Accept'] = 'application/json';
+    request.fields['frame_index'] = frameIndex.toString();
+    request.files.add(
+      http.MultipartFile.fromBytes(
+        'file',
+        imageBytes,
+        filename: filename,
+      ),
+    );
+
+    final streamedResponse = await _client.send(request).timeout(const Duration(seconds: 20));
+    final res = await http.Response.fromStream(streamedResponse);
+    if (res.statusCode == 200 || res.statusCode == 201) {
+      return true;
+    }
+    throw Exception('Photo upload rejected by server on $uri (HTTP ${res.statusCode}): ${res.body}');
   }
 
   /// GET /sessions/{id}/proposal
   /// Retrieves live vision worker candidate proposals and unknown observations.
   Future<Map<String, dynamic>> getSessionProposalData(String sessionId) async {
-    try {
-      final res = await _client.get(
-        Uri.parse('$baseUrl/sessions/$sessionId/proposal'),
-        headers: _headers(),
-      ).timeout(const Duration(seconds: 6));
+    final res = await _client.get(
+      Uri.parse('$baseUrl/sessions/$sessionId/proposal'),
+      headers: _headers(),
+    ).timeout(const Duration(seconds: 8));
 
-      if (res.statusCode == 200) {
-        final payload = _unwrap(res);
-        if (payload is Map<String, dynamic>) {
-          return payload;
-        }
+    if (res.statusCode == 200) {
+      final payload = _unwrap(res);
+      if (payload is Map<String, dynamic>) {
+        return payload;
       }
-    } catch (e) {
-      if (liveDemoMode) rethrow;
     }
-    if (liveDemoMode) {
-      throw Exception('Proposal retrieval failed on $baseUrl/sessions/$sessionId/proposal.');
-    }
-    return {
-      'candidates': MockTeacherData.getInitialCandidates().map((c) => c.toJson()).toList(),
-      'unknown_faces': <dynamic>[],
-    };
+    throw Exception('Proposal retrieval failed on $baseUrl/sessions/$sessionId/proposal (HTTP ${res.statusCode}): ${res.body}');
   }
 
   /// Polling for vision worker processing completion.
@@ -225,41 +210,35 @@ class FrsApiService {
     int maxAttempts = 6,
     Duration interval = const Duration(seconds: 1),
   }) async {
-    final attempts = liveDemoMode ? maxAttempts : 2;
-    final pollInterval = liveDemoMode ? interval : const Duration(milliseconds: 100);
-    final timeoutDuration = liveDemoMode ? const Duration(seconds: 4) : const Duration(milliseconds: 500);
-
-    for (int i = 0; i < attempts; i++) {
+    Object? lastError;
+    for (int i = 0; i < maxAttempts; i++) {
       try {
         final res = await _client.get(
           Uri.parse('$baseUrl/sessions/$sessionId/proposal'),
           headers: _headers(),
-        ).timeout(timeoutDuration);
+        ).timeout(const Duration(seconds: 4));
 
         if (res.statusCode == 200) {
           final payload = _unwrap(res);
           if (payload is Map<String, dynamic> && payload['candidates'] != null) {
             final List<dynamic> list = payload['candidates'];
-            // If candidates exist or vision frames are processed, return real data
-            if (list.isNotEmpty || i == attempts - 1) {
+            if (list.isNotEmpty || i == maxAttempts - 1) {
               return payload;
             }
           }
+        } else {
+          lastError = 'HTTP ${res.statusCode}: ${res.body}';
         }
       } catch (e) {
-        if (i == attempts - 1 && liveDemoMode) rethrow;
+        lastError = e;
+        if (i == maxAttempts - 1) rethrow;
       }
-      if (i < attempts - 1) {
-        await Future.delayed(pollInterval);
+      if (i < maxAttempts - 1) {
+        await Future.delayed(interval);
       }
     }
-    if (liveDemoMode) {
-      throw Exception('Vision worker processing timed out for session $sessionId.');
-    }
-    return {
-      'candidates': MockTeacherData.getInitialCandidates().map((c) => c.toJson()).toList(),
-      'unknown_faces': <dynamic>[],
-    };
+    final detail = lastError != null ? ' ($lastError)' : '';
+    throw Exception('Vision worker processing timed out for session $sessionId on $baseUrl$detail.');
   }
 
   /// POST /sessions/{id}/commit
@@ -270,63 +249,55 @@ class FrsApiService {
     required int conductedUnitsCount,
     required List<CandidateProposalItem> candidates,
   }) async {
-    try {
-      final decisions = <Map<String, dynamic>>[];
-      for (final c in candidates) {
-        for (int i = 1; i <= conductedUnitsCount; i++) {
-          final status = c.unitAttendance[i];
-          if (status == null) {
-            throw Exception('Cannot commit: Student ${c.rollNumber} has no explicit attendance decision for conducted unit $i.');
-          }
-          decisions.add({
-            'student_id': c.studentId,
-            'unit_index': i,
-            'status': status.toWire(),
-            'reason_code': 'FACULTY_COMMIT',
-          });
+    final decisions = <Map<String, dynamic>>[];
+    for (final c in candidates) {
+      for (int i = 1; i <= conductedUnitsCount; i++) {
+        final status = c.unitAttendance[i];
+        if (status == null) {
+          throw Exception('Cannot commit: Student ${c.rollNumber} has no explicit attendance decision for conducted unit $i.');
         }
+        decisions.add({
+          'student_id': c.studentId,
+          'unit_index': i,
+          'status': status.toWire(),
+          'reason_code': 'FACULTY_COMMIT',
+        });
       }
-
-      final res = await _client.post(
-        Uri.parse('$baseUrl/sessions/$sessionId/commit'),
-        headers: _headers(),
-        body: jsonEncode({
-          'idempotency_key': idempotencyKey,
-          'conducted_unit_indices': List.generate(conductedUnitsCount, (i) => i + 1),
-          'decisions': decisions,
-        }),
-      ).timeout(liveDemoMode ? const Duration(seconds: 8) : const Duration(milliseconds: 500));
-
-      if (res.statusCode == 200 || res.statusCode == 201) {
-        final payload = _unwrap(res);
-        if (payload is Map<String, dynamic>) {
-          return CommitReceiptResponse.fromJson(payload);
-        }
-      }
-    } catch (e) {
-      if (liveDemoMode) rethrow;
     }
-    return null;
+
+    final res = await _client.post(
+      Uri.parse('$baseUrl/sessions/$sessionId/commit'),
+      headers: _headers(),
+      body: jsonEncode({
+        'idempotency_key': idempotencyKey,
+        'conducted_unit_indices': List.generate(conductedUnitsCount, (i) => i + 1),
+        'decisions': decisions,
+      }),
+    ).timeout(const Duration(seconds: 10));
+
+    if (res.statusCode == 200 || res.statusCode == 201) {
+      final payload = _unwrap(res);
+      if (payload is Map<String, dynamic>) {
+        return CommitReceiptResponse.fromJson(payload);
+      }
+    }
+    throw Exception('Session commit failed on $baseUrl (HTTP ${res.statusCode}): ${res.body}');
   }
 
   /// GET /sessions/{id}/receipt
   /// Queries the authoritative commit receipt from the server.
   Future<CommitReceiptResponse?> getSessionReceipt(String sessionId) async {
-    try {
-      final res = await _client.get(
-        Uri.parse('$baseUrl/sessions/$sessionId/receipt'),
-        headers: _headers(),
-      ).timeout(const Duration(seconds: 6));
+    final res = await _client.get(
+      Uri.parse('$baseUrl/sessions/$sessionId/receipt'),
+      headers: _headers(),
+    ).timeout(const Duration(seconds: 6));
 
-      if (res.statusCode == 200) {
-        final payload = _unwrap(res);
-        if (payload is Map<String, dynamic>) {
-          return CommitReceiptResponse.fromJson(payload);
-        }
+    if (res.statusCode == 200) {
+      final payload = _unwrap(res);
+      if (payload is Map<String, dynamic>) {
+        return CommitReceiptResponse.fromJson(payload);
       }
-    } catch (e) {
-      if (liveDemoMode) rethrow;
     }
-    return null;
+    throw Exception('Receipt query failed on $baseUrl (HTTP ${res.statusCode}): ${res.body}');
   }
 }

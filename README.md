@@ -459,6 +459,15 @@ All test suites must pass before pull requests can merge into `main`:
 
 ---
 
+## Community Guidelines, Accessibility & Governance
+
+- **[Accessibility Statement](ACCESSIBILITY.md):** WCAG 2.1 Level AA commitment, assistive technology compatibility, and reporting procedures.
+- **[Code of Conduct](CODE_OF_CONDUCT.md):** Contributor Covenant standards and institutional community enforcement.
+- **[Contributing Guide](CONTRIBUTING.md):** Architectural guardrails, branch strategy, and local verification requirements.
+- **[Security Policy](SECURITY.md):** Vulnerability reporting procedures, SLA response matrix, and cryptographic invariant protections.
+
+---
+
 ## License & Institutional Attribution
 
 Licensed under the [Apache License, Version 2.0](LICENSE).

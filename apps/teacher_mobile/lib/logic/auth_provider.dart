@@ -76,37 +76,19 @@ class AuthNotifier extends Notifier<AuthState> {
         );
         return true;
       }
-    } catch (e) {
-      if (_api.liveDemoMode) {
-        state = state.copyWith(
-          isLoading: false,
-          errorMessage: 'Connection to ${_api.baseUrl} failed. Tap Settings to verify host IP.',
-        );
-        return false;
-      }
-    }
-
-    // Explicit offline demo fallback only when liveDemoMode is disabled
-    if (!_api.liveDemoMode && email.trim() == 'ramana.vrb@gmail.com' && password == 'KucetFaculty@2026') {
-      const demoToken = 'jwt-kucet-offline-demo-ramana';
-      _api.authToken = demoToken;
       state = state.copyWith(
-        isAuthenticated: true,
         isLoading: false,
-        email: email.trim(),
-        userId: 'USR-KUCET-FAC-001',
-        role: 'FACULTY',
-        token: demoToken,
-        isOfflineDemo: true,
+        errorMessage: 'Invalid credentials or malformed server response from ${_api.baseUrl}',
       );
-      return true;
+      return false;
+    } catch (e) {
+      final err = e.toString().replaceFirst('Exception: ', '');
+      state = state.copyWith(
+        isLoading: false,
+        errorMessage: 'Connection to ${_api.baseUrl} failed: $err',
+      );
+      return false;
     }
-
-    state = state.copyWith(
-      isLoading: false,
-      errorMessage: 'Invalid institutional credentials or server (${_api.baseUrl}) unreachable.',
-    );
-    return false;
   }
 
   void logout() {

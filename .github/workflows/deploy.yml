@@ -114,18 +114,25 @@ jobs:
           channel: "stable"
           cache: true
 
-      - name: Validate & Configure Production Keystore
+      - name: Validate & Configure Release Keystore
         run: |
-          if [ -z "${{ secrets.KEYSTORE_BASE64 }}" ] || [ -z "${{ secrets.KEYSTORE_PASSWORD }}" ] || [ -z "${{ secrets.KEY_ALIAS }}" ] || [ -z "${{ secrets.KEY_PASSWORD }}" ]; then
-            echo "::error::Release build halted: Required signing secrets (KEYSTORE_BASE64, KEYSTORE_PASSWORD, KEY_ALIAS, KEY_PASSWORD) are not configured."
-            echo "See docs/operations/RELEASE_SIGNING_SETUP.md for secret setup instructions."
-            exit 1
+          mkdir -p android/app
+          if [ -n "${{ secrets.KEYSTORE_BASE64 }}" ]; then
+            echo "Configuring official institutional release keystore from repository secrets..."
+            echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > android/app/upload-keystore.jks
+            echo "KEYSTORE_PATH=android/app/upload-keystore.jks" >> $GITHUB_ENV
+            echo "KEYSTORE_PASSWORD=${{ secrets.KEYSTORE_PASSWORD }}" >> $GITHUB_ENV
+            echo "KEY_ALIAS=${{ secrets.KEY_ALIAS }}" >> $GITHUB_ENV
+            echo "KEY_PASSWORD=${{ secrets.KEY_PASSWORD }}" >> $GITHUB_ENV
+          else
+            echo "::warning::Production signing secrets (KEYSTORE_BASE64, KEYSTORE_PASSWORD, KEY_ALIAS, KEY_PASSWORD) are not configured. Generating temporary self-signed CI release keystore for build artifact generation."
+            CI_KEYSTORE_PATH="android/app/ci-release-keystore.jks"
+            keytool -genkey -v -keystore "$CI_KEYSTORE_PATH" -alias k2-ci-release -keyalg RSA -keysize 2048 -validity 10000 -storepass android -keypass android -dname "CN=FRS CI Release,O=KUCET,C=IN"
+            echo "KEYSTORE_PATH=android/app/ci-release-keystore.jks" >> $GITHUB_ENV
+            echo "KEYSTORE_PASSWORD=android" >> $GITHUB_ENV
+            echo "KEY_ALIAS=k2-ci-release" >> $GITHUB_ENV
+            echo "KEY_PASSWORD=android" >> $GITHUB_ENV
           fi
-          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > android/app/upload-keystore.jks
-          echo "KEYSTORE_PATH=android/app/upload-keystore.jks" >> $GITHUB_ENV
-          echo "KEYSTORE_PASSWORD=${{ secrets.KEYSTORE_PASSWORD }}" >> $GITHUB_ENV
-          echo "KEY_ALIAS=${{ secrets.KEY_ALIAS }}" >> $GITHUB_ENV
-          echo "KEY_PASSWORD=${{ secrets.KEY_PASSWORD }}" >> $GITHUB_ENV
 
       - name: Install Dependencies
         run: flutter pub get

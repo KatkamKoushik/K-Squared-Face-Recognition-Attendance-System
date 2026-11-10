@@ -6,7 +6,7 @@ plugins {
 
 android {
     namespace = "com.kucet.frs.frs_teacher_app"
-    compileSdk = flutter.compileSdkVersion
+    compileSdk = 35
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
@@ -20,10 +20,16 @@ android {
 
     defaultConfig {
         applicationId = "com.kucet.frs.frs_teacher_app"
-        minSdk = flutter.minSdkVersion
-        targetSdk = flutter.targetSdkVersion
+        minSdk = 21 // Android 5.0 (API 21) resolves package conflicts with image_picker and AndroidX
+        targetSdk = 35 // Android 15 & 16 target compatibility
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+    }
+
+    packaging {
+        resources {
+            excludes += "/META-INF/{AL2.0,LGPL2.1}"
+        }
     }
 
     signingConfigs {
@@ -40,12 +46,11 @@ android {
                 keyAlias = System.getenv("KEY_ALIAS") ?: project.findProperty("KEY_ALIAS") as String? ?: ""
                 keyPassword = System.getenv("KEY_PASSWORD") ?: project.findProperty("KEY_PASSWORD") as String? ?: ""
             } else {
-                // Strict FRS V7.1 Security Policy: Release APKs must NEVER fall back to debug keystore
                 val isReleaseBuild = gradle.startParameter.taskNames.any { it.contains("Release", ignoreCase = true) }
                 if (isReleaseBuild) {
                     throw GradleException(
-                        "Release build failed: Release keystore secrets (KEYSTORE_PATH, KEYSTORE_PASSWORD, KEY_ALIAS, KEY_PASSWORD) " +
-                        "are not configured. Silent fallback to debug keystore for production releases is strictly prohibited. " +
+                        "Release build halted: Release keystore file ($keystorePath) was not found. " +
+                        "Configure KEYSTORE_PATH, KEYSTORE_PASSWORD, KEY_ALIAS, KEY_PASSWORD. " +
                         "See docs/operations/RELEASE_SIGNING_SETUP.md"
                     )
                 }

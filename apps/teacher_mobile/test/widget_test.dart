@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:frs_teacher_app/main.dart';
 import 'package:frs_teacher_app/logic/auth_provider.dart';
+import 'package:frs_teacher_app/logic/session_provider.dart';
 
 class MockAuthenticatedAuthNotifier extends AuthNotifier {
   @override
@@ -33,6 +34,16 @@ void main() {
       ProviderScope(
         overrides: [
           authProvider.overrideWith(() => MockAuthenticatedAuthNotifier()),
+          assignedOfferingsProvider.overrideWith((ref) async => [
+            {
+              'offeringId': 'OFF-001',
+              'subjectCode': 'CS401',
+              'subjectName': 'Cloud Computing',
+              'cohort': 'IV/IV CSE Sec A',
+              'term': 'VII Sem',
+              'enrolledCount': 66,
+            }
+          ]),
         ],
         child: const FrsTeacherApp(),
       ),
