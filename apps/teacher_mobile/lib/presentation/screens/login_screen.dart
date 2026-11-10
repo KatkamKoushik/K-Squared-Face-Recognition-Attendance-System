@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_theme.dart';
+import '../../data/kucet_faculty_directory.dart';
 import '../../logic/auth_provider.dart';
 import '../../logic/session_provider.dart';
 
@@ -23,9 +24,85 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     super.dispose();
   }
 
-  void _fillDemoCredentials() {
-    _emailController.text = 'ramana.vrb@gmail.com';
+  void _fillDemoCredentials([String email = 'soujanyavedh@gmail.com']) {
+    _emailController.text = email;
     _passwordController.text = 'KucetFaculty@2026';
+  }
+
+  void _showCoordinatorsDirectoryDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.badge_outlined, color: AppTheme.primaryNavy),
+            SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'KUCET Coordinators Directory',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView.separated(
+            shrinkWrap: true,
+            itemCount: KucetFacultyDirectory.academicCoordinators.length,
+            separatorBuilder: (_, __) => const Divider(height: 1),
+            itemBuilder: (context, index) {
+              final coord = KucetFacultyDirectory.academicCoordinators[index];
+              final hasEmail = coord.emailId != null && coord.emailId!.isNotEmpty;
+              return ListTile(
+                dense: true,
+                leading: CircleAvatar(
+                  radius: 16,
+                  backgroundColor: coord.department == 'IT'
+                      ? AppTheme.secondaryBlue
+                      : AppTheme.primaryNavy.withValues(alpha: 0.15),
+                  child: Text(
+                    coord.department.substring(0, coord.department.length > 2 ? 2 : coord.department.length),
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: coord.department == 'IT' ? Colors.white : AppTheme.primaryNavy,
+                    ),
+                  ),
+                ),
+                title: Text(
+                  coord.name,
+                  style: TextStyle(
+                    fontWeight: coord.department == 'IT' ? FontWeight.bold : FontWeight.w600,
+                    fontSize: 13,
+                  ),
+                ),
+                subtitle: Text(
+                  '${coord.department} • ${coord.emailId ?? "No email"}',
+                  style: const TextStyle(fontSize: 11),
+                ),
+                trailing: hasEmail
+                    ? const Icon(Icons.arrow_forward_ios, size: 12, color: AppTheme.secondaryBlue)
+                    : null,
+                onTap: hasEmail
+                    ? () {
+                        _fillDemoCredentials(coord.emailId!);
+                        Navigator.pop(ctx);
+                      }
+                    : null,
+              );
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showServerConfigDialog() {
@@ -366,46 +443,65 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ),
                   const SizedBox(height: 16),
 
-                  // Seeded Demo Account Helper
+                  // Primary Faculty Coordinator Login Card: Dr. M. Soujanya
                   InkWell(
-                    onTap: _fillDemoCredentials,
+                    onTap: () => _fillDemoCredentials('soujanyavedh@gmail.com'),
                     borderRadius: BorderRadius.circular(12),
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                       decoration: BoxDecoration(
                         color: AppTheme.surfaceVariantLight,
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: AppTheme.borderLight),
+                        border: Border.all(color: AppTheme.secondaryBlue.withValues(alpha: 0.3)),
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.account_circle_outlined, size: 20, color: AppTheme.secondaryBlue),
+                          const Icon(Icons.account_circle_outlined, size: 22, color: AppTheme.secondaryBlue),
                           const SizedBox(width: 12),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: const [
                                 Text(
-                                  'Tap to load seeded CSE Faculty account',
+                                  'Tap to load IT Academic Coordinator account',
                                   style: TextStyle(
                                     fontSize: 12,
                                     fontWeight: FontWeight.w600,
                                     color: AppTheme.textMainLight,
                                   ),
                                 ),
+                                SizedBox(height: 2),
                                 Text(
-                                  'ramana.vrb@gmail.com (Mr. V. Ramana Babu)',
+                                  'soujanyavedh@gmail.com (Dr. M. Soujanya)',
                                   style: TextStyle(
                                     fontSize: 11,
-                                    color: AppTheme.textMutedLight,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppTheme.primaryNavy,
                                   ),
                                 ),
                               ],
                             ),
                           ),
-                          const Icon(Icons.arrow_forward_ios, size: 12, color: AppTheme.textMutedLight),
+                          const Icon(Icons.arrow_forward_ios, size: 12, color: AppTheme.secondaryBlue),
                         ],
                       ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+
+                  // Browse Other Academic Coordinators Button
+                  OutlinedButton.icon(
+                    onPressed: _showCoordinatorsDirectoryDialog,
+                    icon: const Icon(Icons.badge_outlined, size: 16),
+                    label: const Text(
+                      'Browse All KUCET Academic Coordinators',
+                      style: TextStyle(fontSize: 12),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppTheme.primaryNavy,
+                      side: const BorderSide(color: AppTheme.borderLight),
+                      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                     ),
                   ),
                   const SizedBox(height: 14),

@@ -3,38 +3,40 @@ import '../models/domain_contracts.dart';
 /// Institutional baseline data for KU College of Engineering & Technology (KUCET).
 /// Extracted from official institutional registers (http://kucet.ac.in/).
 class KucetTeacherData {
-  static const facultyId = 'KUCET-FAC-CSE-001';
-  static const facultyName = 'Mr. V. Ramana Babu';
-  static const facultyDesignation = 'Assistant Professor & Coordinator';
-  static const departmentName = 'Department of Computer Science & Engineering';
+  static const facultyId = 'KUCET-FAC-IT-001';
+  static const facultyName = 'Dr. M. Soujanya';
+  static const facultyDesignation = 'Assistant Professor (c) & Academic Coordinator';
+  static const departmentName = 'Department of Information Technology';
+  static const facultyEmail = 'soujanyavedh@gmail.com';
+  static const facultyPhone = '9010610430';
   static const collegeName = 'KU College of Engineering & Technology (KUCET)';
   static const campusLocation = 'Kakatiya University Campus, Warangal - 506009';
 
   static final sampleOfferings = [
     {
-      'offeringId': 'OFF-KUCET-CSE-401',
-      'subjectCode': 'CS401',
-      'subjectName': 'Distributed Systems & Cloud Computing',
-      'cohort': 'B.Tech CSE - Final Year (IV/IV Sec A)',
-      'term': 'VII Semester (2026-2027)',
-      'enrolledCount': 66,
-      'isJointClass': false,
-    },
-    {
-      'offeringId': 'OFF-KUCET-CS-IT-JOINT',
-      'subjectCode': 'CS302',
+      'offeringId': 'OFF-KUCET-IT-302-DBMS',
+      'subjectCode': 'IT302 / CS302',
       'subjectName': 'Database Management Systems (Joint Theory)',
-      'cohort': 'Approved Union: B.Tech CSE (Sec A) + B.Tech IT',
+      'cohort': 'Approved Union: B.Tech IT + B.Tech CSE (Sec A)',
       'term': 'V Semester (2026-2027)',
       'enrolledCount': 132,
       'isJointClass': true,
     },
     {
-      'offeringId': 'OFF-KUCET-CSD-301',
-      'subjectCode': 'DS301',
-      'subjectName': 'Artificial Intelligence & Machine Learning',
-      'cohort': 'B.Tech CSE (Data Science) - Third Year (III/IV)',
-      'term': 'V Semester (2026-2027)',
+      'offeringId': 'OFF-KUCET-IT-401',
+      'subjectCode': 'IT401',
+      'subjectName': 'Web Technologies & Information Security',
+      'cohort': 'B.Tech IT - Final Year (IV/IV)',
+      'term': 'VII Semester (2026-2027)',
+      'enrolledCount': 66,
+      'isJointClass': false,
+    },
+    {
+      'offeringId': 'OFF-KUCET-IT-201',
+      'subjectCode': 'IT201',
+      'subjectName': 'Object Oriented Programming through Java',
+      'cohort': 'B.Tech IT - Second Year (II/IV)',
+      'term': 'III Semester (2026-2027)',
       'enrolledCount': 66,
       'isJointClass': false,
     },

@@ -5,7 +5,7 @@ Adheres to Pydantic V2 and Clean Architecture principles.
 
 from pathlib import Path
 import tempfile
-from typing import List, Literal
+from typing import List, Literal, Optional
 from urllib.parse import urlsplit, urlunsplit
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -65,6 +65,14 @@ class Settings(BaseSettings):
     DATABASE_TIMEOUT_SECONDS: int = 30
     DATABASE_POOL_RECYCLE: int = 1800
     DATABASE_POOL_PRE_PING: bool = True
+
+    # Supabase Cloud Persistence & Auth Integration
+    SUPABASE_URL: Optional[str] = "https://hzqbgkdhxcnyakjjbjas.supabase.co"
+    SUPABASE_KEY: Optional[str] = "sb_publishable_-7c2WIgh_dbXIewd-7-BAA_EDWdSiqZ"
+    SUPABASE_SECRET_KEY: Optional[str] = Field(
+        default=None,
+        description="Supabase Service Role Secret Key (configured via environment, never hardcoded in source)",
+    )
 
     # Ingress & File Protection
     MAX_UPLOAD_SIZE_MB: int = 15
