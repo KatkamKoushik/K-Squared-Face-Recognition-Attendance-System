@@ -202,3 +202,62 @@ def test_enrollment_service_lifecycle_approve_and_reject(db_session: Session, se
     )
     assert rejected.status == EnrollmentSubmissionStatus.REJECTED
     assert "not verifiable" in rejected.rejection_reason
+
+
+def test_enrollment_resubmission_updates_pending(db_session: Session, seed_data):
+    """Verify that re-submitting for a pending roll number updates details rather than throwing 409."""
+    from unittest.mock import patch
+    from app.core.errors import ConflictError
+    from app.worker.adapters.detector_adapter import DetectorAdapter
+
+    roll = "22016A0888"
+    sub_initial = EnrollmentSubmission(
+        roll_number=roll,
+        full_name="Initial Name",
+        institutional_email="initial@kucet.ac.in",
+        department="CSE",
+        academic_year="2022-2026",
+        photo_storage_path="path/1",
+        photo_sha256="hash1",
+        photo_mime="image/jpeg",
+        status=EnrollmentSubmissionStatus.PENDING_REVIEW,
+        consent_acknowledged=True,
+    )
+    db_session.add(sub_initial)
+    db_session.commit()
+
+    # Re-submitting updates pending
+    photo_bytes = create_synthetic_face_image()
+    updated_create = EnrollmentSubmissionCreate(
+        roll_number=roll,
+        full_name="Updated Name",
+        institutional_email="updated@kucet.ac.in",
+        department="CSE",
+        academic_year="2022-2026",
+        consent_acknowledged=True,
+    )
+
+    with patch("app.services.enrollment_service.CloudinaryStorageService.upload_enrollment_portrait", return_value="https://res.cloudinary.com/test/photo2.jpg"):
+        with patch.object(DetectorAdapter, "detect_faces", return_value=[{"box": [10, 10, 50, 50], "score": 0.99}]):
+            res = EnrollmentService.submit_enrollment(
+                db=db_session,
+                data=updated_create,
+                file_bytes=photo_bytes,
+                mime_type="image/jpeg",
+            )
+            assert res.id == sub_initial.id
+            assert res.full_name == "Updated Name"
+            assert res.status == EnrollmentSubmissionStatus.PENDING_REVIEW
+
+    # If approved, re-submitting must throw ConflictError (409)
+    sub_initial.status = EnrollmentSubmissionStatus.APPROVED
+    db_session.commit()
+
+    with pytest.raises(ConflictError) as exc_info:
+        EnrollmentService.submit_enrollment(
+            db=db_session,
+            data=updated_create,
+            file_bytes=photo_bytes,
+            mime_type="image/jpeg",
+        )
+    assert "already been approved" in str(exc_info.value.message)
