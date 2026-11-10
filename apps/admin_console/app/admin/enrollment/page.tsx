@@ -8,6 +8,7 @@ import {
   Filter,
   CheckCircle2,
   XCircle,
+  X,
   RefreshCw,
   Eye,
   AlertCircle,
@@ -16,6 +17,7 @@ import {
   User,
   ArrowLeft,
   Camera,
+  UserPlus,
 } from "lucide-react";
 import {
   getEnrollmentSubmissions,
@@ -177,6 +179,13 @@ export default function AdminEnrollmentQueuePage() {
         </div>
 
         <div className="flex items-center space-x-3">
+          <Link
+            href="/enroll"
+            className="inline-flex items-center space-x-1.5 px-3 py-2 rounded-lg text-xs font-semibold bg-institutional-navy text-white hover:bg-institutional-navy/90 transition-colors shadow-xs"
+          >
+            <UserPlus className="w-3.5 h-3.5" />
+            <span>Enroll Student (Web)</span>
+          </Link>
           <button
             type="button"
             onClick={loadSubmissions}
@@ -319,9 +328,10 @@ export default function AdminEnrollmentQueuePage() {
               <button
                 type="button"
                 onClick={() => setSelectedSub(null)}
-                className="text-slate-400 hover:text-slate-700 text-sm font-bold p-1 rounded-md"
+                className="text-slate-400 hover:text-slate-700 p-1 rounded-md transition-colors"
+                title="Close modal"
               >
-                ✕
+                <X className="w-5 h-5" />
               </button>
             </div>
 

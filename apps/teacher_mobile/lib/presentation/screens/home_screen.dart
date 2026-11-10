@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_theme.dart';
+import '../../data/kucet_faculty_directory.dart';
 import '../../data/mock/mock_teacher_data.dart';
 import '../../logic/auth_provider.dart';
 import '../../logic/session_provider.dart';
@@ -14,6 +15,17 @@ class HomeScreen extends ConsumerWidget {
     final theme = Theme.of(context);
     final offeringsAsync = ref.watch(assignedOfferingsProvider);
     final journal = ref.watch(offlineSyncJournalProvider);
+    final auth = ref.watch(authProvider);
+    final activeCoord = auth.email != null ? KucetFacultyDirectory.findByEmail(auth.email!) : null;
+    final facultyDisplayName = activeCoord?.name ?? KucetTeacherData.facultyName;
+    final facultyDisplayDesignation = activeCoord != null
+        ? '${activeCoord.designation} & ${activeCoord.category}'
+        : KucetTeacherData.facultyDesignation;
+    final facultyDisplayDept = activeCoord != null
+        ? (activeCoord.department.startsWith('Department')
+            ? activeCoord.department
+            : 'Department of ${activeCoord.department}')
+        : KucetTeacherData.departmentName;
 
     return Scaffold(
       appBar: AppBar(
@@ -38,7 +50,7 @@ class HomeScreen extends ConsumerWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        auth.email ?? MockTeacherData.facultyName,
+                        auth.email ?? KucetTeacherData.facultyName,
                         style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
                       const SizedBox(height: 4),
@@ -118,12 +130,12 @@ class HomeScreen extends ConsumerWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              MockTeacherData.facultyName,
+                              facultyDisplayName,
                               style: theme.textTheme.titleLarge,
                             ),
                             const SizedBox(height: 2),
                             Text(
-                              MockTeacherData.facultyDesignation,
+                              facultyDisplayDesignation,
                               style: theme.textTheme.bodyMedium?.copyWith(
                                 color: AppTheme.primaryNavy,
                                 fontWeight: FontWeight.w600,
@@ -131,7 +143,7 @@ class HomeScreen extends ConsumerWidget {
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              '${MockTeacherData.departmentName}\n${MockTeacherData.collegeName}',
+                              '$facultyDisplayDept\n${KucetTeacherData.collegeName}',
                               style: theme.textTheme.bodyMedium,
                             ),
                           ],

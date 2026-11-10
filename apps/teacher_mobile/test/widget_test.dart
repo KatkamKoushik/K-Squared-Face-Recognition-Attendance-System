@@ -9,9 +9,9 @@ class MockAuthenticatedAuthNotifier extends AuthNotifier {
   AuthState build() {
     return const AuthState(
       isAuthenticated: true,
-      email: 'ramana.vrb@gmail.com',
+      email: 'soujanyavedh@gmail.com',
       role: 'FACULTY',
-      userId: 'FAC-001',
+      userId: 'FAC-IT-001',
     );
   }
 }

@@ -48,7 +48,7 @@ export default function LoginPage() {
   };
 
   const handleFillDemoFaculty = () => {
-    setEmail("ramana.vrb@gmail.com");
+    setEmail("soujanyavedh@gmail.com");
     setPassword("KucetFaculty@2026");
     setError(null);
   };
@@ -164,8 +164,8 @@ export default function LoginPage() {
               onClick={handleFillDemoFaculty}
               className="px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-left hover:border-institutional-blue transition-colors shadow-2xs"
             >
-              <div className="font-semibold text-slate-800">Faculty (CSE)</div>
-              <div className="text-[10px] text-slate-500 font-mono">ramana.vrb@...</div>
+              <div className="font-semibold text-slate-800">Faculty (IT - Dr. M. Soujanya)</div>
+              <div className="text-[10px] text-slate-500 font-mono">soujanyavedh@...</div>
             </button>
           </div>
           <p className="text-[10px] text-slate-400">

@@ -19,10 +19,10 @@ class _CaptureGalleryScreenState extends ConsumerState<CaptureGalleryScreen> {
   final _uuid = const Uuid();
   final _picker = ImagePicker();
 
-  Future<void> _capturePhoto({ImageSource source = ImageSource.camera}) async {
+  Future<void> _capturePhoto() async {
     try {
       final photo = await _picker.pickImage(
-        source: source,
+        source: ImageSource.camera,
         maxWidth: 3840,
         maxHeight: 2160,
         imageQuality: 92,
@@ -142,33 +142,19 @@ class _CaptureGalleryScreenState extends ConsumerState<CaptureGalleryScreen> {
                 const SizedBox(height: 16),
               ],
 
-              // Capture Action Buttons
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      icon: const Icon(Icons.camera_alt),
-                      label: const Text('Take Photo'),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        side: const BorderSide(color: AppTheme.primaryNavy),
-                      ),
-                      onPressed: isProcessing ? null : () => _capturePhoto(source: ImageSource.camera),
-                    ),
+              // Capture Action Button (Strictly Real Camera in Mobile App)
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  icon: const Icon(Icons.camera_alt),
+                  label: const Text('Capture Classroom Sweep Photo'),
+                  style: FilledButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    backgroundColor: AppTheme.primaryNavy,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      icon: const Icon(Icons.photo_library),
-                      label: const Text('Pick Image'),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        side: const BorderSide(color: AppTheme.secondaryBlue),
-                      ),
-                      onPressed: isProcessing ? null : () => _capturePhoto(source: ImageSource.gallery),
-                    ),
-                  ),
-                ],
+                  onPressed: isProcessing ? null : () => _capturePhoto(),
+                ),
               ),
               const SizedBox(height: 20),
 

@@ -24,8 +24,6 @@ class ProposalReviewScreen extends ConsumerWidget {
     final recaptureCount = candidates.where((c) => c.evidenceState == EvidenceState.recaptureRequired).length;
     final unknownCount = candidates.where((c) => c.evidenceState == EvidenceState.unknown).length;
 
-    final isSimulatedData = candidates.any((c) => c.isSimulated);
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('Review Proposals'),
@@ -47,30 +45,6 @@ class ProposalReviewScreen extends ConsumerWidget {
       body: SafeArea(
         child: Column(
           children: [
-            // P0.8 DEMO / SIMULATED DATA Indicator Banner
-            if (isSimulatedData)
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                color: Colors.amber.shade100,
-                child: Row(
-                  children: [
-                    Icon(Icons.warning_amber_rounded, size: 16, color: Colors.amber.shade900),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'DEMO / SIMULATED DATA — NOT VERIFIED BIOMETRICS',
-                        style: TextStyle(
-                          color: Colors.amber.shade900,
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
             // Top Overview Bar
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -125,19 +99,6 @@ class ProposalReviewScreen extends ConsumerWidget {
                           'Enrolled Roster Proposals (${candidates.length})',
                           style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
                         ),
-                        if (isSimulatedData)
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: Colors.amber.shade50,
-                              borderRadius: BorderRadius.circular(4),
-                              border: Border.all(color: Colors.amber.shade300),
-                            ),
-                            child: const Text(
-                              'SIMULATED DATA',
-                              style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.orange),
-                            ),
-                          ),
                       ],
                     ),
                   ),
@@ -285,15 +246,6 @@ class ProposalReviewScreen extends ConsumerWidget {
                               // Quick Action Row
                               Row(
                                 children: [
-                                  if (candidate.isSimulated)
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                      decoration: BoxDecoration(
-                                        color: Colors.grey.shade200,
-                                        borderRadius: BorderRadius.circular(4),
-                                      ),
-                                      child: const Text('MOCK DATA', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold)),
-                                    ),
                                   const Spacer(),
                                   TextButton(
                                     onPressed: () {
