@@ -5,7 +5,7 @@ FRS V7.1 K² — FastAPI Control Plane Application Factory & Lifecycle.
 from contextlib import asynccontextmanager
 import logging
 import uuid
-from fastapi import FastAPI, Request, status
+from fastapi import FastAPI, Request, status, HTTPException
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -154,12 +154,12 @@ def create_application() -> FastAPI:
 
     def _create_error_response(request: Request, status_code: int, envelope: ErrorEnvelope) -> JSONResponse:
         origin = request.headers.get("origin")
-        headers = {}
-        if origin:
-            headers["Access-Control-Allow-Origin"] = origin
-            headers["Access-Control-Allow-Credentials"] = "true"
-            headers["Access-Control-Allow-Methods"] = "*"
-            headers["Access-Control-Allow-Headers"] = "*"
+        headers = {
+            "Access-Control-Allow-Origin": origin if origin else "*",
+            "Access-Control-Allow-Credentials": "true",
+            "Access-Control-Allow-Methods": "*",
+            "Access-Control-Allow-Headers": "*",
+        }
         return JSONResponse(
             status_code=status_code,
             content=envelope.model_dump(mode="json"),
@@ -180,6 +180,35 @@ def create_application() -> FastAPI:
             correlation_id=corr_id,
         )
         return _create_error_response(request, exc.status_code, envelope)
+
+    @app.exception_handler(HTTPException)
+    async def http_exception_handler(request: Request, exc: HTTPException):
+        corr_id = getattr(request.state, "correlation_id", "none")
+        detail_msg = exc.detail if isinstance(exc.detail, str) else str(exc.detail)
+        envelope = ErrorEnvelope(
+            error=ErrorDetail(
+                code="HTTP_ERROR",
+                message=detail_msg,
+                reason_code=f"HTTP_{exc.status_code}",
+                details={"detail": exc.detail},
+            ),
+            correlation_id=corr_id,
+        )
+        return _create_error_response(request, exc.status_code, envelope)
+
+    @app.exception_handler(ValueError)
+    async def value_error_handler(request: Request, exc: ValueError):
+        corr_id = getattr(request.state, "correlation_id", "none")
+        envelope = ErrorEnvelope(
+            error=ErrorDetail(
+                code="VALIDATION_ERROR",
+                message=str(exc),
+                reason_code="VALUE_ERROR",
+                details={"error": str(exc)},
+            ),
+            correlation_id=corr_id,
+        )
+        return _create_error_response(request, status.HTTP_422_UNPROCESSABLE_ENTITY, envelope)
 
     @app.exception_handler(RequestValidationError)
     async def validation_exception_handler(request: Request, exc: RequestValidationError):

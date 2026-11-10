@@ -66,22 +66,18 @@ class EnrollmentService:
                 message=f"Student with roll number {data.roll_number} is already enrolled in the institution.",
             )
 
-        # Duplicate check in pending submissions
-        existing_sub = db.execute(
+        # Duplicate check in approved submissions
+        existing_approved = db.execute(
             select(EnrollmentSubmission).where(
                 EnrollmentSubmission.roll_number == data.roll_number.strip().upper(),
-                EnrollmentSubmission.status.in_([
-                    EnrollmentSubmissionStatus.PENDING_REVIEW,
-                    EnrollmentSubmissionStatus.APPROVED,
-                ]),
+                EnrollmentSubmission.status == EnrollmentSubmissionStatus.APPROVED,
             )
         ).scalar_one_or_none()
-        if existing_sub:
-            sub_state = existing_sub.status.value if hasattr(existing_sub.status, "value") else str(existing_sub.status)
+        if existing_approved:
             raise ConflictError(
                 resource="EnrollmentSubmission",
                 identifier=data.roll_number,
-                message=f"An enrollment submission for roll number {data.roll_number} is already {sub_state}.",
+                message=f"Student with roll number {data.roll_number} has already been approved and registered.",
             )
 
         # 2. Size and dimension limits
@@ -138,20 +134,44 @@ class EnrollmentService:
                 cohort_match = db.execute(select(Cohort.id)).scalars().first()
             cohort_id = cohort_match
 
-        submission = EnrollmentSubmission(
-            roll_number=data.roll_number.strip().upper(),
-            full_name=data.full_name.strip(),
-            institutional_email=str(data.institutional_email).strip().lower(),
-            department=data.department.strip().upper(),
-            academic_year=data.academic_year.strip(),
-            cohort_id=cohort_id,
-            photo_storage_path=photo_storage_url,
-            photo_sha256=photo_sha256,
-            photo_mime="image/jpeg",
-            status=EnrollmentSubmissionStatus.PENDING_REVIEW,
-            consent_acknowledged=True,
-        )
-        db.add(submission)
+        # Check if an existing pending or recapture submission exists to update
+        existing_sub = db.execute(
+            select(EnrollmentSubmission).where(
+                EnrollmentSubmission.roll_number == data.roll_number.strip().upper(),
+                EnrollmentSubmission.status.in_([
+                    EnrollmentSubmissionStatus.PENDING_REVIEW,
+                    EnrollmentSubmissionStatus.RECAPTURE_REQUIRED,
+                ]),
+            )
+        ).scalar_one_or_none()
+
+        if existing_sub:
+            existing_sub.full_name = data.full_name.strip()
+            existing_sub.institutional_email = str(data.institutional_email).strip().lower()
+            existing_sub.department = data.department.strip().upper()
+            existing_sub.academic_year = data.academic_year.strip()
+            existing_sub.cohort_id = cohort_id
+            existing_sub.photo_storage_path = photo_storage_url
+            existing_sub.photo_sha256 = photo_sha256
+            existing_sub.photo_mime = "image/jpeg"
+            existing_sub.status = EnrollmentSubmissionStatus.PENDING_REVIEW
+            existing_sub.rejection_reason = None
+            submission = existing_sub
+        else:
+            submission = EnrollmentSubmission(
+                roll_number=data.roll_number.strip().upper(),
+                full_name=data.full_name.strip(),
+                institutional_email=str(data.institutional_email).strip().lower(),
+                department=data.department.strip().upper(),
+                academic_year=data.academic_year.strip(),
+                cohort_id=cohort_id,
+                photo_storage_path=photo_storage_url,
+                photo_sha256=photo_sha256,
+                photo_mime="image/jpeg",
+                status=EnrollmentSubmissionStatus.PENDING_REVIEW,
+                consent_acknowledged=True,
+            )
+            db.add(submission)
         db.commit()
         db.refresh(submission)
         return submission

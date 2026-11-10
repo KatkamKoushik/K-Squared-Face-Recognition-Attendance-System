@@ -367,6 +367,15 @@ export default function StudentEnrollmentPage() {
 
             {/* Submission Receipt Card */}
             <div className="bg-slate-50 border border-slate-200 rounded-xl p-6 text-left max-w-md mx-auto space-y-3">
+              {photoPreview && (
+                <div className="flex justify-center pb-3 border-b border-slate-200">
+                  <img
+                    src={photoPreview}
+                    alt="Submitted Portrait"
+                    className="w-24 h-24 rounded-xl object-cover border-2 border-emerald-500 shadow-sm"
+                  />
+                </div>
+              )}
               <div className="flex justify-between items-center text-xs pb-3 border-b border-slate-200">
                 <span className="font-semibold text-slate-500">Submission ID:</span>
                 <span className="font-mono text-slate-900 font-bold">{submittedData.id}</span>

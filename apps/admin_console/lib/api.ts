@@ -455,22 +455,47 @@ export interface AdminDashboardMetrics {
   system_readiness: string;
 }
 
+export function extractErrorMessage(body: any, fallback: string): string {
+  if (!body) return fallback;
+  if (body.error && typeof body.error.message === "string" && body.error.message.trim()) {
+    return body.error.message;
+  }
+  if (typeof body.detail === "string" && body.detail.trim()) {
+    return body.detail;
+  }
+  if (Array.isArray(body.detail) && body.detail.length > 0) {
+    const first = body.detail[0];
+    return typeof first === "string" ? first : (first?.msg || JSON.stringify(first));
+  }
+  if (typeof body.message === "string" && body.message.trim()) {
+    return body.message;
+  }
+  return fallback;
+}
+
 export async function submitStudentEnrollment(formData: FormData): Promise<EnrollmentSubmissionItem> {
   const url = `${getApiBase()}/enrollment/submit`;
-  const res = await fetch(url, {
-    method: "POST",
-    headers: {
-      "ngrok-skip-browser-warning": "1",
-    },
-    body: formData,
-  });
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        "ngrok-skip-browser-warning": "1",
+      },
+      body: formData,
+    });
 
-  const body = await res.json().catch(() => null);
-  if (!res.ok) {
-    const errorMsg = body?.detail || body?.message || "Failed to submit enrollment application.";
-    throw new Error(errorMsg);
+    const body = await res.json().catch(() => null);
+    if (!res.ok) {
+      const errorMsg = extractErrorMessage(body, `Submission failed with status HTTP ${res.status}.`);
+      throw new Error(errorMsg);
+    }
+    return body.data;
+  } catch (err: unknown) {
+    if (err instanceof TypeError && err.message.toLowerCase().includes("fetch")) {
+      throw new Error("Unable to reach the enrollment server. Please verify your internet connection or check whether the API tunnel is accessible.");
+    }
+    throw err;
   }
-  return body.data;
 }
 
 export async function getEnrollmentSubmissions(
@@ -507,7 +532,7 @@ export async function approveEnrollmentSubmission(id: string): Promise<Enrollmen
   });
   const body = await res.json().catch(() => null);
   if (!res.ok) {
-    throw new Error(body?.detail || body?.message || "Approval failed");
+    throw new Error(extractErrorMessage(body, "Approval failed"));
   }
   return body.data;
 }
@@ -525,7 +550,7 @@ export async function rejectEnrollmentSubmission(id: string, reason: string): Pr
   });
   const body = await res.json().catch(() => null);
   if (!res.ok) {
-    throw new Error(body?.detail || body?.message || "Rejection failed");
+    throw new Error(extractErrorMessage(body, "Rejection failed"));
   }
   return body.data;
 }
@@ -543,7 +568,7 @@ export async function requestRecaptureEnrollmentSubmission(id: string, reason: s
   });
   const body = await res.json().catch(() => null);
   if (!res.ok) {
-    throw new Error(body?.detail || body?.message || "Recapture request failed");
+    throw new Error(extractErrorMessage(body, "Recapture request failed"));
   }
   return body.data;
 }
@@ -611,7 +636,7 @@ export async function submitStudentAppeal(sessionId: string, unitId: string, rea
   });
   const body = await res.json().catch(() => null);
   if (!res.ok) {
-    throw new Error(body?.detail || body?.message || "Failed to submit appeal");
+    throw new Error(extractErrorMessage(body, "Failed to submit appeal"));
   }
   return body.data;
 }
@@ -637,7 +662,7 @@ export async function reviewAppeal(appealId: string, approved: boolean, reviewNo
   });
   const body = await res.json().catch(() => null);
   if (!res.ok) {
-    throw new Error(body?.detail || body?.message || "Failed to review appeal");
+    throw new Error(extractErrorMessage(body, "Failed to review appeal"));
   }
   return body.data;
 }
@@ -654,7 +679,7 @@ export async function createDepartment(code: string, name: string): Promise<Depa
     body: JSON.stringify({ code, name }),
   });
   const body = await res.json().catch(() => null);
-  if (!res.ok) throw new Error(body?.detail || "Failed to create department");
+  if (!res.ok) throw new Error(extractErrorMessage(body, "Failed to create department"));
   return body.data;
 }
 
@@ -670,7 +695,7 @@ export async function createCohort(departmentId: string, name: string, admission
     body: JSON.stringify({ department_id: departmentId, name, admission_year: admissionYear, graduation_year: graduationYear }),
   });
   const body = await res.json().catch(() => null);
-  if (!res.ok) throw new Error(body?.detail || "Failed to create cohort");
+  if (!res.ok) throw new Error(extractErrorMessage(body, "Failed to create cohort"));
   return body.data;
 }
 
@@ -686,7 +711,7 @@ export async function createTerm(academicYearId: string, termType: string, start
     body: JSON.stringify({ academic_year_id: academicYearId, term_type: termType, start_date: startDate, end_date: endDate }),
   });
   const body = await res.json().catch(() => null);
-  if (!res.ok) throw new Error(body?.detail || "Failed to create term");
+  if (!res.ok) throw new Error(extractErrorMessage(body, "Failed to create term"));
   return body.data;
 }
 
@@ -702,7 +727,7 @@ export async function createSubject(code: string, name: string, departmentId: st
     body: JSON.stringify({ code, name, department_id: departmentId, credits }),
   });
   const body = await res.json().catch(() => null);
-  if (!res.ok) throw new Error(body?.detail || "Failed to create subject");
+  if (!res.ok) throw new Error(extractErrorMessage(body, "Failed to create subject"));
   return body.data;
 }
 
@@ -718,7 +743,7 @@ export async function createOffering(subjectId: string, termId: string, primaryC
     body: JSON.stringify({ subject_id: subjectId, term_id: termId, primary_cohort_id: primaryCohortId, section }),
   });
   const body = await res.json().catch(() => null);
-  if (!res.ok) throw new Error(body?.detail || "Failed to create offering");
+  if (!res.ok) throw new Error(extractErrorMessage(body, "Failed to create offering"));
   return body.data;
 }
 
@@ -734,7 +759,7 @@ export async function assignFaculty(facultyId: string, offeringId: string, start
     body: JSON.stringify({ faculty_id: facultyId, offering_id: offeringId, start_date: startDate, end_date: endDate }),
   });
   const body = await res.json().catch(() => null);
-  if (!res.ok) throw new Error(body?.detail || "Failed to assign faculty");
+  if (!res.ok) throw new Error(extractErrorMessage(body, "Failed to assign faculty"));
   return body.data;
 }
 
@@ -751,7 +776,7 @@ export async function importStudentsCsv(file: File): Promise<{ imported_count: n
     body: formData,
   });
   const body = await res.json().catch(() => null);
-  if (!res.ok) throw new Error(body?.detail || "CSV import failed");
+  if (!res.ok) throw new Error(extractErrorMessage(body, "CSV import failed"));
   return body.data;
 }
 
