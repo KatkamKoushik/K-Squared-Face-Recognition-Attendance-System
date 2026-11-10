@@ -1,10 +1,8 @@
 import 'dart:convert';
-import 'dart:io' as io;
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
-import '../../core/network/api_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/models/domain_contracts.dart';
 import '../../logic/session_provider.dart';
