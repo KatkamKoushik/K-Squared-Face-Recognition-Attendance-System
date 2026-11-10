@@ -728,3 +728,86 @@ export function getOfferingAttendanceExportUrl(offeringId: string): string {
   return `${API_BASE}/offerings/${offeringId}/export/csv`;
 }
 
+export interface DemoFaceBox {
+  face_index: number;
+  box: [number, number, number, number];
+  detection_score: number;
+  quality_score: number;
+  quality_reason: string;
+  face_crop_base64: string;
+  status: "MATCHED" | "UNKNOWN_VISITOR" | "AMBIGUOUS" | "QUALITY_REJECTED" | string;
+  attendance_granted: boolean;
+  student_id?: string | null;
+  roll_number?: string | null;
+  full_name?: string | null;
+  similarity_score: number;
+  margin: number;
+  reference_photo_base64?: string | null;
+  color_hex: string;
+  badge_label: string;
+}
+
+export interface DemoStudentResult {
+  student_id: string;
+  roll_number: string;
+  full_name: string;
+  attendance_granted: boolean;
+  status: "PRESENT" | "ABSENT" | string;
+  similarity_score?: number | null;
+  face_crop_base64?: string | null;
+  reference_photo_base64?: string | null;
+}
+
+export interface DemoEnrolledStudentSummary {
+  student_id: string;
+  roll_number: string;
+  full_name: string;
+  is_active: boolean;
+  has_reference_photo: boolean;
+}
+
+export interface DemoAnalysisResponse {
+  total_detected_faces: number;
+  total_enrolled_students: number;
+  present_count: number;
+  absent_count: number;
+  unknown_count: number;
+  detected_faces: DemoFaceBox[];
+  attendance_granted: DemoStudentResult[];
+  attendance_not_granted: DemoStudentResult[];
+  unidentified_faces: DemoFaceBox[];
+}
+
+export async function getDemoEnrolledStudents(): Promise<DemoEnrolledStudentSummary[] | null> {
+  return fetchFromApi<DemoEnrolledStudentSummary[]>("/demo/enrolled-students");
+}
+
+export async function analyzeDemoPhoto(
+  file: File,
+  matchThreshold: number = 0.363,
+  marginThreshold: number = 0.10,
+  blurThreshold: number = 50.0
+): Promise<DemoAnalysisResponse> {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("match_threshold", matchThreshold.toString());
+  formData.append("margin_threshold", marginThreshold.toString());
+  formData.append("blur_threshold", blurThreshold.toString());
+
+  const res = await fetch(`${API_BASE}/demo/analyze`, {
+    method: "POST",
+    headers: {
+      "ngrok-skip-browser-warning": "1",
+    },
+    body: formData,
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => null);
+    throw new Error(err?.detail || `Inference failed with HTTP ${res.status}`);
+  }
+
+  const envelope = await res.json();
+  return envelope.data;
+}
+

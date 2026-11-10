@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ShieldCheck, Lock, Mail, AlertCircle, ArrowRight, CheckCircle2 } from "lucide-react";
+import { ShieldCheck, Lock, Mail, AlertCircle, ArrowRight, CheckCircle2, Camera } from "lucide-react";
 import { login } from "@/lib/api";
 
 export default function LoginPage() {
@@ -134,6 +135,25 @@ export default function LoginPage() {
             <ArrowRight className="w-4 h-4" />
           </button>
         </form>
+
+        <div className="pt-4 border-t border-slate-200">
+          <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-left">
+            <div className="flex items-center space-x-2 text-xs font-semibold text-institutional-navy">
+              <Camera className="w-4 h-4 text-institutional-blue" />
+              <span>Mode 2: Demo Testing & Face Visualizer</span>
+            </div>
+            <p className="mt-1 text-xs text-slate-500">
+              Universal sandbox for testing group photo recognition and ground-truth bounding box overlays across all enrolled students.
+            </p>
+            <Link
+              href="/demo"
+              className="mt-3 inline-flex items-center space-x-1.5 text-xs font-semibold text-institutional-blue hover:text-institutional-navy transition-colors"
+            >
+              <span>Launch Demo Visualizer</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+        </div>
       </div>
     </div>
   );

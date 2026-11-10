@@ -4,6 +4,7 @@ import '../../core/theme/app_theme.dart';
 import '../../data/kucet_faculty_directory.dart';
 import '../../logic/auth_provider.dart';
 import '../../logic/session_provider.dart';
+import 'demo_visualizer_screen.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -486,46 +487,137 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ),
                   const SizedBox(height: 16),
 
-                  // Primary Faculty Coordinator Login Card: Dr. M. Soujanya
+                  // Two Distinct Operating Modes: Dr. Soujanya vs Demo Visualizer
+                  const Text(
+                    'SELECT OPERATING MODE',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1.1,
+                      color: AppTheme.textMutedLight,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+
+                  // Mode 1: Dr. M. Soujanya Official Faculty Login
                   InkWell(
                     onTap: () => _fillDemoCredentials('soujanyavedh@gmail.com'),
                     borderRadius: BorderRadius.circular(12),
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                       decoration: BoxDecoration(
-                        color: AppTheme.surfaceVariantLight,
+                        color: Colors.white,
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: AppTheme.secondaryBlue.withValues(alpha: 0.3)),
+                        border: Border.all(color: AppTheme.primaryNavy.withValues(alpha: 0.3)),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.04),
+                            blurRadius: 6,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.account_circle_outlined, size: 22, color: AppTheme.secondaryBlue),
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: AppTheme.primaryNavy.withValues(alpha: 0.08),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.school, size: 20, color: AppTheme.primaryNavy),
+                          ),
                           const SizedBox(width: 12),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: const [
                                 Text(
-                                  'Tap to load IT Academic Coordinator account',
+                                  'Dr. M. Soujanya (Official Portal)',
                                   style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                    color: AppTheme.textMainLight,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppTheme.primaryNavy,
                                   ),
                                 ),
                                 SizedBox(height: 2),
                                 Text(
-                                  'soujanyavedh@gmail.com (Dr. M. Soujanya)',
+                                  'soujanyavedh@gmail.com • CSE Academic Faculty',
                                   style: TextStyle(
                                     fontSize: 11,
-                                    fontWeight: FontWeight.bold,
-                                    color: AppTheme.primaryNavy,
+                                    color: AppTheme.textMutedLight,
                                   ),
                                 ),
                               ],
                             ),
                           ),
-                          const Icon(Icons.arrow_forward_ios, size: 12, color: AppTheme.secondaryBlue),
+                          const Icon(Icons.touch_app_outlined, size: 16, color: AppTheme.secondaryBlue),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+
+                  // Mode 2: Universal Demo Testing & Ground-Truth Visualizer
+                  InkWell(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const DemoVisualizerScreen(),
+                        ),
+                      );
+                    },
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF0FDF4), // Light emerald tint
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.5)),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF10B981).withValues(alpha: 0.08),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF10B981).withValues(alpha: 0.15),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.camera_enhance_rounded, size: 20, color: Color(0xFF059669)),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: const [
+                                Text(
+                                  'Demo Testing & Face Visualizer',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.bold,
+                                    color: Color(0xFF065F46),
+                                  ),
+                                ),
+                                SizedBox(height: 2),
+                                Text(
+                                  'Universal Sandbox • Branch-Agnostic Test Gallery',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: Color(0xFF047857),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const Icon(Icons.arrow_forward_ios, size: 14, color: Color(0xFF059669)),
                         ],
                       ),
                     ),

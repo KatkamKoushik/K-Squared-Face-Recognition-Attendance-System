@@ -288,3 +288,53 @@ export interface GovernanceSummaryResponse {
   disk_usage_mb: number;
   retention_policy_days: number;
 }
+
+export interface DemoFaceBox {
+  face_index: number;
+  box: [number, number, number, number];
+  detection_score: number;
+  quality_score: number;
+  quality_reason: string;
+  face_crop_base64: string;
+  status: "MATCHED" | "UNKNOWN_VISITOR" | "AMBIGUOUS" | "QUALITY_REJECTED" | string;
+  attendance_granted: boolean;
+  student_id?: string | null;
+  roll_number?: string | null;
+  full_name?: string | null;
+  similarity_score: number;
+  margin: number;
+  reference_photo_base64?: string | null;
+  color_hex: string;
+  badge_label: string;
+}
+
+export interface DemoStudentResult {
+  student_id: string;
+  roll_number: string;
+  full_name: string;
+  attendance_granted: boolean;
+  status: "PRESENT" | "ABSENT" | string;
+  similarity_score?: number | null;
+  face_crop_base64?: string | null;
+  reference_photo_base64?: string | null;
+}
+
+export interface DemoEnrolledStudentSummary {
+  student_id: string;
+  roll_number: string;
+  full_name: string;
+  is_active: boolean;
+  has_reference_photo: boolean;
+}
+
+export interface DemoAnalysisResponse {
+  total_detected_faces: number;
+  total_enrolled_students: number;
+  present_count: number;
+  absent_count: number;
+  unknown_count: number;
+  detected_faces: DemoFaceBox[];
+  attendance_granted: DemoStudentResult[];
+  attendance_not_granted: DemoStudentResult[];
+  unidentified_faces: DemoFaceBox[];
+}
