@@ -131,10 +131,11 @@ class EnrollmentService:
         cohort_id = data.cohort_id
         if not cohort_id:
             cohort_match = db.execute(
-                select(Cohort.id).where(Cohort.cohort_code.ilike(f"%{data.department.strip()}%"))
+                select(Cohort.id).where(Cohort.name.ilike(f"%{data.department.strip()}%"))
             ).scalars().first()
-            if cohort_match:
-                cohort_id = cohort_match
+            if not cohort_match:
+                cohort_match = db.execute(select(Cohort.id)).scalars().first()
+            cohort_id = cohort_match
 
         submission = EnrollmentSubmission(
             roll_number=data.roll_number.strip().upper(),

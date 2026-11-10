@@ -258,9 +258,15 @@ export default function StudentEnrollmentPage() {
 
       const response = await submitStudentEnrollment(formData);
       setSubmittedData(response);
+      if (typeof window !== "undefined") {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to submit enrollment application.";
       setErrorMessage(msg);
+      if (typeof window !== "undefined") {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
     } finally {
       setLoading(false);
     }
@@ -391,7 +397,7 @@ export default function StudentEnrollmentPage() {
               </div>
             </div>
 
-            <div className="pt-4 flex items-center justify-center space-x-4">
+            <div className="pt-4 flex flex-wrap items-center justify-center gap-3">
               <button
                 type="button"
                 onClick={handleReset}
@@ -401,10 +407,10 @@ export default function StudentEnrollmentPage() {
                 <span>Submit Another Application</span>
               </button>
               <Link
-                href="/admin"
+                href="/admin/enrollment"
                 className="inline-flex items-center space-x-2 px-5 py-2.5 rounded-xl text-sm font-semibold bg-institutional-navy text-white hover:bg-institutional-navy/90 transition-colors shadow-xs"
               >
-                <span>Return to Portal</span>
+                <span>Go to Biometric Review Queue</span>
                 <ArrowRight className="w-4 h-4" />
               </Link>
             </div>
@@ -772,6 +778,14 @@ export default function StudentEnrollmentPage() {
                 </label>
               </div>
 
+              {/* Submit Error Banner */}
+              {errorMessage && (
+                <div className="p-3.5 rounded-xl bg-red-50 border border-red-200 text-xs text-red-800 flex items-start space-x-2.5">
+                  <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+                  <div className="leading-relaxed font-medium">{errorMessage}</div>
+                </div>
+              )}
+
               {/* Submit Button */}
               <div className="pt-4 border-t border-slate-200 flex items-center justify-between">
                 <div className="text-xs text-slate-500">
@@ -785,7 +799,7 @@ export default function StudentEnrollmentPage() {
                   {loading ? (
                     <>
                       <RefreshCw className="w-4 h-4 animate-spin" />
-                      <span>Validating & Staging...</span>
+                      <span>Uploading to Cloudinary & Staging...</span>
                     </>
                   ) : (
                     <>
