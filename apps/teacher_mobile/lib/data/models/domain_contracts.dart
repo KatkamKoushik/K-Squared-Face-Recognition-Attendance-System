@@ -872,3 +872,143 @@ class GovernanceSummaryResponse {
     'retention_policy_days': retentionPolicyDays,
   };
 }
+
+class DemoFaceBox {
+  final int faceIndex;
+  final List<double> box;
+  final double detectionScore;
+  final double qualityScore;
+  final String qualityReason;
+  final String faceCropBase64;
+  final String status;
+  final bool attendanceGranted;
+  final String? studentId;
+  final String? rollNumber;
+  final String? fullName;
+  final double similarityScore;
+  final double margin;
+  final String? referencePhotoBase64;
+  final String colorHex;
+  final String badgeLabel;
+
+  const DemoFaceBox({
+    required this.faceIndex,
+    required this.box,
+    required this.detectionScore,
+    required this.qualityScore,
+    required this.qualityReason,
+    required this.faceCropBase64,
+    required this.status,
+    required this.attendanceGranted,
+    this.studentId,
+    this.rollNumber,
+    this.fullName,
+    required this.similarityScore,
+    required this.margin,
+    this.referencePhotoBase64,
+    required this.colorHex,
+    required this.badgeLabel,
+  });
+
+  factory DemoFaceBox.fromJson(Map<String, dynamic> json) {
+    return DemoFaceBox(
+      faceIndex: json['face_index'] as int,
+      box: (json['box'] as List).map((e) => (e as num).toDouble()).toList(),
+      detectionScore: (json['detection_score'] as num).toDouble(),
+      qualityScore: (json['quality_score'] as num).toDouble(),
+      qualityReason: json['quality_reason'] as String,
+      faceCropBase64: json['face_crop_base64'] as String,
+      status: json['status'] as String,
+      attendanceGranted: json['attendance_granted'] as bool,
+      studentId: json['student_id'] as String?,
+      rollNumber: json['roll_number'] as String?,
+      fullName: json['full_name'] as String?,
+      similarityScore: (json['similarity_score'] as num).toDouble(),
+      margin: (json['margin'] as num).toDouble(),
+      referencePhotoBase64: json['reference_photo_base64'] as String?,
+      colorHex: json['color_hex'] as String,
+      badgeLabel: json['badge_label'] as String,
+    );
+  }
+}
+
+class DemoStudentResult {
+  final String studentId;
+  final String rollNumber;
+  final String fullName;
+  final bool attendanceGranted;
+  final String status;
+  final double? similarityScore;
+  final String? faceCropBase64;
+  final String? referencePhotoBase64;
+
+  const DemoStudentResult({
+    required this.studentId,
+    required this.rollNumber,
+    required this.fullName,
+    required this.attendanceGranted,
+    required this.status,
+    this.similarityScore,
+    this.faceCropBase64,
+    this.referencePhotoBase64,
+  });
+
+  factory DemoStudentResult.fromJson(Map<String, dynamic> json) {
+    return DemoStudentResult(
+      studentId: json['student_id'] as String,
+      rollNumber: json['roll_number'] as String,
+      fullName: json['full_name'] as String,
+      attendanceGranted: json['attendance_granted'] as bool,
+      status: json['status'] as String,
+      similarityScore: (json['similarity_score'] as num?)?.toDouble(),
+      faceCropBase64: json['face_crop_base64'] as String?,
+      referencePhotoBase64: json['reference_photo_base64'] as String?,
+    );
+  }
+}
+
+class DemoAnalysisResponse {
+  final int totalDetectedFaces;
+  final int totalEnrolledStudents;
+  final int presentCount;
+  final int absentCount;
+  final int unknownCount;
+  final List<DemoFaceBox> detectedFaces;
+  final List<DemoStudentResult> attendanceGranted;
+  final List<DemoStudentResult> attendanceNotGranted;
+  final List<DemoFaceBox> unidentifiedFaces;
+
+  const DemoAnalysisResponse({
+    required this.totalDetectedFaces,
+    required this.totalEnrolledStudents,
+    required this.presentCount,
+    required this.absentCount,
+    required this.unknownCount,
+    required this.detectedFaces,
+    required this.attendanceGranted,
+    required this.attendanceNotGranted,
+    required this.unidentifiedFaces,
+  });
+
+  factory DemoAnalysisResponse.fromJson(Map<String, dynamic> json) {
+    return DemoAnalysisResponse(
+      totalDetectedFaces: json['total_detected_faces'] as int,
+      totalEnrolledStudents: json['total_enrolled_students'] as int,
+      presentCount: json['present_count'] as int,
+      absentCount: json['absent_count'] as int,
+      unknownCount: json['unknown_count'] as int,
+      detectedFaces: (json['detected_faces'] as List)
+          .map((e) => DemoFaceBox.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      attendanceGranted: (json['attendance_granted'] as List)
+          .map((e) => DemoStudentResult.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      attendanceNotGranted: (json['attendance_not_granted'] as List)
+          .map((e) => DemoStudentResult.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      unidentifiedFaces: (json['unidentified_faces'] as List)
+          .map((e) => DemoFaceBox.fromJson(e as Map<String, dynamic>))
+          .toList(),
+    );
+  }
+}

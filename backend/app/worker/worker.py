@@ -3,6 +3,7 @@ FRS V7.1 K² — Deterministic Vision Orchestration State Machine & Worker Proce
 Processes queued frames, enforces per-face evidence routing, and prepares candidate proposals.
 """
 
+import io
 import logging
 import os
 from typing import Dict, List
@@ -20,6 +21,7 @@ from app.domain.models.student import EnrollmentProfile
 from app.domain.models.job import VisionJob
 from app.domain.models.model_registry import PolicyVersion
 from app.services.queue_service import QueueService
+from app.services.storage_service import CloudinaryStorageService
 from app.worker.preprocessor import Preprocessor
 from app.worker.adapters.detector_adapter import DetectorAdapter
 from app.worker.adapters.recognizer_adapter import RecognizerAdapter
@@ -91,13 +93,14 @@ class VisionWorker:
         profiles = list(db.execute(profiles_stmt).scalars().all())
         roster_gallery: Dict[str, List[float]] = {p.student_id: p.vector_data for p in profiles}
 
-        # 2. Open frame image from shared storage
-        if not os.path.exists(frame.storage_path):
+        # 2. Open frame image from Cloudinary or shared storage
+        try:
+            frame_bytes = CloudinaryStorageService.load_image_bytes(frame.storage_path)
+            image = Image.open(io.BytesIO(frame_bytes))
+        except Exception as e:
             raise FileNotFoundError(
-                f"Frame image not found at storage path: {frame.storage_path}. "
-                "Ensure shared frame_storage volume is mounted for both API and vision-worker."
+                f"Frame image not found at storage path: {frame.storage_path}. Error: {e}"
             )
-        image = Image.open(frame.storage_path)
 
         # 3. Detect faces
         detections = self.detector.detect_faces(image)

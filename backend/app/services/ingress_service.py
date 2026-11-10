@@ -17,6 +17,7 @@ from app.domain.enums import JobState, JobType, SessionState
 from app.domain.models.session import AttendanceSession
 from app.domain.models.capture import CaptureBatch, Frame
 from app.domain.models.job import VisionJob
+from app.services.storage_service import CloudinaryStorageService
 
 # Restrict PIL max pixels to prevent memory exhaustion / decompression bomb attacks
 Image.MAX_IMAGE_PIXELS = 4096 * 4096
@@ -99,11 +100,12 @@ class IngressService:
         # 4. Cryptographic SHA-256 hash
         content_hash = hashlib.sha256(clean_bytes).hexdigest()
 
-        # 5. Save to shared volume storage
-        filename = f"{content_hash}_{frame_index}.jpg"
-        file_path = (storage_dir / filename).resolve()
-        with open(file_path, "wb") as f:
-            f.write(clean_bytes)
+        # 5. Save to Cloudinary object storage (with local fallback)
+        frame_url = CloudinaryStorageService.upload_classroom_frame(
+            file_bytes=clean_bytes,
+            session_id=session_id,
+            frame_index=frame_index,
+        )
 
         # 6. Ensure batch exists (session-scoped to avoid cross-session primary key collisions)
         scoped_batch_id = batch_id if session_id in batch_id else f"{batch_id}_{session_id[:12]}"
@@ -121,7 +123,7 @@ class IngressService:
             mime_type="image/jpeg",
             width=width,
             height=height,
-            storage_path=str(file_path),
+            storage_path=frame_url,
             status="QUEUED",
         )
         db.add(frame)

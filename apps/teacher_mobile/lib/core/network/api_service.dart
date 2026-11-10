@@ -323,4 +323,57 @@ class FrsApiService {
     }
     throw Exception('Receipt query failed on $baseUrl (HTTP ${res.statusCode}): ${res.body}');
   }
+
+  /// POST /demo/analyze
+  /// Universal branch-agnostic demo photo analysis with visual bounding boxes and reconciliation.
+  Future<DemoAnalysisResponse> analyzeDemoImage({
+    required List<int> imageBytes,
+    required String filename,
+    double matchThreshold = 0.363,
+    double marginThreshold = 0.10,
+    double blurThreshold = 50.0,
+  }) async {
+    final uri = Uri.parse('$baseUrl/demo/analyze');
+    final request = http.MultipartRequest('POST', uri);
+    request.headers['Accept'] = 'application/json';
+    request.headers['ngrok-skip-browser-warning'] = 'true';
+    if (authToken != null && authToken!.isNotEmpty) {
+      request.headers['Authorization'] = 'Bearer $authToken';
+    }
+    request.fields['match_threshold'] = matchThreshold.toString();
+    request.fields['margin_threshold'] = marginThreshold.toString();
+    request.fields['blur_threshold'] = blurThreshold.toString();
+    request.files.add(
+      http.MultipartFile.fromBytes('file', imageBytes, filename: filename),
+    );
+
+    final streamed = await _client.send(request).timeout(const Duration(seconds: 30));
+    final res = await http.Response.fromStream(streamed);
+    _checkAuthError(res);
+
+    if (res.statusCode == 200) {
+      final payload = _unwrap(res);
+      if (payload is Map<String, dynamic>) {
+        return DemoAnalysisResponse.fromJson(payload);
+      }
+    }
+    throw Exception('Demo photo analysis failed on $baseUrl (HTTP ${res.statusCode}): ${res.body}');
+  }
+
+  /// GET /demo/enrolled-students
+  Future<List<Map<String, dynamic>>> getDemoEnrolledStudents() async {
+    final res = await _client.get(
+      Uri.parse('$baseUrl/demo/enrolled-students'),
+      headers: _headers(),
+    ).timeout(const Duration(seconds: 6));
+    _checkAuthError(res);
+
+    if (res.statusCode == 200) {
+      final payload = _unwrap(res);
+      if (payload is List) {
+        return payload.cast<Map<String, dynamic>>();
+      }
+    }
+    throw Exception('Failed to load demo enrolled students (HTTP ${res.statusCode}): ${res.body}');
+  }
 }

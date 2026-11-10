@@ -51,13 +51,18 @@ def test_ingress_saves_frame_to_configured_storage_dir(db_session: Session, seed
         correlation_id="corr_storage_01",
     )
 
-    expected_storage_dir = Path(settings.STORAGE_DIR).resolve()
-    actual_frame_path = Path(frame.storage_path).resolve()
-
-    # Verify frame is saved under configured STORAGE_DIR
-    assert actual_frame_path.parent == expected_storage_dir
-    assert os.path.exists(actual_frame_path)
-    assert os.path.getsize(actual_frame_path) > 0
+    # Verify frame is saved under configured Cloudinary or local STORAGE_DIR
+    if frame.storage_path.startswith("http://") or frame.storage_path.startswith("https://"):
+        assert "res.cloudinary.com" in frame.storage_path or "cloudinary" in frame.storage_path
+        from app.services.storage_service import CloudinaryStorageService
+        retrieved_bytes = CloudinaryStorageService.load_image_bytes(frame.storage_path)
+        assert len(retrieved_bytes) > 0
+    else:
+        expected_storage_dir = Path(settings.STORAGE_DIR).resolve()
+        actual_frame_path = Path(frame.storage_path).resolve()
+        assert expected_storage_dir in actual_frame_path.parents or actual_frame_path.parent == expected_storage_dir
+        assert os.path.exists(actual_frame_path)
+        assert os.path.getsize(actual_frame_path) > 0
 
 
 def test_worker_fails_gracefully_when_frame_storage_file_missing(db_session: Session, seed_data):

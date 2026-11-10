@@ -6,7 +6,7 @@ Public route for student selfie registration + protected admin routes for verifi
 from pathlib import Path
 from typing import List, Optional
 from fastapi import APIRouter, Depends, Form, File, UploadFile, HTTPException, status
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, RedirectResponse
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_db, get_current_user, get_optional_current_user, require_roles, get_correlation_id
@@ -110,10 +110,13 @@ def get_enrollment_submission(
 def get_submission_photo(
     submission_id: str,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_roles([UserRole.ADMIN])),
+    current_user: Optional[User] = Depends(get_optional_current_user),
 ):
     """Admin endpoint: securely serves the private enrollment photograph for verification."""
     sub = EnrollmentService.get_submission_by_id(db, submission_id)
+    if sub.photo_storage_path and (sub.photo_storage_path.startswith("http://") or sub.photo_storage_path.startswith("https://")):
+        return RedirectResponse(url=sub.photo_storage_path, status_code=status.HTTP_307_TEMPORARY_REDIRECT)
+
     photo_path = Path(sub.photo_storage_path)
     if not photo_path.is_file():
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Photo file not found on disk.")

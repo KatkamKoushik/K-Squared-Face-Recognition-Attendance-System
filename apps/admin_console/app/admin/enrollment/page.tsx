@@ -354,7 +354,7 @@ export default function AdminEnrollmentQueuePage() {
               <div className="space-y-2 text-center">
                 <div className="w-48 h-60 mx-auto rounded-xl overflow-hidden border-2 border-slate-300 shadow-md bg-slate-100 flex items-center justify-center relative">
                   <img
-                    src={getSubmissionPhotoUrl(selectedSub.id)}
+                    src={getSubmissionPhotoUrl(selectedSub.id, selectedSub.photo_storage_path)}
                     alt={`${selectedSub.roll_number} Portrait`}
                     className="w-full h-full object-cover"
                     onError={(e) => {

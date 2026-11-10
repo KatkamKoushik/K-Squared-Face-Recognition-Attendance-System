@@ -5,7 +5,18 @@
  */
 
 const DEFAULT_REMOTE_API = "https://straddle-deflate-footwear.ngrok-free.dev/api/v1";
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || DEFAULT_REMOTE_API;
+
+export function getApiBase(): string {
+  if (typeof window !== "undefined") {
+    const host = window.location.hostname;
+    if (host === "localhost" || host === "127.0.0.1") {
+      return "http://localhost:8000/api/v1";
+    }
+  }
+  return process.env.NEXT_PUBLIC_API_URL || DEFAULT_REMOTE_API;
+}
+
+const API_BASE = getApiBase();
 
 const AUTH_TOKEN_KEY = "kucet_frs_auth_token";
 const AUTH_USER_KEY = "kucet_frs_auth_user";
@@ -96,10 +107,11 @@ export function setStoredUser(user: StoredAuthUser | null, remember: boolean = t
 
 export async function login(email: string, password: string, remember: boolean = true): Promise<LoginResponse | null> {
   try {
-    const res = await fetch(`${API_BASE}/auth/login`, {
+    const res = await fetch(`${getApiBase()}/auth/login`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        "ngrok-skip-browser-warning": "1",
       },
       body: JSON.stringify({ email, password }),
     });
@@ -145,7 +157,7 @@ export async function fetchFromApi<T>(endpoint: string, options?: RequestInit): 
       headers["Authorization"] = `Bearer ${token}`;
     }
 
-    const res = await fetch(`${API_BASE}${endpoint}`, {
+    const res = await fetch(`${getApiBase()}${endpoint}`, {
       ...options,
       headers,
       next: { revalidate: 10 }, // Next.js ISR cache
@@ -411,6 +423,7 @@ export interface EnrollmentSubmissionItem {
   consent_acknowledged: boolean;
   rejection_reason?: string;
   photo_sha256: string;
+  photo_storage_path?: string;
   reviewed_by_user_id?: string;
   reviewed_at?: string;
   created_at: string;
@@ -443,9 +456,12 @@ export interface AdminDashboardMetrics {
 }
 
 export async function submitStudentEnrollment(formData: FormData): Promise<EnrollmentSubmissionItem> {
-  const url = `${API_BASE}/enrollment/submit`;
+  const url = `${getApiBase()}/enrollment/submit`;
   const res = await fetch(url, {
     method: "POST",
+    headers: {
+      "ngrok-skip-browser-warning": "1",
+    },
     body: formData,
   });
 
@@ -472,17 +488,21 @@ export async function getEnrollmentSubmission(id: string): Promise<EnrollmentSub
   return fetchFromApi<EnrollmentSubmissionItem>(`/enrollment/submissions/${id}`);
 }
 
-export function getSubmissionPhotoUrl(id: string): string {
-  return `${API_BASE}/enrollment/submissions/${id}/photo`;
+export function getSubmissionPhotoUrl(id: string, storagePath?: string): string {
+  if (storagePath && (storagePath.startsWith("http://") || storagePath.startsWith("https://"))) {
+    return storagePath;
+  }
+  return `${getApiBase()}/enrollment/submissions/${id}/photo`;
 }
 
 export async function approveEnrollmentSubmission(id: string): Promise<EnrollmentSubmissionItem> {
   const token = getAuthToken();
-  const res = await fetch(`${API_BASE}/enrollment/submissions/${id}/approve`, {
+  const res = await fetch(`${getApiBase()}/enrollment/submissions/${id}/approve`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
+      "ngrok-skip-browser-warning": "1",
     },
   });
   const body = await res.json().catch(() => null);
@@ -494,11 +514,12 @@ export async function approveEnrollmentSubmission(id: string): Promise<Enrollmen
 
 export async function rejectEnrollmentSubmission(id: string, reason: string): Promise<EnrollmentSubmissionItem> {
   const token = getAuthToken();
-  const res = await fetch(`${API_BASE}/enrollment/submissions/${id}/reject`, {
+  const res = await fetch(`${getApiBase()}/enrollment/submissions/${id}/reject`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
+      "ngrok-skip-browser-warning": "1",
     },
     body: JSON.stringify({ reason }),
   });
@@ -511,11 +532,12 @@ export async function rejectEnrollmentSubmission(id: string, reason: string): Pr
 
 export async function requestRecaptureEnrollmentSubmission(id: string, reason: string): Promise<EnrollmentSubmissionItem> {
   const token = getAuthToken();
-  const res = await fetch(`${API_BASE}/enrollment/submissions/${id}/recapture`, {
+  const res = await fetch(`${getApiBase()}/enrollment/submissions/${id}/recapture`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
+      "ngrok-skip-browser-warning": "1",
     },
     body: JSON.stringify({ reason }),
   });
@@ -578,11 +600,12 @@ export async function getStudentOfferingLedger(offeringId: string): Promise<any 
 
 export async function submitStudentAppeal(sessionId: string, unitId: string, reason: string): Promise<AttendanceAppealItem> {
   const token = getAuthToken();
-  const res = await fetch(`${API_BASE}/student/me/appeals`, {
+  const res = await fetch(`${getApiBase()}/student/me/appeals`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
+      "ngrok-skip-browser-warning": "1",
     },
     body: JSON.stringify({ session_id: sessionId, unit_id: unitId, reason }),
   });
@@ -603,11 +626,12 @@ export async function getAllAppeals(): Promise<AttendanceAppealItem[] | null> {
 
 export async function reviewAppeal(appealId: string, approved: boolean, reviewNotes: string): Promise<AttendanceAppealItem> {
   const token = getAuthToken();
-  const res = await fetch(`${API_BASE}/student/appeals/${appealId}/review`, {
+  const res = await fetch(`${getApiBase()}/student/appeals/${appealId}/review`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
+      "ngrok-skip-browser-warning": "1",
     },
     body: JSON.stringify({ approved, review_notes: reviewNotes }),
   });
@@ -620,11 +644,12 @@ export async function reviewAppeal(appealId: string, approved: boolean, reviewNo
 
 export async function createDepartment(code: string, name: string): Promise<DepartmentItem> {
   const token = getAuthToken();
-  const res = await fetch(`${API_BASE}/academic/departments`, {
+  const res = await fetch(`${getApiBase()}/academic/departments`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
+      "ngrok-skip-browser-warning": "1",
     },
     body: JSON.stringify({ code, name }),
   });
@@ -635,11 +660,12 @@ export async function createDepartment(code: string, name: string): Promise<Depa
 
 export async function createCohort(departmentId: string, name: string, admissionYear: number, graduationYear: number): Promise<CohortItem> {
   const token = getAuthToken();
-  const res = await fetch(`${API_BASE}/academic/cohorts`, {
+  const res = await fetch(`${getApiBase()}/academic/cohorts`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
+      "ngrok-skip-browser-warning": "1",
     },
     body: JSON.stringify({ department_id: departmentId, name, admission_year: admissionYear, graduation_year: graduationYear }),
   });
@@ -650,11 +676,12 @@ export async function createCohort(departmentId: string, name: string, admission
 
 export async function createTerm(academicYearId: string, termType: string, startDate: string, endDate: string): Promise<TermItem> {
   const token = getAuthToken();
-  const res = await fetch(`${API_BASE}/academic/terms`, {
+  const res = await fetch(`${getApiBase()}/academic/terms`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
+      "ngrok-skip-browser-warning": "1",
     },
     body: JSON.stringify({ academic_year_id: academicYearId, term_type: termType, start_date: startDate, end_date: endDate }),
   });
@@ -665,11 +692,12 @@ export async function createTerm(academicYearId: string, termType: string, start
 
 export async function createSubject(code: string, name: string, departmentId: string, credits: number = 3): Promise<any> {
   const token = getAuthToken();
-  const res = await fetch(`${API_BASE}/academic/subjects`, {
+  const res = await fetch(`${getApiBase()}/academic/subjects`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
+      "ngrok-skip-browser-warning": "1",
     },
     body: JSON.stringify({ code, name, department_id: departmentId, credits }),
   });
@@ -680,11 +708,12 @@ export async function createSubject(code: string, name: string, departmentId: st
 
 export async function createOffering(subjectId: string, termId: string, primaryCohortId: string, section: string = "A"): Promise<SubjectOfferingItem> {
   const token = getAuthToken();
-  const res = await fetch(`${API_BASE}/academic/offerings`, {
+  const res = await fetch(`${getApiBase()}/academic/offerings`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
+      "ngrok-skip-browser-warning": "1",
     },
     body: JSON.stringify({ subject_id: subjectId, term_id: termId, primary_cohort_id: primaryCohortId, section }),
   });
@@ -695,11 +724,12 @@ export async function createOffering(subjectId: string, termId: string, primaryC
 
 export async function assignFaculty(facultyId: string, offeringId: string, startDate: string, endDate: string): Promise<FacultyAssignmentItem> {
   const token = getAuthToken();
-  const res = await fetch(`${API_BASE}/academic/faculty-assignments`, {
+  const res = await fetch(`${getApiBase()}/academic/faculty-assignments`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
+      "ngrok-skip-browser-warning": "1",
     },
     body: JSON.stringify({ faculty_id: facultyId, offering_id: offeringId, start_date: startDate, end_date: endDate }),
   });
@@ -712,10 +742,11 @@ export async function importStudentsCsv(file: File): Promise<{ imported_count: n
   const token = getAuthToken();
   const formData = new FormData();
   formData.append("file", file);
-  const res = await fetch(`${API_BASE}/academic/import/students/csv`, {
+  const res = await fetch(`${getApiBase()}/academic/import/students/csv`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
+      "ngrok-skip-browser-warning": "1",
     },
     body: formData,
   });
@@ -726,5 +757,88 @@ export async function importStudentsCsv(file: File): Promise<{ imported_count: n
 
 export function getOfferingAttendanceExportUrl(offeringId: string): string {
   return `${API_BASE}/offerings/${offeringId}/export/csv`;
+}
+
+export interface DemoFaceBox {
+  face_index: number;
+  box: [number, number, number, number];
+  detection_score: number;
+  quality_score: number;
+  quality_reason: string;
+  face_crop_base64: string;
+  status: "MATCHED" | "UNKNOWN_VISITOR" | "AMBIGUOUS" | "QUALITY_REJECTED" | string;
+  attendance_granted: boolean;
+  student_id?: string | null;
+  roll_number?: string | null;
+  full_name?: string | null;
+  similarity_score: number;
+  margin: number;
+  reference_photo_base64?: string | null;
+  color_hex: string;
+  badge_label: string;
+}
+
+export interface DemoStudentResult {
+  student_id: string;
+  roll_number: string;
+  full_name: string;
+  attendance_granted: boolean;
+  status: "PRESENT" | "ABSENT" | string;
+  similarity_score?: number | null;
+  face_crop_base64?: string | null;
+  reference_photo_base64?: string | null;
+}
+
+export interface DemoEnrolledStudentSummary {
+  student_id: string;
+  roll_number: string;
+  full_name: string;
+  is_active: boolean;
+  has_reference_photo: boolean;
+}
+
+export interface DemoAnalysisResponse {
+  total_detected_faces: number;
+  total_enrolled_students: number;
+  present_count: number;
+  absent_count: number;
+  unknown_count: number;
+  detected_faces: DemoFaceBox[];
+  attendance_granted: DemoStudentResult[];
+  attendance_not_granted: DemoStudentResult[];
+  unidentified_faces: DemoFaceBox[];
+}
+
+export async function getDemoEnrolledStudents(): Promise<DemoEnrolledStudentSummary[] | null> {
+  return fetchFromApi<DemoEnrolledStudentSummary[]>("/demo/enrolled-students");
+}
+
+export async function analyzeDemoPhoto(
+  file: File,
+  matchThreshold: number = 0.363,
+  marginThreshold: number = 0.10,
+  blurThreshold: number = 50.0
+): Promise<DemoAnalysisResponse> {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("match_threshold", matchThreshold.toString());
+  formData.append("margin_threshold", marginThreshold.toString());
+  formData.append("blur_threshold", blurThreshold.toString());
+
+  const res = await fetch(`${API_BASE}/demo/analyze`, {
+    method: "POST",
+    headers: {
+      "ngrok-skip-browser-warning": "1",
+    },
+    body: formData,
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => null);
+    throw new Error(err?.detail || `Inference failed with HTTP ${res.status}`);
+  }
+
+  const envelope = await res.json();
+  return envelope.data;
 }
 

@@ -19,11 +19,13 @@ import {
   FlaskConical,
   LogIn,
   FileText,
+  Camera,
 } from "lucide-react";
 import { logout, getStoredUser, StoredAuthUser } from "@/lib/api";
 
 const navigationItems = [
   { name: "Executive Overview", href: "/", icon: LayoutDashboard },
+  { name: "Demo Visualizer", href: "/demo", icon: Camera },
   { name: "Biometric Queue", href: "/admin/enrollment", icon: ShieldAlert },
   { name: "Attendance Appeals", href: "/admin/appeals", icon: FileText },
   { name: "Student Portal", href: "/student/login", icon: LogIn },
