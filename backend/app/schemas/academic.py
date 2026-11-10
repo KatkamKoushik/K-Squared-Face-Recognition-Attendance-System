@@ -86,6 +86,13 @@ class SubjectOfferingResponse(SubjectOfferingCreate):
 
     id: str
     is_active: bool
+    subject_code: Optional[str] = None
+    subject_name: Optional[str] = None
+    subjectName: Optional[str] = None
+    cohort_name: Optional[str] = None
+    cohort: Optional[str] = None
+    enrolled_count: Optional[int] = None
+    enrolledCount: Optional[int] = None
 
 
 class AuthorizedClassGroupCreate(BaseModel):

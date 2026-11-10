@@ -279,7 +279,7 @@ def seed_kucet_institutional_data(db: Session) -> Dict[str, Any]:
             "cohort_name": "B.Tech CSE Class of 2026 (Final Year IV/IV Sec A)",
             "section": "A",
             "units": 2,
-            "faculty_emp_id": "KUCET-FAC-CSE-001",
+            "faculty_emp_id": "KUCET-FAC-IT-001",
         },
         {
             "subject_code": "CS302",

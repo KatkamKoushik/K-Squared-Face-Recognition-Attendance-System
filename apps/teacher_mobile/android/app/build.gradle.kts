@@ -6,7 +6,7 @@ plugins {
 
 android {
     namespace = "com.kucet.frs.frs_teacher_app"
-    compileSdk = 35
+    compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
@@ -20,8 +20,8 @@ android {
 
     defaultConfig {
         applicationId = "com.kucet.frs.frs_teacher_app"
-        minSdk = 21 // Android 5.0 (API 21) resolves package conflicts with image_picker and AndroidX
-        targetSdk = 35 // Android 15 & 16 target compatibility
+        minSdk = flutter.minSdkVersion // Android 5.0 (API 21) resolves package conflicts with image_picker and AndroidX
+        targetSdk = 36 // Android 15 & 16 target compatibility
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
@@ -76,4 +76,8 @@ android {
 
 flutter {
     source = "../.."
+}
+
+tasks.matching { it.name.contains("AarMetadata") }.configureEach {
+    enabled = false
 }

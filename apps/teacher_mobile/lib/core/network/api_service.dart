@@ -8,7 +8,7 @@ import '../../data/models/domain_contracts.dart';
 class FrsApiService {
   static const String defaultBaseUrl = String.fromEnvironment(
     'API_URL',
-    defaultValue: 'http://10.0.2.2:8000/api/v1',
+    defaultValue: 'https://straddle-deflate-footwear.ngrok-free.dev/api/v1',
   );
 
   String baseUrl;
@@ -29,6 +29,7 @@ class FrsApiService {
     final headers = <String, String>{
       'Accept': 'application/json',
       'Content-Type': 'application/json',
+      'ngrok-skip-browser-warning': 'true',
     };
     if (authToken != null && authToken!.isNotEmpty) {
       headers['Authorization'] = 'Bearer $authToken';
@@ -53,7 +54,7 @@ class FrsApiService {
     try {
       final res = await _client.get(
         Uri.parse('$baseUrl/health/liveness'),
-        headers: {'Accept': 'application/json'},
+        headers: {'Accept': 'application/json', 'ngrok-skip-browser-warning': 'true'},
       ).timeout(const Duration(seconds: 4));
       if (res.statusCode == 200) return true;
       lastConnectionError = 'Liveness probe returned HTTP ${res.statusCode}: ${res.body}';
@@ -64,7 +65,7 @@ class FrsApiService {
     try {
       final resAlt = await _client.get(
         Uri.parse('$baseUrl/health/readiness'),
-        headers: {'Accept': 'application/json'},
+        headers: {'Accept': 'application/json', 'ngrok-skip-browser-warning': 'true'},
       ).timeout(const Duration(seconds: 4));
       if (resAlt.statusCode == 200) return true;
       lastConnectionError = 'Readiness probe returned HTTP ${resAlt.statusCode}: ${resAlt.body}';
@@ -83,10 +84,7 @@ class FrsApiService {
   }) async {
     final res = await _client.post(
       Uri.parse('$baseUrl/auth/login'),
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-      },
+      headers: _headers(),
       body: jsonEncode({
         'email': email,
         'password': password,
@@ -170,6 +168,7 @@ class FrsApiService {
       request.headers['Authorization'] = 'Bearer $authToken';
     }
     request.headers['Accept'] = 'application/json';
+    request.headers['ngrok-skip-browser-warning'] = 'true';
     request.fields['frame_index'] = frameIndex.toString();
     request.files.add(
       http.MultipartFile.fromBytes(

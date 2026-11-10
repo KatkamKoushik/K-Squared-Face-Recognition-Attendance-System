@@ -69,11 +69,11 @@ flowchart TD
     end
 
     subgraph Processing Tier
-        VW["Asynchronous Vision Worker<br/>(ONNX Runtime / CUDA / CPU)<br/>SCRFD 2.5G + ArcFace R50"]
+        VW["Asynchronous Vision Worker<br/>(OpenCV Zoo / CUDA / CPU)<br/>YuNet Detector + SFace 128D"]
     end
 
     subgraph Persistence Tier
-        DB[("PostgreSQL 16 Database<br/>Authoritative Source of Truth<br/>27 Domain & Ledger Tables")]
+        DB[("PostgreSQL 16 / Supabase Database<br/>Authoritative Source of Truth<br/>28 Domain & Ledger Tables + pgvector")]
         FS[("Ephemeral Frame Storage<br/>(Local Disk Cache)<br/>Purged Post-Commit")]
     end
 
@@ -122,7 +122,7 @@ sequenceDiagram
     API-->>Mobile: Upload Acknowledged
 
     Worker->>DB: Poll & Lease Job (LEASED / 60s Lease)
-    Worker->>Worker: Run SCRFD Face Detection & Affine Landmark Alignment
+    Worker->>Worker: Run YuNet Face Detection & 5-Point Landmark Alignment
     Worker->>Worker: Run SFace Embeddings (128-d unit hypersphere vectors)
     Worker->>DB: Persist Candidate Proposals & Open-Set Decisions
     Worker->>DB: Complete Job (DONE)
@@ -158,17 +158,23 @@ where $U_c$ represents the set of verified conducted units ($1 \le |U_c| \le 4$)
 When a session transitions from `DRAFT` to `ROSTER_FROZEN`, the control plane takes an immutable snapshot of all enrolled students actively registered in the subject offering or merged class group. Mid-session roster mutations, student dropouts, or cohort adjustments do not alter the session's frozen denominator.
 
 ### 3. Open-Set Rejection Boundary
-Classroom photographs contain non-enrolled individuals (e.g. guest auditors, lab technicians). Sightings are classified according to cosine similarity $s = \mathbf{v}_q \cdot \mathbf{v}_r$ against enrolled reference embeddings:
+Classroom photographs contain non-enrolled individuals (e.g. guest auditors, lab technicians). Sightings are classified according to SFace cosine similarity $s = \mathbf{v}_q \cdot \mathbf{v}_r$ against enrolled reference embeddings:
 
 ```math
 \text{Decision}(\mathbf{v}_q) = \begin{cases}
-\text{CANDIDATE (Proposed Present)} & \text{if } s \ge 0.60 \quad \text{and} \quad \Delta s \ge 0.15 \\
-\text{REVIEW (Lookalike Ambiguity)} & \text{if } 0.45 \le s < 0.60 \quad \text{or} \quad \Delta s < 0.15 \\
-\text{UNKNOWN (Unassigned Sighting)} & \text{if } s < 0.45
+\text{CANDIDATE (Proposed Present)} & \text{if } s \ge 0.363 \quad \text{and} \quad \Delta s \ge 0.10 \\
+\text{REVIEW (Lookalike Ambiguity)} & \text{if } 0.30 \le s < 0.363 \quad \text{or} \quad \Delta s < 0.10 \\
+\text{UNKNOWN (Unassigned Sighting)} & \text{if } s < 0.30
 \end{cases}
 ```
 
-### 4. Zero Automatic Absence on Uncertainty
+### 4. Computer Vision Inference vs. Cryptographic Checksums
+The vision pipeline relies on 100% genuine deep learning inference on image pixels, with zero simulations, mockups, or heuristic shortcuts:
+* **Face Detection:** OpenCV `cv2.FaceDetectorYN` (YuNet) directly processes raw RGB image arrays to locate facial bounding boxes and 5-point landmark coordinates. If an image contains random objects, textures, or zero human faces, the detector returns exactly 0 detections (`len(results) == 0`). It never hallucinates faces on non-face objects.
+* **Feature Extraction & Matching:** OpenCV `cv2.FaceRecognizerSF` (SFace) extracts 128-dimensional unit hypersphere vectors ($\|\mathbf{v}\|_2 = 1.0$) and evaluates cosine similarity against reference embeddings stored in PostgreSQL with pgvector.
+* **Cryptographic SHA-256 Purpose:** SHA-256 hashing is used **strictly for data and artifact integrity verification**—specifically to verify the authentic checksums of the downloaded ONNX model weights (`face_detection_yunet_2023mar.onnx` and `face_recognition_sface_2021dec.onnx`) and to deduplicate uploaded camera frames. It is never used for facial matching or image recognition.
+
+### 5. Zero Automatic Absence on Uncertainty
 The system never automatically marks a student absent because of a computer vision failure. Low resolution, occlusion, blur, or network interruptions surface as explicit triage states (`INSUFFICIENT_EVIDENCE`, `REVIEW`, `RECAPTURE_REQUIRED`). Faculty can immediately toggle to the **Manual Attendance Roll-Call Screen** to credit present students directly.
 
 ---
@@ -341,19 +347,18 @@ frs-v7-1-k2/
 
 ---
 
-## Verified Mobile UI & Operational Workflow Gallery
+## Verified Mobile UI & Operational Workflow
 
-The teacher mobile client runs on Flutter 3.27 / Dart 3.6+ and guides faculty through the complete classroom proposal lifecycle:
+The teacher mobile client runs on Flutter 3.27 / Dart 3.6+ (targeting Android 16 API 36 with Gradle 8.14 and AGP 8.11.1) and guides faculty through the complete classroom proposal lifecycle across six structured operational phases:
 
-| Step 1: Faculty Home & Assigned Offerings | Step 2: Session Setup & Unit Allocation | Step 3: Camera Multi-Photo Sweep |
-| :---: | :---: | :---: |
-| ![Faculty Home](docs/images/01_faculty_home.png) | ![Session Setup](docs/images/02_session_setup.png) | ![Camera Capture](docs/images/03_camera_capture.png) |
-| *View assigned course offerings, cached offline journal count, and faculty profile.* | *Select conducted units (1–4), freeze student eligibility snapshot, and create session.* | *Capture classroom photo sweep bursts with real-time frame guidance and SHA-256 checks.* |
-
-| Step 4: Capture Burst Gallery | Step 5: Proposal Review & Lookalike Adjudication | Step 6: ACID Commit & Cryptographic Receipt |
-| :---: | :---: | :---: |
-| ![Capture Gallery](docs/images/04_capture_gallery.png) | ![Proposal Review](docs/images/05_proposal_review.png) | ![Commit Receipt](docs/images/07_commit_receipt.png) |
-| *Inspect thumbnail sweeps, verify frame quality, and trigger vision inference worker.* | *Review candidate detections, adjudicate ambiguities, and route withheld consent to manual roll-call.* | *Submit atomic idempotency commit and obtain authoritative HMAC-SHA256 signed receipt.* |
+| Phase | Screen / Subsystem | Functional Responsibility & Technical Invariant |
+| :--- | :--- | :--- |
+| **Phase 1: Faculty Home & Offering Selection** | `HomeScreen` | Authenticates instructor identity (Dr. M. Soujanya, Academic Coordinator - IT), loads active teaching assignments with real-time enrolled student counts, and exposes instant endpoint switching (`Ngrok Tunnel`, `Wi-Fi LAN` `192.168.0.2`, `ADB Reverse` `127.0.0.1:8000`, `Emulator`). |
+| **Phase 2: Session Setup & Eligibility Freeze** | `SessionSetupScreen` | Selects instructional period units ($1 \le \text{units} \le 4$), verifies active faculty teaching authorization, freezes the session's immutable roster snapshot from active enrollments, and transitions session to `ROSTER_FROZEN`. |
+| **Phase 3: Classroom Multi-Photo Sweep Ingress** | `CameraCaptureScreen` | Captures 2–3 overlapping classroom sweeps with live orientation guidance. Ingress validates JPEG/PNG decodes, strips EXIF metadata, normalizes rotation, verifies bounded dimensions, and computes cryptographic SHA-256 frame checksums. |
+| **Phase 4: Capture Burst Gallery & Ingestion** | `CaptureGalleryScreen` | Displays frame sweeps, confirms multipart upload to FastAPI control plane, and enqueues background `VisionJob` records in PostgreSQL for asynchronous worker processing. |
+| **Phase 5: Proposal Review & Lookalike Adjudication** | `ProposalReviewScreen` | Presents real neural network detections (`YuNet` face detection and `SFace` 128-d cosine matching). Faculty reviews high-confidence candidates, inspects borderline sightings ($\Delta s < 0.10$), and routes students with withheld consent or failed detection to manual roll-call. |
+| **Phase 6: ACID Commit & Cryptographic Receipt** | `CommitReceiptScreen` | Faculty executes an atomic commit with an idempotency key. The control plane updates the immutable attendance ledger, locks the session as `FINALIZED`, and issues a tamper-evident HMAC-SHA256 cryptographic receipt. |
 
 ---
 
