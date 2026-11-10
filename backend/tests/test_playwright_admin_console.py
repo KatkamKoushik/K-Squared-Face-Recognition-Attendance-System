@@ -244,8 +244,8 @@ def test_e2e_responsive_mobile_viewport(admin_server, browser: Browser):
     context.close()
 
 
-def test_e2e_login_screen_and_demo_autofill(admin_server, page: Page):
-    """Login view renders institutional branding, hidden sidebars, and functional demo account autofill."""
+def test_e2e_login_screen_and_credential_entry(admin_server, page: Page):
+    """Login view renders institutional branding, hidden sidebars, and secure credential entry."""
     page.goto(f"{admin_server}/login")
     page.wait_for_load_state("networkidle")
 
@@ -265,8 +265,9 @@ def test_e2e_login_screen_and_demo_autofill(admin_server, page: Page):
     password_input = page.locator('input[type="password"]')
     assert password_input.is_visible()
 
-    # Click demo Principal button and verify autofill
-    page.click("text=Principal / Admin")
+    # Verify manual entry of institutional credentials (demo buttons removed for production hardening)
+    email_input.fill("principal.kucet@gmail.com")
+    password_input.fill("KucetFaculty@2026")
     assert email_input.input_value() == "principal.kucet@gmail.com"
     assert password_input.input_value() == "KucetFaculty@2026"
 
