@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 
 from app.domain.models.student import Student, EnrollmentProfile, EnrollmentSubmission
 from app.domain.enums import EnrollmentSubmissionStatus
+from app.services.storage_service import CloudinaryStorageService
 from app.worker.adapters.detector_adapter import DetectorAdapter
 from app.worker.adapters.recognizer_adapter import RecognizerAdapter
 from app.worker.preprocessor import Preprocessor
@@ -51,10 +52,11 @@ class DemoService:
 
     @staticmethod
     def _load_reference_photo_base64(photo_path: Optional[str], full_name: str, roll_number: str) -> str:
-        """Loads and crops the student reference portrait into base64 thumbnail."""
-        if photo_path and os.path.exists(photo_path):
+        """Loads and crops the student reference portrait from Cloudinary or disk into base64 thumbnail."""
+        if photo_path:
             try:
-                ref_img = Image.open(photo_path).convert("RGB")
+                raw_bytes = CloudinaryStorageService.load_image_bytes(photo_path)
+                ref_img = Image.open(io.BytesIO(raw_bytes)).convert("RGB")
                 ref_img.thumbnail((160, 160))
                 return DemoService._pil_to_base64_jpeg(ref_img, quality=85)
             except Exception:
@@ -83,7 +85,7 @@ class DemoService:
                 roll_number=student.roll_number,
                 full_name=student.full_name,
                 is_active=student.is_active,
-                has_reference_photo=bool(photo_path and os.path.exists(photo_path)),
+                has_reference_photo=bool(photo_path and (photo_path.startswith("http") or os.path.exists(photo_path))),
             )
             for student, photo_path in rows
         ]
@@ -317,3 +319,4 @@ class DemoService:
             attendance_not_granted=attendance_not_granted_list,
             unidentified_faces=unidentified_boxes,
         )
+

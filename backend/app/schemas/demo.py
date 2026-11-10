@@ -54,3 +54,4 @@ class DemoAnalysisResponse(BaseModel):
     attendance_granted: List[DemoStudentResult]
     attendance_not_granted: List[DemoStudentResult]
     unidentified_faces: List[DemoFaceBox]
+

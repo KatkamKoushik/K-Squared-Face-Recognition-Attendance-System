@@ -411,6 +411,7 @@ export interface EnrollmentSubmissionItem {
   consent_acknowledged: boolean;
   rejection_reason?: string;
   photo_sha256: string;
+  photo_storage_path?: string;
   reviewed_by_user_id?: string;
   reviewed_at?: string;
   created_at: string;
@@ -472,7 +473,10 @@ export async function getEnrollmentSubmission(id: string): Promise<EnrollmentSub
   return fetchFromApi<EnrollmentSubmissionItem>(`/enrollment/submissions/${id}`);
 }
 
-export function getSubmissionPhotoUrl(id: string): string {
+export function getSubmissionPhotoUrl(id: string, storagePath?: string): string {
+  if (storagePath && (storagePath.startsWith("http://") || storagePath.startsWith("https://"))) {
+    return storagePath;
+  }
   return `${API_BASE}/enrollment/submissions/${id}/photo`;
 }
 

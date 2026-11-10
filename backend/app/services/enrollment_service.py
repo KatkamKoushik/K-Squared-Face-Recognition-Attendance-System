@@ -26,6 +26,7 @@ from app.domain.models.audit import AuditEvent
 from app.domain.models.student import Student, EnrollmentProfile, EnrollmentSubmission
 from app.domain.models.session import AttendanceSession
 from app.schemas.enrollment import EnrollmentSubmissionCreate
+from app.services.storage_service import CloudinaryStorageService
 from app.worker.adapters.detector_adapter import DetectorAdapter
 from app.worker.adapters.recognizer_adapter import RecognizerAdapter
 
@@ -114,18 +115,15 @@ class EnrollmentService:
                 f"Multiple faces ({len(detections)}) detected. Enrollment portrait must contain only the student's face."
             )
 
-        # 5. Save stripped JPEG to private access-controlled storage
-        storage_base = Path(settings.STORAGE_DIR) / "enrollments"
-        storage_base.mkdir(parents=True, exist_ok=True)
-        storage_filename = f"enrollment_{uuid.uuid4().hex}.jpg"
-        target_path = storage_base / storage_filename
-
+        # 5. Save stripped JPEG to Cloudinary object storage (with local fallback)
         buf = io.BytesIO()
         clean_img.save(buf, format="JPEG", quality=95)
         clean_bytes = buf.getvalue()
 
-        with open(target_path, "wb") as f:
-            f.write(clean_bytes)
+        photo_storage_url = CloudinaryStorageService.upload_enrollment_portrait(
+            file_bytes=clean_bytes,
+            roll_number=data.roll_number,
+        )
 
         photo_sha256 = EnrollmentService._compute_sha256(clean_bytes)
 
@@ -145,7 +143,7 @@ class EnrollmentService:
             department=data.department.strip().upper(),
             academic_year=data.academic_year.strip(),
             cohort_id=cohort_id,
-            photo_storage_path=str(target_path.resolve()),
+            photo_storage_path=photo_storage_url,
             photo_sha256=photo_sha256,
             photo_mime="image/jpeg",
             status=EnrollmentSubmissionStatus.PENDING_REVIEW,
@@ -202,12 +200,11 @@ class EnrollmentService:
                 reason_code="ILLEGAL_SUBMISSION_TRANSITION",
             )
 
-        photo_path = Path(sub.photo_storage_path)
-        if not photo_path.is_file():
-            raise FileNotFoundError(f"Stored enrollment portrait missing at {photo_path}")
-
-        # 1. Load clean image
-        pil_img = Image.open(photo_path).convert("RGB")
+        try:
+            image_bytes = CloudinaryStorageService.load_image_bytes(sub.photo_storage_path)
+            pil_img = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+        except Exception as e:
+            raise FileNotFoundError(f"Stored enrollment portrait cannot be loaded from {sub.photo_storage_path}: {e}")
         w, h = pil_img.size
 
         # 2. Strict face detection & landmark localization

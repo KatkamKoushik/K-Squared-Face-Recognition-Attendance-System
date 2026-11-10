@@ -74,6 +74,13 @@ class Settings(BaseSettings):
         description="Supabase Service Role Secret Key (configured via environment, never hardcoded in source)",
     )
 
+    # Cloudinary Object Storage for Images & Biometrics
+    CLOUDINARY_CLOUD_NAME: Optional[str] = Field(default=None, description="Cloudinary cloud name / product environment")
+    CLOUDINARY_API_KEY: Optional[str] = Field(default=None, description="Cloudinary API Key")
+    CLOUDINARY_API_SECRET: Optional[str] = Field(default=None, description="Cloudinary API Secret")
+    CLOUDINARY_URL: Optional[str] = Field(default=None, description="Cloudinary connection URL")
+    IMAGE_STORAGE_PROVIDER: Literal["cloudinary", "local"] = "cloudinary"
+
     # Ingress & File Protection
     MAX_UPLOAD_SIZE_MB: int = 15
     ALLOWED_IMAGE_TYPES: List[str] = ["image/jpeg", "image/png"]

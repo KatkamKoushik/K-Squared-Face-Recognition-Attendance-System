@@ -77,3 +77,4 @@ async def analyze_demo_image(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Inference execution failed: {exc}",
         ) from exc
+

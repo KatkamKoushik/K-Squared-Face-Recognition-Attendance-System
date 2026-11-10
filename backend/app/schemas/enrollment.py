@@ -33,6 +33,7 @@ class EnrollmentSubmissionResponse(BaseModel):
     consent_acknowledged: bool
     rejection_reason: Optional[str] = None
     photo_sha256: str
+    photo_storage_path: Optional[str] = None
     reviewed_by_user_id: Optional[str] = None
     reviewed_at: Optional[datetime] = None
     created_at: datetime
