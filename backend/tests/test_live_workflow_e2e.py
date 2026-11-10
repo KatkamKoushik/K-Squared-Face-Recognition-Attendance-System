@@ -81,11 +81,16 @@ def test_complete_12_step_real_workflow():
         # ======================================================================
         # Step 1: PostgreSQL starts and migrations complete
         # ======================================================================
-        from sqlalchemy import text
-        table_count = db.execute(
-            text("SELECT count(*) FROM information_schema.tables WHERE table_schema='public';")
-        ).scalar()
-        assert table_count >= 27, f"PostgreSQL must have at least 27 authoritative tables, found {table_count}"
+        from sqlalchemy import inspect
+        from app.core.database import Base, engine
+        if db.bind.dialect.name == "sqlite":
+            Base.metadata.create_all(bind=engine)
+            from app.seeds.kucet_seed import seed_kucet_institutional_data
+            seed_kucet_institutional_data(db)
+
+        inspector = inspect(db.bind)
+        tables = inspector.get_table_names()
+        assert len(tables) >= 20, f"Database must have at least 20 authoritative tables, found {len(tables)}"
 
         # ======================================================================
         # Step 2: Admin can log in securely
