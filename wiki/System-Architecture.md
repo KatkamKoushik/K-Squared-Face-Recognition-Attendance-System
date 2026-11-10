@@ -22,11 +22,11 @@ flowchart TD
     end
 
     subgraph Asynchronous Processing Tier
-        VW["Vision Worker Process<br/>(ONNX Runtime / CUDA / CPU)<br/>SCRFD 2.5G + ArcFace R50"]
+        VW["Vision Worker Process<br/>(OpenCV Zoo / CUDA / CPU)<br/>YuNet Detector + SFace 128D"]
     end
 
     subgraph Persistence Tier
-        DB[("PostgreSQL 16 Database<br/>Authoritative Source of Truth<br/>27 Domain & Ledger Tables")]
+        DB[("PostgreSQL 16 / Supabase Database<br/>Authoritative Source of Truth<br/>28 Domain & Ledger Tables + pgvector")]
         FS[("Ephemeral Frame Storage<br/>(Local Disk / Bounded Volume)<br/>Purged Post-Commit")]
     end
 
@@ -57,9 +57,11 @@ flowchart TD
 ## Component Inventory
 
 ### 1. Teacher Mobile Client (`apps/teacher_mobile`)
-* **Technology Stack:** Flutter 3.27.x, Dart 3.13.x, Riverpod 3.0 Notifier.
+* **Technology Stack:** Flutter 3.27.x, Dart 3.13.x, Riverpod 3.0 Notifier, targeting Android 16 (API 36) with Gradle 8.14 and AGP 8.11.1.
 * **Role:** Primary interaction touchpoint for faculty. Used inside the classroom to:
-  * Select assigned subject offering or joint class group.
+  * Authenticate faculty credentials (primary coordinator: Dr. M. Soujanya, IT Academic Coordinator, `soujanyavedh@gmail.com`).
+  * Connect to flexible control plane backends via instant preset switching (`Ngrok Tunnel`, `Wi-Fi LAN` `192.168.0.2`, `ADB Reverse` `127.0.0.1:8000`, `Emulator`).
+  * Select assigned subject offering or joint class group with real-time student enrollment tallies.
   * Define planned and conducted unit counts ($1 \le \text{units} \le 4$).
   * Capture multi-frame sweeps (wide-angle photos of student rows).
   * Calculate SHA-256 digests client-side before transmission.
@@ -103,13 +105,14 @@ flowchart TD
   * **Alembic Schema Versioning**: Baseline migration `3a42e90c6daf` encompassing all 27 domain, ledger, and queue tables.
 
 ### 5. Vision Worker (`backend/app/worker`)
-* **Technology Stack:** Python 3.12, ONNX Runtime (`onnxruntime` CPU or `onnxruntime-gpu` CUDA 12/13), NumPy, Pillow.
+* **Technology Stack:** Python 3.12, OpenCV 4.10+ / OpenCV Zoo ONNX, NumPy, Pillow.
 * **Role:** Asynchronous background worker operating on a pull-based leasing queue:
   * Leases `PENDING` vision jobs from PostgreSQL with retryable lock timeouts.
-  * Executes SCRFD multi-scale face detection on ingested classroom frames.
-  * Aligns facial landmarks and extracts 512-dimensional L2-normalized ArcFace embeddings.
-  * Compares embeddings against the session's frozen roster embeddings using cosine similarity.
-  * Populates candidate proposal evidence with open-set threshold classification.
+  * Executes YuNet multi-scale face detection and 5-point landmark localization on ingested classroom frames.
+  * Aligns facial landmarks and extracts 128-dimensional L2-normalized SFace embeddings on the unit hypersphere $\mathbb{S}^{127}$.
+  * Compares query sighting embeddings against the session's frozen roster embeddings using cosine similarity.
+  * Evaluates open-set rejection boundaries ($\tau = 0.363$, $\Delta s \ge 0.10$) and populates candidate proposal records.
+  * Ensures zero face detection on non-face / random object imagery without hallucinating student identities.
 
 ---
 

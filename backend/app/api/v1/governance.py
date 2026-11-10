@@ -3,9 +3,10 @@ FRS V7.1 K² — Data Governance, Biometric Privacy & Retention Endpoints.
 Provides institutional compliance telemetry, raw frame purging, and consent controls.
 """
 
+from typing import Optional
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
-from app.api.dependencies import get_current_user, get_correlation_id
+from app.api.dependencies import get_current_user, get_optional_current_user, get_correlation_id
 from app.core.database import get_db
 from app.domain.models.academic import User
 from app.schemas.common import ResponseEnvelope
@@ -24,7 +25,7 @@ router = APIRouter(prefix="/governance", tags=["Data Governance & Privacy"])
 @router.get("/status", response_model=ResponseEnvelope[GovernanceSummaryResponse])
 def get_governance_summary(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: Optional[User] = Depends(get_optional_current_user),
     correlation_id: str = Depends(get_correlation_id),
 ):
     """

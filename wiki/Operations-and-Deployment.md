@@ -9,9 +9,9 @@ FRS V7.1 K² provides containerized configurations for both single-node on-premi
 ```mermaid
 flowchart TD
     subgraph Host Server / Docker Network
-        C1["frs-k2-postgres<br/>PostgreSQL 16 Alpine<br/>Port :5432 (Internal)"]
+        C1["frs-k2-postgres / Supabase<br/>PostgreSQL 16 + pgvector<br/>Port :5432 / SSL Cloud"]
         C2["frs-k2-backend-api<br/>FastAPI / Python 3.12<br/>Port :8000"]
-        C3["frs-k2-vision-worker<br/>ONNX Runtime Daemon<br/>Internal Worker"]
+        C3["frs-k2-vision-worker<br/>OpenCV Zoo YuNet + SFace Daemon<br/>Internal Worker"]
         C4["frs-k2-admin-console<br/>Next.js 15 Standalone<br/>Port :3000"]
     end
 
@@ -126,20 +126,26 @@ The PostgreSQL engine (`backend/app/core/database.py`) enforces strict connectio
 ## Verification & Automated Testing Commands
 
 ```bash
-# 1. Backend Pytest Suite (50 unit/security/persistence tests)
-cd backend && python -m pytest tests/ -v -m "not playwright"
+# 1. Backend Pytest Suite (118 unit, security, persistence, and E2E tests)
+cd backend && python -m pytest tests/ -v
 
-# 2. Playwright Browser E2E Automation (11 routes verified)
+# 2. Playwright Browser E2E Automation (15 browser routes verified on Chromium)
 cd backend && python -m pytest tests/test_playwright_admin_console.py -v
 
 # 3. Domain Invariant Acceptance Runner (5 suites, 100% fidelity)
 cd backend && python verify_backend.py
 
-# 4. Admin Console Typecheck & Standalone Compilation
+# 4. Kaggle Model Lab Evaluation Suite (Models, YuNet, SFace, Roster Calibration)
+python research/kaggle_model_lab/scripts/01_download_verify_models.py
+python research/kaggle_model_lab/scripts/02_face_detection_test.py
+python research/kaggle_model_lab/scripts/03_face_recognition_test.py
+python research/kaggle_model_lab/scripts/04_retrieval_and_calibration.py
+
+# 5. Admin Console Typecheck & Standalone Compilation
 cd apps/admin_console && npm run typecheck && npm run build
 
-# 5. Teacher Mobile Static Analysis
-dart analyze apps/teacher_mobile
+# 6. Teacher Mobile Static Analysis & Automated Widget Tests (26 passing tests)
+cd apps/teacher_mobile && flutter analyze && flutter test
 ```
 
 ---
@@ -148,12 +154,12 @@ dart analyze apps/teacher_mobile
 
 | Variable | Target Service | Default | Description |
 | :--- | :--- | :--- | :--- |
-| `DATABASE_URL` | `backend-api`, `worker` | `postgresql+asyncpg://...` | Asynchronous PostgreSQL connection string. |
+| `DATABASE_URL` | `backend-api`, `worker` | `postgresql+psycopg2://...` | PostgreSQL connection string (supports local & Supabase SSL pgvector). |
 | `SECRET_KEY` | `backend-api` | *Required in Prod* | Minimum 32-byte secret key for JWT session signing. |
 | `ENVIRONMENT` | `backend-api`, `worker` | `development` | Runtime environment (`development`, `staging`, `production`). |
 | `PORT` | `backend-api` | `8000` | Port for FastAPI control plane server. |
 | `NEXT_PUBLIC_API_URL` | `admin-console` | `http://localhost:8000/api/v1` | URL of the FastAPI control plane accessed by web clients. |
 | `NODE_ENV` | `admin-console` | `production` | Node.js production runtime flag. |
-| `API_URL` | `teacher_mobile` | `http://10.0.2.2:8000/api/v1` | Backend endpoint compiled via `--dart-define=API_URL=...`. |
+| `API_URL` | `teacher_mobile` | `https://...ngrok-free.dev/api/v1` | Control plane endpoint (supports Ngrok, Wi-Fi LAN `192.168.0.2`, ADB Reverse `127.0.0.1:8000`). |
 | `KEYSTORE_PATH` | `teacher_mobile` | *Optional* | Android production release signing keystore file path. |
 

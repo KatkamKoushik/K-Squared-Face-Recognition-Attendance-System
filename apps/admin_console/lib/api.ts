@@ -5,7 +5,7 @@
  */
 
 const DEFAULT_REMOTE_API = "https://straddle-deflate-footwear.ngrok-free.dev/api/v1";
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || (typeof window !== "undefined" ? "http://localhost:8000/api/v1" : DEFAULT_REMOTE_API);
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || DEFAULT_REMOTE_API;
 
 const AUTH_TOKEN_KEY = "kucet_frs_auth_token";
 const AUTH_USER_KEY = "kucet_frs_auth_user";
@@ -413,17 +413,29 @@ export interface EnrollmentSubmissionItem {
   created_at: string;
 }
 
+export interface DashboardRecentSessionItem {
+  session_id: string;
+  subject_code: string;
+  subject_name: string;
+  cohort: string;
+  faculty: string;
+  conducted_units: number;
+  present_count: number;
+  total_enrolled: number;
+  attendance_percent: string;
+  receipt_hash: string;
+  timestamp: string;
+}
+
 export interface AdminDashboardMetrics {
   total_enrolled_students: number;
   total_active_offerings: number;
   pending_submissions_count: number;
   finalized_sessions_count: number;
-  recent_sessions: Array<{
-    session_id: string;
-    offering_id: string;
-    finalized_at?: string;
-    state: string;
-  }>;
+  conducted_units_today: number;
+  active_departments_count: number;
+  active_cohorts_count: number;
+  recent_sessions: DashboardRecentSessionItem[];
   system_readiness: string;
 }
 

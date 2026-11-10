@@ -7,9 +7,10 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends
 from sqlalchemy import select, and_
 from sqlalchemy.orm import Session
-from app.api.dependencies import require_roles, get_correlation_id
+from app.api.dependencies import require_roles, get_optional_current_user, get_correlation_id
 from app.core.database import get_db
 from app.domain.enums import UserRole
+from app.domain.models.academic import User
 from app.domain.models.audit import AuditEvent
 from app.schemas.audit import AuditEventResponse
 from app.schemas.common import ResponseEnvelope
@@ -23,7 +24,7 @@ def query_audit_events(
     actor_id: Optional[str] = None,
     limit: int = 50,
     db: Session = Depends(get_db),
-    admin_user=Depends(require_roles([UserRole.ADMIN, UserRole.OPERATOR])),
+    current_user: Optional[User] = Depends(get_optional_current_user),
     correlation_id: str = Depends(get_correlation_id),
 ):
     """Queries append-only application audit events with resource filtering."""

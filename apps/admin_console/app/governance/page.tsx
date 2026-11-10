@@ -24,11 +24,13 @@ import {
   PurgeResult,
   ReceiptVerificationResult,
 } from "@/lib/api";
-import {
-  StudentConsentRow,
-  FALLBACK_STUDENTS,
-  FALLBACK_GOVERNANCE_SUMMARY,
-} from "@/lib/mock-data";
+export interface StudentConsentRow {
+  studentId: string;
+  rollNumber: string;
+  fullName: string;
+  biometricConsentActive: boolean;
+  alternativeRollCallRequired: boolean;
+}
 
 export default function GovernancePage() {
   const [summary, setSummary] = useState<GovernanceSummary | null>(null);
@@ -58,8 +60,6 @@ export default function GovernancePage() {
 
       if (summaryRes) {
         setSummary(summaryRes);
-      } else {
-        setSummary(FALLBACK_GOVERNANCE_SUMMARY);
       }
 
       if (studentsRes && studentsRes.length > 0) {
@@ -68,18 +68,16 @@ export default function GovernancePage() {
             studentId: s.id,
             rollNumber: s.roll_number,
             fullName: s.full_name,
-            biometricConsentActive: s.consent_signed,
-            alternativeRollCallRequired: !s.consent_signed,
+            biometricConsentActive: s.consent_signed ?? true,
+            alternativeRollCallRequired: !(s.consent_signed ?? true),
           }))
         );
         setIsLiveBackend(true);
       } else {
-        setStudents(FALLBACK_STUDENTS);
-        setIsLiveBackend(false);
+        setStudents([]);
+        setIsLiveBackend(studentsRes !== null);
       }
     } catch {
-      setSummary(FALLBACK_GOVERNANCE_SUMMARY);
-      setStudents(FALLBACK_STUDENTS);
       setIsLiveBackend(false);
     } finally {
       setLoading(false);
@@ -154,19 +152,7 @@ export default function GovernancePage() {
       if (res) {
         setReceiptResult(res);
       } else {
-        // Fallback simulation for verification demonstration
-        setReceiptResult({
-          session_id: verifySessionId.trim(),
-          is_valid: true,
-          signature_valid: true,
-          ledger_integrity_valid: true,
-          computed_signature: "hmac-sha256:d8a9f24e1b8c...",
-          stored_signature: "hmac-sha256:d8a9f24e1b8c...",
-          audit_ledger_hash: "blake2b:0f4a8b7c...",
-          computed_ledger_hash: "blake2b:0f4a8b7c...",
-          verified_at: new Date().toISOString(),
-          detail: "Authoritative server signature and attendance ledger verified authentic.",
-        });
+        setReceiptError("No cryptographically signed receipt found for this session ID in the database.");
       }
     } catch (err) {
       setReceiptError(String(err));
@@ -204,7 +190,7 @@ export default function GovernancePage() {
           <div className="flex items-center space-x-3">
             <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0" />
             <div>
-              <span className="font-semibold">Offline Preview Mode:</span> Control plane is unreachable or session token is absent. Displaying local fixture data from <span className="font-mono">lib/mock-data.ts</span>.
+              <span className="font-semibold">Offline Preview Mode:</span> Control plane is unreachable or session token is absent. Showing local status.
             </div>
           </div>
           <button
@@ -212,7 +198,7 @@ export default function GovernancePage() {
             onClick={loadData}
             className="px-3 py-1 bg-amber-600 text-white rounded-md font-semibold hover:bg-amber-700 transition-colors shadow-xs"
           >
-            Retry API
+            Retry Connection
           </button>
         </div>
       ) : (
@@ -470,7 +456,7 @@ export default function GovernancePage() {
             <Users className="w-5 h-5 text-institutional-blue" />
             <div>
               <h2 className="font-serif font-bold text-lg text-slate-900">
-                Student Biometric Consent & Alternative Roll-Call Register
+                Student Biometric Consent & Non-Biometric Alternative Register
               </h2>
               <p className="text-xs text-slate-600">
                 Under the institutional data privacy framework, biometric enrollment is consensual. Students with withheld consent must never be falsely marked absent; their attendance records are routed to manual faculty roll-call.

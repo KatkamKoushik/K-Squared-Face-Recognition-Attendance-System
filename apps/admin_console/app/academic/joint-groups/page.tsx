@@ -2,43 +2,10 @@ import React from "react";
 import { GitMerge, Users, ShieldAlert, Database, Plus, CheckCircle2 } from "lucide-react";
 import { getAuthorizedGroups, AuthorizedClassGroupItem } from "@/lib/api";
 
-const mockGroups: (AuthorizedClassGroupItem & { student_count?: number; offering_code?: string; description?: string })[] = [
-  {
-    id: "grp-kucet-cs-it-joint",
-    offering_id: "off-kucet-cs302",
-    offering_code: "CS302 Database Management Systems",
-    group_name: "KUCET CSE & IT Joint Theory Group",
-    description: "Approved merged lecture session combining B.Tech CSE (Sec A, 66 students) and B.Tech IT (66 students)",
-    student_count: 132,
-    is_active: true,
-    member_cohort_ids: ["coh-cse-2023", "coh-it-2022"],
-  },
-  {
-    id: "grp-kucet-open-elective",
-    offering_id: "off-kucet-cs401",
-    offering_code: "CS401 Distributed Systems & Cloud Computing",
-    group_name: "KUCET Institutional Open Elective (CSE + ECE Final Year)",
-    description: "Cross-departmental institutional elective lecture held in KUCET Central Seminar Hall",
-    student_count: 132,
-    is_active: true,
-    member_cohort_ids: ["coh-cse-2022", "coh-ece-2022"],
-  },
-  {
-    id: "grp-kucet-cadcam-joint",
-    offering_id: "off-kucet-me401",
-    offering_code: "ME401 CAD / CAM & Automation",
-    group_name: "Mechanical & Production Joint Laboratory Group",
-    description: "Practical session conducted in KUCET CAD/CAM Center",
-    student_count: 66,
-    is_active: false,
-    member_cohort_ids: ["coh-me-2022"],
-  },
-];
-
 export default async function JointClassGroupsPage() {
   const serverGroups = await getAuthorizedGroups();
-  const isLive = serverGroups !== null && serverGroups.length > 0;
-  const groups = isLive ? serverGroups : mockGroups;
+  const isLive = serverGroups !== null;
+  const groups: AuthorizedClassGroupItem[] = serverGroups ?? [];
 
   return (
     <div className="space-y-6">
@@ -56,7 +23,7 @@ export default async function JointClassGroupsPage() {
           <div className="flex items-center space-x-1.5 text-xs font-semibold px-3 py-1.5 rounded-full border bg-white shadow-xs">
             <Database className={`w-3.5 h-3.5 ${isLive ? "text-emerald-600" : "text-slate-400"}`} />
             <span className={isLive ? "text-emerald-700 font-mono" : "text-slate-600"}>
-              {isLive ? "LIVE GROUPS REGISTRY" : "JOINT GROUPS BASELINE"}
+              {isLive ? "LIVE GROUPS REGISTRY" : "JOINT GROUPS DATABASE"}
             </span>
           </div>
           <button
@@ -100,12 +67,12 @@ export default async function JointClassGroupsPage() {
         <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-xs">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold uppercase tracking-wider text-institutional-muted">
-              Combined Enrolment Reach
+              Member Cohorts Bound
             </span>
             <Users className="w-5 h-5 text-indigo-600" />
           </div>
           <div className="mt-2 text-2xl font-serif font-bold text-institutional-navy">
-            226 Students
+            {groups.reduce((acc, g) => acc + (g.member_cohort_ids?.length || 0), 0)} Cohorts
           </div>
           <p className="mt-1 text-xs text-slate-500">Across multi-cohort lecture sections</p>
         </div>
@@ -127,46 +94,40 @@ export default async function JointClassGroupsPage() {
                 <th className="px-6 py-3">Group Name & ID</th>
                 <th className="px-6 py-3">Course Offering Reference</th>
                 <th className="px-6 py-3">Member Cohort Constituents</th>
-                <th className="px-6 py-3 text-center">Enrolled Students</th>
                 <th className="px-6 py-3">Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {groups.map((grp) => {
-                const grpWithMeta = grp as AuthorizedClassGroupItem & { student_count?: number; offering_code?: string; description?: string };
-                return (
+              {groups.length > 0 ? (
+                groups.map((grp) => (
                   <tr key={grp.id} className="hover:bg-slate-50/60 transition-colors">
                     <td className="px-6 py-4">
                       <div className="font-semibold text-slate-800">{grp.group_name}</div>
                       <div className="text-xs font-mono text-institutional-blue mt-0.5">{grp.id}</div>
-                      {grpWithMeta.description && (
-                        <div className="text-xs text-slate-500 mt-1 max-w-md">{grpWithMeta.description}</div>
-                      )}
                     </td>
                     <td className="px-6 py-4">
-                      <div className="font-medium text-slate-800">
-                        {grpWithMeta.offering_code || grp.offering_id}
+                      <div className="font-medium text-slate-800 font-mono text-xs">
+                        {grp.offering_id}
                       </div>
-                      <div className="text-xs font-mono text-slate-500 mt-0.5">
-                        Offering Ref: {grp.offering_id}
+                      <div className="text-xs text-slate-500 mt-0.5">
+                        Offering Target
                       </div>
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex flex-wrap gap-1.5">
-                        {grp.member_cohort_ids.map((cohortId) => (
-                          <span
-                            key={cohortId}
-                            className="inline-flex items-center px-2 py-0.5 rounded text-xs font-mono bg-slate-100 text-slate-700 border border-slate-200"
-                          >
-                            {cohortId}
-                          </span>
-                        ))}
+                        {grp.member_cohort_ids && grp.member_cohort_ids.length > 0 ? (
+                          grp.member_cohort_ids.map((cohortId) => (
+                            <span
+                              key={cohortId}
+                              className="inline-flex items-center px-2 py-0.5 rounded text-xs font-mono bg-slate-100 text-slate-700 border border-slate-200"
+                            >
+                              {cohortId}
+                            </span>
+                          ))
+                        ) : (
+                          <span className="text-xs text-slate-400">None assigned</span>
+                        )}
                       </div>
-                    </td>
-                    <td className="px-6 py-4 text-center">
-                      <span className="font-mono font-semibold text-slate-800">
-                        {grpWithMeta.student_count || "—"}
-                      </span>
                     </td>
                     <td className="px-6 py-4">
                       <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold border ${grp.is_active ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-slate-100 text-slate-600 border-slate-300"}`}>
@@ -174,8 +135,14 @@ export default async function JointClassGroupsPage() {
                       </span>
                     </td>
                   </tr>
-                );
-              })}
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={4} className="px-6 py-8 text-center text-slate-500">
+                    No joint class groups configured in database.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
@@ -191,4 +158,3 @@ export default async function JointClassGroupsPage() {
     </div>
   );
 }
-

@@ -296,9 +296,18 @@ class EnrollmentService:
 
     @staticmethod
     def get_dashboard_stats(db: Session) -> Dict[str, Any]:
+        from datetime import date
+        from app.domain.models.student import Student, EnrollmentSubmission
+        from app.domain.models.academic import SubjectOffering, Department, Cohort, Subject, Faculty
+        from app.domain.models.session import AttendanceSession, AttendanceUnit
+        from app.domain.models.audit import CommitReceipt
+        from app.domain.enums import EnrollmentSubmissionStatus, SessionState, UnitStatus
+        from sqlalchemy import func, desc
+
         total_students = db.execute(select(func.count(Student.id))).scalar() or 0
-        from app.domain.models.academic import SubjectOffering
         total_offerings = db.execute(select(func.count(SubjectOffering.id))).scalar() or 0
+        total_departments = db.execute(select(func.count(Department.id))).scalar() or 0
+        total_cohorts = db.execute(select(func.count(Cohort.id))).scalar() or 0
         pending_subs = db.execute(
             select(func.count(EnrollmentSubmission.id)).where(
                 EnrollmentSubmission.status == EnrollmentSubmissionStatus.PENDING_REVIEW
@@ -310,23 +319,70 @@ class EnrollmentService:
             )
         ).scalar() or 0
 
-        # Query recent finalized sessions
+        # Sum of conducted units today
+        today = date.today()
+        units_today = db.execute(
+            select(func.count(AttendanceUnit.id))
+            .join(AttendanceSession, AttendanceUnit.session_id == AttendanceSession.id)
+            .where(
+                AttendanceSession.session_date == today,
+                AttendanceUnit.is_conducted.is_(True),
+                AttendanceUnit.status.in_([UnitStatus.COMMITTED, UnitStatus.CONDUCTED_CONFIRMED]),
+            )
+        ).scalar() or 0
+
+        # Query recent finalized sessions joined with receipts, offerings, subjects, cohorts, faculty
         recent_sessions_rows = db.execute(
             select(AttendanceSession)
             .where(AttendanceSession.state == SessionState.FINALIZED)
             .order_by(desc(AttendanceSession.finalized_at))
-            .limit(5)
+            .limit(10)
         ).scalars().all()
 
-        recent_sessions = [
-            {
+        recent_sessions = []
+        for s in recent_sessions_rows:
+            receipt = db.execute(
+                select(CommitReceipt).where(CommitReceipt.session_id == s.id)
+            ).scalars().first()
+
+            offering = db.execute(
+                select(SubjectOffering).where(SubjectOffering.id == s.offering_id)
+            ).scalars().first()
+
+            subject = db.execute(
+                select(Subject).where(Subject.id == offering.subject_id)
+            ).scalars().first() if offering else None
+
+            cohort = db.execute(
+                select(Cohort).where(Cohort.id == offering.primary_cohort_id)
+            ).scalars().first() if offering else None
+
+            faculty = db.execute(
+                select(Faculty).where(Faculty.id == s.faculty_id)
+            ).scalars().first()
+
+            conducted_units = receipt.total_conducted_units if receipt else s.planned_units
+            present_count = receipt.total_present_records if receipt else 0
+            absent_count = receipt.total_absent_records if receipt else 0
+            total_enrolled = present_count + absent_count
+            pct = f"{(present_count / total_enrolled * 100):.1f}%" if total_enrolled > 0 else "0.0%"
+
+            receipt_hash_display = (receipt.receipt_hash[:18] + "...") if receipt and len(receipt.receipt_hash) > 18 else (receipt.receipt_hash if receipt else "0x0000000000000000")
+            ts_str = s.finalized_at.strftime("%b %d, %I:%M %p") if s.finalized_at else s.session_date.strftime("%b %d, %Y")
+
+            recent_sessions.append({
                 "session_id": s.id,
-                "offering_id": s.offering_id,
-                "finalized_at": s.finalized_at.isoformat() if s.finalized_at else None,
-                "state": s.state.value,
-            }
-            for s in recent_sessions_rows
-        ]
+                "subject_code": subject.code if subject else "N/A",
+                "subject_name": subject.name if subject else "Subject",
+                "cohort": cohort.name if cohort else "Cohort",
+                "faculty": faculty.full_name if faculty else "Faculty",
+                "conducted_units": conducted_units,
+                "present_count": present_count,
+                "total_enrolled": total_enrolled,
+                "attendance_percent": pct,
+                "receipt_hash": receipt_hash_display,
+                "timestamp": ts_str,
+            })
 
         # Verify model runtime readiness
         from app.worker.adapters.detector_adapter import DetectorAdapter
@@ -343,6 +399,9 @@ class EnrollmentService:
             "total_active_offerings": total_offerings,
             "pending_submissions_count": pending_subs,
             "finalized_sessions_count": finalized_sessions,
+            "conducted_units_today": units_today,
+            "active_departments_count": total_departments,
+            "active_cohorts_count": total_cohorts,
             "recent_sessions": recent_sessions,
             "system_readiness": readiness,
         }

@@ -43,6 +43,26 @@ def get_current_user(
     return user
 
 
+def get_optional_current_user(
+    auth: Optional[HTTPAuthorizationCredentials] = Depends(security_scheme),
+    db: Session = Depends(get_db),
+) -> Optional[User]:
+    """Optional bearer token authentication; returns None if unauthenticated without rejecting."""
+    if not auth:
+        return None
+    try:
+        payload = decode_access_token(auth.credentials)
+        user_id = payload.get("user_id") or payload.get("sub")
+        if not user_id:
+            return None
+        user = db.get(User, user_id)
+        if user and user.is_active:
+            return user
+    except Exception:
+        return None
+    return None
+
+
 def require_roles(allowed_roles: List[UserRole]):
     """Role-based authorization dependency guard."""
     def role_checker(current_user: User = Depends(get_current_user)) -> User:

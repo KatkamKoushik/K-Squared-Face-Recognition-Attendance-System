@@ -136,10 +136,53 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 controller: urlController,
                 decoration: InputDecoration(
                   labelText: 'API Base URL',
-                  hintText: 'http://192.168.1.50:8000/api/v1',
+                  hintText: 'https://straddle-deflate-footwear.ngrok-free.dev/api/v1',
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                   contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                 ),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 6,
+                runSpacing: 4,
+                children: [
+                  ActionChip(
+                    label: const Text('Ngrok Tunnel', style: TextStyle(fontSize: 11)),
+                    onPressed: () {
+                      setDialogState(() {
+                        urlController.text = 'https://straddle-deflate-footwear.ngrok-free.dev/api/v1';
+                        testResult = null;
+                      });
+                    },
+                  ),
+                  ActionChip(
+                    label: const Text('Wi-Fi LAN', style: TextStyle(fontSize: 11)),
+                    onPressed: () {
+                      setDialogState(() {
+                        urlController.text = 'http://192.168.0.2:8000/api/v1';
+                        testResult = null;
+                      });
+                    },
+                  ),
+                  ActionChip(
+                    label: const Text('ADB Reverse', style: TextStyle(fontSize: 11)),
+                    onPressed: () {
+                      setDialogState(() {
+                        urlController.text = 'http://127.0.0.1:8000/api/v1';
+                        testResult = null;
+                      });
+                    },
+                  ),
+                  ActionChip(
+                    label: const Text('Emulator', style: TextStyle(fontSize: 11)),
+                    onPressed: () {
+                      setDialogState(() {
+                        urlController.text = 'http://10.0.2.2:8000/api/v1';
+                        testResult = null;
+                      });
+                    },
+                  ),
+                ],
               ),
               const SizedBox(height: 12),
               if (isTesting) ...[
