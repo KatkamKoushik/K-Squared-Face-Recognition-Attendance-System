@@ -119,16 +119,17 @@ jobs:
           mkdir -p android/app
           if [ -n "${{ secrets.KEYSTORE_BASE64 }}" ]; then
             echo "Configuring official institutional release keystore from repository secrets..."
-            echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > android/app/upload-keystore.jks
-            echo "KEYSTORE_PATH=android/app/upload-keystore.jks" >> $GITHUB_ENV
+            KEYSTORE_ABS_PATH="$GITHUB_WORKSPACE/apps/teacher_mobile/android/app/upload-keystore.jks"
+            echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > "$KEYSTORE_ABS_PATH"
+            echo "KEYSTORE_PATH=$KEYSTORE_ABS_PATH" >> $GITHUB_ENV
             echo "KEYSTORE_PASSWORD=${{ secrets.KEYSTORE_PASSWORD }}" >> $GITHUB_ENV
             echo "KEY_ALIAS=${{ secrets.KEY_ALIAS }}" >> $GITHUB_ENV
             echo "KEY_PASSWORD=${{ secrets.KEY_PASSWORD }}" >> $GITHUB_ENV
           else
             echo "::warning::Production signing secrets (KEYSTORE_BASE64, KEYSTORE_PASSWORD, KEY_ALIAS, KEY_PASSWORD) are not configured. Generating temporary self-signed CI release keystore for build artifact generation."
-            CI_KEYSTORE_PATH="android/app/ci-release-keystore.jks"
+            CI_KEYSTORE_PATH="$GITHUB_WORKSPACE/apps/teacher_mobile/android/app/ci-release-keystore.jks"
             keytool -genkey -v -keystore "$CI_KEYSTORE_PATH" -alias k2-ci-release -keyalg RSA -keysize 2048 -validity 10000 -storepass android -keypass android -dname "CN=FRS CI Release,O=KUCET,C=IN"
-            echo "KEYSTORE_PATH=android/app/ci-release-keystore.jks" >> $GITHUB_ENV
+            echo "KEYSTORE_PATH=$CI_KEYSTORE_PATH" >> $GITHUB_ENV
             echo "KEYSTORE_PASSWORD=android" >> $GITHUB_ENV
             echo "KEY_ALIAS=k2-ci-release" >> $GITHUB_ENV
             echo "KEY_PASSWORD=android" >> $GITHUB_ENV

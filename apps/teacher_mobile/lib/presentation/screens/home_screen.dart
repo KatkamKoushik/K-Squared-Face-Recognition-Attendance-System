@@ -38,7 +38,7 @@ class HomeScreen extends ConsumerWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        auth.email ?? MockTeacherData.facultyName,
+                        auth.email ?? KucetTeacherData.facultyName,
                         style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
                       const SizedBox(height: 4),
@@ -118,12 +118,12 @@ class HomeScreen extends ConsumerWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              MockTeacherData.facultyName,
+                              KucetTeacherData.facultyName,
                               style: theme.textTheme.titleLarge,
                             ),
                             const SizedBox(height: 2),
                             Text(
-                              MockTeacherData.facultyDesignation,
+                              KucetTeacherData.facultyDesignation,
                               style: theme.textTheme.bodyMedium?.copyWith(
                                 color: AppTheme.primaryNavy,
                                 fontWeight: FontWeight.w600,
@@ -131,7 +131,7 @@ class HomeScreen extends ConsumerWidget {
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              '${MockTeacherData.departmentName}\n${MockTeacherData.collegeName}',
+                              '${KucetTeacherData.departmentName}\n${KucetTeacherData.collegeName}',
                               style: theme.textTheme.bodyMedium,
                             ),
                           ],

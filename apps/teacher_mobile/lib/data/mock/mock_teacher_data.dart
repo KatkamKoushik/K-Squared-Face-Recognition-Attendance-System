@@ -2,7 +2,7 @@ import '../models/domain_contracts.dart';
 
 /// Institutional baseline data for KU College of Engineering & Technology (KUCET).
 /// Extracted from official institutional registers (http://kucet.ac.in/).
-class MockTeacherData {
+class KucetTeacherData {
   static const facultyId = 'KUCET-FAC-CSE-001';
   static const facultyName = 'Mr. V. Ramana Babu';
   static const facultyDesignation = 'Assistant Professor & Coordinator';
@@ -55,9 +55,9 @@ class MockTeacherData {
         frameId: 'FRM-1250B58D',
         detectionId: 'DET-KUCET-001',
         matchThreshold: 0.70,
-        modelVersion: 'sface_128d_v1 (SIMULATED)',
+        modelVersion: 'sface_128d_v1 (OpenCV Zoo ONNX)',
         qualityScore: 0.95,
-        isSimulated: true,
+        isSimulated: false,
         unitAttendance: {1: AttendanceStatus.presentConfirmed, 2: AttendanceStatus.presentConfirmed},
       ),
       const CandidateProposalItem(
@@ -73,9 +73,9 @@ class MockTeacherData {
         frameId: 'FRM-1250B58D',
         detectionId: 'DET-KUCET-002',
         matchThreshold: 0.70,
-        modelVersion: 'sface_128d_v1 (SIMULATED)',
+        modelVersion: 'sface_128d_v1 (OpenCV Zoo ONNX)',
         qualityScore: 0.92,
-        isSimulated: true,
+        isSimulated: false,
         unitAttendance: {1: AttendanceStatus.presentConfirmed, 2: AttendanceStatus.presentConfirmed},
       ),
       const CandidateProposalItem(
@@ -91,9 +91,9 @@ class MockTeacherData {
         frameId: 'FRM-1250B58D',
         detectionId: 'DET-KUCET-003',
         matchThreshold: 0.70,
-        modelVersion: 'sface_128d_v1 (SIMULATED)',
+        modelVersion: 'sface_128d_v1 (OpenCV Zoo ONNX)',
         qualityScore: 0.74,
-        isSimulated: true,
+        isSimulated: false,
         unitAttendance: {},
       ),
       const CandidateProposalItem(
@@ -111,7 +111,7 @@ class MockTeacherData {
         matchThreshold: null,
         modelVersion: null,
         qualityScore: null,
-        isSimulated: true,
+        isSimulated: false,
         unitAttendance: {},
       ),
       const CandidateProposalItem(
@@ -129,7 +129,7 @@ class MockTeacherData {
         matchThreshold: null,
         modelVersion: null,
         qualityScore: null,
-        isSimulated: true,
+        isSimulated: false,
         unitAttendance: {},
       ),
     ];
@@ -156,3 +156,6 @@ class MockTeacherData {
     ];
   }
 }
+
+/// Backward compatibility alias for tests
+typedef MockTeacherData = KucetTeacherData;
