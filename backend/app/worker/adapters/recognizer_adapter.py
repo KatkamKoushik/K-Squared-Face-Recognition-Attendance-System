@@ -209,21 +209,30 @@ class RecognizerAdapter:
             reason_code="VERIFIED_HIGH_CONFIDENCE_MATCH",
         )
 
-    def assess_quality(self, face_crop: Image.Image) -> QualityResult:
+    def assess_quality(
+        self,
+        face_crop: Image.Image,
+        min_variance: float = 50.0,
+        min_size: int = 24,
+    ) -> QualityResult:
         """
         Estimates per-face quality (blur via Laplacian variance, size, contrast).
-        Rejects tiny faces (< 24px) or blurry/flat crops.
+        Rejects tiny faces (< min_size px, default 24) or blurry/flat crops (< min_variance, default 50.0).
         """
         w, h = face_crop.size
-        if w < 24 or h < 24:
+        if w < min_size or h < min_size:
             return QualityResult(score=0.15, is_usable=False, reason_code="FACE_TOO_SMALL")
 
         try:
             crop_cv = cv2.cvtColor(np.array(face_crop.convert("RGB")), cv2.COLOR_RGB2BGR)
             gray = cv2.cvtColor(crop_cv, cv2.COLOR_BGR2GRAY)
             variance = float(cv2.Laplacian(gray, cv2.CV_64F).var())
-            if variance < 10.0:
-                return QualityResult(score=0.25, is_usable=False, reason_code="BLURRY_FACE")
+            if variance < min_variance:
+                return QualityResult(
+                    score=round(min(0.49, (variance / min_variance) * 0.49), 4),
+                    is_usable=False,
+                    reason_code="BLURRY_FACE",
+                )
             score = round(min(0.98, 0.70 + (variance / 500.0) * 0.28), 4)
             return QualityResult(score=score, is_usable=True, reason_code="QUALITY_ACCEPTABLE")
         except Exception:

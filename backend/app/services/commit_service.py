@@ -224,6 +224,8 @@ class CommitService:
             total_present_records=total_present,
             total_absent_records=total_absent,
             receipt_hash=receipt_hash,
+            model_version=getattr(session, "model_version", "yunet_2023mar_sface_2021dec") or "yunet_2023mar_sface_2021dec",
+            calibration_threshold=getattr(session, "calibration_threshold", 0.363) or 0.363,
             committed_at=session.finalized_at,
         )
         db.add(receipt)

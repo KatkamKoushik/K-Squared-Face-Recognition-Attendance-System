@@ -33,6 +33,8 @@ class CommitReceiptResponse(BaseModel):
     total_present_records: int
     total_absent_records: int
     receipt_hash: str
+    model_version: Optional[str] = None
+    calibration_threshold: Optional[float] = None
     committed_at: datetime
 
 

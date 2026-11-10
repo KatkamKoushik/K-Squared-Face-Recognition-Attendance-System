@@ -186,6 +186,35 @@ class _CommitReceiptScreenState extends ConsumerState<CommitReceiptScreen> {
                           ],
                         ),
                       ),
+                      if (receipt.modelVersion != null || receipt.calibrationThreshold != null) ...[
+                        const SizedBox(height: 12),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: AppTheme.surfaceVariantLight,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'MODEL PROVENANCE & CALIBRATION',
+                                style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppTheme.textMutedLight),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Model: ${receipt.modelVersion ?? "yunet_2023mar_sface_2021dec"}',
+                                style: const TextStyle(fontSize: 11, fontFamily: 'monospace'),
+                              ),
+                              Text(
+                                'Calibration Threshold (τ): ${receipt.calibrationThreshold?.toStringAsFixed(3) ?? "0.363"}',
+                                style: const TextStyle(fontSize: 11, fontFamily: 'monospace'),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),

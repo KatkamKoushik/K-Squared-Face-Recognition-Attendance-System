@@ -11,6 +11,7 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
     Integer,
+    Float,
     JSON,
     Index,
 )
@@ -38,6 +39,8 @@ class CommitReceipt(Base):
     total_present_records: Mapped[int] = mapped_column(Integer, nullable=False)
     total_absent_records: Mapped[int] = mapped_column(Integer, nullable=False)
     receipt_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    model_version: Mapped[Optional[str]] = mapped_column(String(100), default="yunet_2023mar_sface_2021dec", nullable=True)
+    calibration_threshold: Mapped[Optional[float]] = mapped_column(Float, default=0.363, nullable=True)
     committed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
 
 

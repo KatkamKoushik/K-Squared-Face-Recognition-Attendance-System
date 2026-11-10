@@ -47,6 +47,8 @@ class SessionService:
             session_date=session_date,
             state=SessionState.DRAFT,
             planned_units=data.planned_units,
+            model_version="yunet_2023mar_sface_2021dec",
+            calibration_threshold=0.363,
         )
         db.add(session)
         db.flush()

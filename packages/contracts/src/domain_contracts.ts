@@ -104,6 +104,8 @@ export interface SessionResponse {
   state: SessionState;
   policy_version_id: string;
   planned_units: number;
+  model_version?: string | null;
+  calibration_threshold?: number | null;
   created_at: string;
   finalized_at: string | null;
   units: UnitResponse[];
@@ -179,6 +181,8 @@ export interface CommitReceiptResponse {
   total_present_records: number;
   total_absent_records: number;
   receipt_hash: string;
+  model_version?: string | null;
+  calibration_threshold?: number | null;
   committed_at: string;
 }
 

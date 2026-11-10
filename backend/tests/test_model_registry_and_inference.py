@@ -21,7 +21,7 @@ def test_model_registry_seeding_and_integrity(db_session: Session):
     """
     policy = ModelRegistryService.seed_default_registry(db_session)
     assert policy.id == "policy_kucet_v7_1_default"
-    assert policy.match_cosine_threshold == 0.70
+    assert policy.match_cosine_threshold == 0.363
     assert policy.margin_threshold == 0.10
     assert policy.is_active is True
 

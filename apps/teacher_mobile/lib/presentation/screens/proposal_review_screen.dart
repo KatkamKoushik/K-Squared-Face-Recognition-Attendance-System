@@ -29,6 +29,13 @@ class ProposalReviewScreen extends ConsumerWidget {
         title: const Text('Review Proposals'),
         actions: [
           IconButton(
+            icon: const Icon(Icons.camera_enhance_outlined),
+            tooltip: 'Request Recapture',
+            onPressed: () {
+              Navigator.pop(context);
+            },
+          ),
+          IconButton(
             icon: const Icon(Icons.fact_check_outlined),
             tooltip: 'Manual Roll-Call',
             onPressed: () {
@@ -83,6 +90,36 @@ class ProposalReviewScreen extends ConsumerWidget {
                 ],
               ),
             ),
+            if (recaptureCount > 0)
+              Container(
+                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: AppTheme.statusRecapture.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppTheme.statusRecapture.withValues(alpha: 0.4)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.camera_alt, color: AppTheme.statusRecapture, size: 20),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        '$recaptureCount student(s) require clearer capture or higher quality lighting.',
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppTheme.statusRecapture),
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      style: TextButton.styleFrom(
+                        visualDensity: VisualDensity.compact,
+                        foregroundColor: AppTheme.statusRecapture,
+                      ),
+                      child: const Text('Recapture', style: TextStyle(fontWeight: FontWeight.bold)),
+                    ),
+                  ],
+                ),
+              ),
 
             // Candidates List
             Expanded(

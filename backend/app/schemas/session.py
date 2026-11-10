@@ -55,6 +55,8 @@ class SessionResponse(BaseModel):
     state: SessionState
     policy_version_id: str
     planned_units: int
+    model_version: Optional[str] = None
+    calibration_threshold: Optional[float] = None
     created_at: datetime
     finalized_at: Optional[datetime]
     units: List[UnitResponse] = []
