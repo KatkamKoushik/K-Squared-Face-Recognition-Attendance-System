@@ -75,20 +75,25 @@ class DemoService:
                 & (EnrollmentSubmission.status == EnrollmentSubmissionStatus.APPROVED),
             )
             .where(Student.is_active == True, EnrollmentProfile.is_active == True)
-            .distinct(Student.id)
-            .order_by(Student.id, Student.roll_number)
+            .order_by(Student.roll_number)
         )
         rows = db.execute(stmt).all()
-        return [
-            DemoEnrolledStudentSummary(
-                student_id=student.id,
-                roll_number=student.roll_number,
-                full_name=student.full_name,
-                is_active=student.is_active,
-                has_reference_photo=bool(photo_path and (photo_path.startswith("http") or os.path.exists(photo_path))),
+        seen_ids = set()
+        results: List[DemoEnrolledStudentSummary] = []
+        for student, photo_path in rows:
+            if student.id in seen_ids:
+                continue
+            seen_ids.add(student.id)
+            results.append(
+                DemoEnrolledStudentSummary(
+                    student_id=student.id,
+                    roll_number=student.roll_number,
+                    full_name=student.full_name,
+                    is_active=student.is_active,
+                    has_reference_photo=bool(photo_path and (photo_path.startswith("http") or os.path.exists(photo_path))),
+                )
             )
-            for student, photo_path in rows
-        ]
+        return results
 
     @staticmethod
     def analyze_demo_photo(

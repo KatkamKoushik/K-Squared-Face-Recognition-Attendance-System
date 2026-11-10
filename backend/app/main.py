@@ -152,6 +152,20 @@ def create_application() -> FastAPI:
         response.headers["X-Correlation-ID"] = corr_id
         return response
 
+    def _create_error_response(request: Request, status_code: int, envelope: ErrorEnvelope) -> JSONResponse:
+        origin = request.headers.get("origin")
+        headers = {}
+        if origin:
+            headers["Access-Control-Allow-Origin"] = origin
+            headers["Access-Control-Allow-Credentials"] = "true"
+            headers["Access-Control-Allow-Methods"] = "*"
+            headers["Access-Control-Allow-Headers"] = "*"
+        return JSONResponse(
+            status_code=status_code,
+            content=envelope.model_dump(mode="json"),
+            headers=headers,
+        )
+
     # 5. Custom Exception Handlers
     @app.exception_handler(AppBaseException)
     async def app_exception_handler(request: Request, exc: AppBaseException):
@@ -165,10 +179,7 @@ def create_application() -> FastAPI:
             ),
             correlation_id=corr_id,
         )
-        return JSONResponse(
-            status_code=exc.status_code,
-            content=envelope.model_dump(mode="json"),
-        )
+        return _create_error_response(request, exc.status_code, envelope)
 
     @app.exception_handler(RequestValidationError)
     async def validation_exception_handler(request: Request, exc: RequestValidationError):
@@ -182,10 +193,7 @@ def create_application() -> FastAPI:
             ),
             correlation_id=corr_id,
         )
-        return JSONResponse(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            content=envelope.model_dump(mode="json"),
-        )
+        return _create_error_response(request, status.HTTP_422_UNPROCESSABLE_ENTITY, envelope)
 
     @app.exception_handler(Exception)
     async def generic_exception_handler(request: Request, exc: Exception):
@@ -195,14 +203,11 @@ def create_application() -> FastAPI:
                 code="INTERNAL_SERVER_ERROR",
                 message="An unexpected internal server error occurred.",
                 reason_code="UNHANDLED_EXCEPTION",
-                details={"error_type": type(exc).__name__} if settings.DEBUG else None,
+                details={"error_type": type(exc).__name__, "error_detail": str(exc)} if settings.DEBUG else None,
             ),
             correlation_id=corr_id,
         )
-        return JSONResponse(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content=envelope.model_dump(mode="json"),
-        )
+        return _create_error_response(request, status.HTTP_500_INTERNAL_SERVER_ERROR, envelope)
 
     # 4. Mount API v1 router
     app.include_router(api_router, prefix=settings.API_V1_STR)

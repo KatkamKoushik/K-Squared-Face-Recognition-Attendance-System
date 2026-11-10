@@ -77,10 +77,11 @@ class EnrollmentService:
             )
         ).scalar_one_or_none()
         if existing_sub:
+            sub_state = existing_sub.status.value if hasattr(existing_sub.status, "value") else str(existing_sub.status)
             raise ConflictError(
                 resource="EnrollmentSubmission",
                 identifier=data.roll_number,
-                message=f"An enrollment submission for roll number {data.roll_number} is already {existing_sub.status.value}.",
+                message=f"An enrollment submission for roll number {data.roll_number} is already {sub_state}.",
             )
 
         # 2. Size and dimension limits
@@ -194,9 +195,10 @@ class EnrollmentService:
         """
         sub = EnrollmentService.get_submission_by_id(db, submission_id)
         if sub.status not in [EnrollmentSubmissionStatus.PENDING_REVIEW, EnrollmentSubmissionStatus.RECAPTURE_REQUIRED]:
+            current_val = sub.status.value if hasattr(sub.status, "value") else str(sub.status)
             raise StateTransitionError(
-                message=f"Cannot approve submission in state {sub.status.value}",
-                current_state=sub.status.value,
+                message=f"Cannot approve submission in state {current_val}",
+                current_state=current_val,
                 attempted_state="APPROVED",
                 reason_code="ILLEGAL_SUBMISSION_TRANSITION",
             )

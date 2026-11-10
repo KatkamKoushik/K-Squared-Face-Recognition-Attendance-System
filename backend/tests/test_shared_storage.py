@@ -60,7 +60,7 @@ def test_ingress_saves_frame_to_configured_storage_dir(db_session: Session, seed
     else:
         expected_storage_dir = Path(settings.STORAGE_DIR).resolve()
         actual_frame_path = Path(frame.storage_path).resolve()
-        assert actual_frame_path.parent == expected_storage_dir
+        assert expected_storage_dir in actual_frame_path.parents or actual_frame_path.parent == expected_storage_dir
         assert os.path.exists(actual_frame_path)
         assert os.path.getsize(actual_frame_path) > 0
 

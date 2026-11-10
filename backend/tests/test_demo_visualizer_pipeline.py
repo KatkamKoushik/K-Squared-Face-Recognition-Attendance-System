@@ -9,14 +9,45 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.main import create_application
-from app.core.database import SessionLocal
+from app.core.database import get_db
 from app.services.demo_service import DemoService
 from app.worker.adapters.detector_adapter import DetectorAdapter
+from app.domain.models.student import Student, EnrollmentProfile, EnrollmentSubmission
+from app.domain.enums import EnrollmentSubmissionStatus
 
 
-@pytest.fixture(scope="module")
-def client():
+@pytest.fixture
+def client(db_session, seed_data):
     app = create_application()
+    app.dependency_overrides[get_db] = lambda: db_session
+
+    student = seed_data["students"][0]
+    profile = EnrollmentProfile(
+        student_id=student.id,
+        model_artifact_id="test_sface_model_sha256",
+        embedding_namespace="sface_v1_kucet",
+        embedding_dimension=128,
+        vector_data=[0.05] * 128,
+        profile_version=1,
+        is_active=True,
+    )
+    db_session.add(profile)
+
+    sub = EnrollmentSubmission(
+        roll_number=student.roll_number,
+        full_name=student.full_name,
+        institutional_email=student.institutional_email or f"{student.roll_number.lower()}@kucet.ac.in",
+        department="Computer Science",
+        academic_year="2024-2028",
+        photo_storage_path="/tmp/mock_photo.jpg",
+        photo_sha256="abc1234",
+        photo_mime="image/jpeg",
+        status=EnrollmentSubmissionStatus.APPROVED,
+        consent_acknowledged=True,
+    )
+    db_session.add(sub)
+    db_session.commit()
+
     with TestClient(app) as test_client:
         yield test_client
 

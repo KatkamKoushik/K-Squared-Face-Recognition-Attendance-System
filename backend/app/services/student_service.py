@@ -329,13 +329,14 @@ class StudentService:
                 record.status = AttendanceStatus.EXCUSED
                 record.reason_code = f"APPEAL_APPROVED: {review_notes[:40]}"
 
+        appeal_status_val = appeal.status.value if hasattr(appeal.status, "value") else str(appeal.status)
         audit = AuditEvent(
             session_id=appeal.session_id,
             actor_id=reviewer.id,
             action=AuditAction.APPEAL_PROCESSED,
-            reason=f"Appeal {appeal_id} decision: {appeal.status.value}",
-            before_state={"appeal_status": AppealStatus.PENDING.value},
-            after_state={"appeal_status": appeal.status.value, "approved": approved},
+            reason=f"Appeal {appeal_id} decision: {appeal_status_val}",
+            before_state={"appeal_status": AppealStatus.PENDING.value if hasattr(AppealStatus.PENDING, "value") else str(AppealStatus.PENDING)},
+            after_state={"appeal_status": appeal_status_val, "approved": approved},
             correlation_id=correlation_id,
         )
         db.add(audit)
