@@ -155,7 +155,7 @@ class RecognizerAdapter:
         self,
         query_vector: List[float],
         enrolled_profiles: Dict[str, List[float]],  # student_id -> vector
-        match_threshold: float = 0.45,
+        match_threshold: float = 0.363,
         margin_threshold: float = 0.10,
     ) -> RetrievalCandidate:
         """

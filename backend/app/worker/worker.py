@@ -132,7 +132,7 @@ class VisionWorker:
             candidate = self.recognizer.search_exact_roster(
                 query_vector=emb.vector,
                 enrolled_profiles=roster_gallery,
-                match_threshold=0.45,
+                match_threshold=0.363,
                 margin_threshold=0.10,
             )
 
