@@ -2,12 +2,15 @@
 FRS V7.1 K² — Attendance Session & Conducted Unit Endpoints.
 """
 
+from typing import List, Optional
 from fastapi import APIRouter, Depends, status
+from sqlalchemy import select
 from sqlalchemy.orm import Session
-from app.api.dependencies import get_current_faculty, get_correlation_id
+from app.api.dependencies import get_current_faculty, get_optional_current_user, get_correlation_id
 from app.core.database import get_db
 from app.core.errors import PermissionDeniedError
-from app.domain.models.academic import Faculty
+from app.domain.models.academic import Faculty, User
+from app.domain.models.session import AttendanceSession
 from app.schemas.common import ResponseEnvelope
 from app.schemas.session import (
     SessionCreateRequest,
@@ -36,6 +39,20 @@ def create_session(
     """
     session = SessionService.create_session(db, faculty.id, data)
     return ResponseEnvelope(data=SessionResponse.model_validate(session), correlation_id=correlation_id)
+
+
+@router.get("", response_model=ResponseEnvelope[List[SessionResponse]])
+def list_recent_sessions(
+    limit: int = 10,
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_optional_current_user),
+    correlation_id: str = Depends(get_correlation_id),
+):
+    """Returns recent attendance sessions from the authoritative ledger."""
+    stmt = select(AttendanceSession).order_by(AttendanceSession.created_at.desc()).limit(limit)
+    sessions = list(db.execute(stmt).scalars().all())
+    items = [SessionResponse.model_validate(s) for s in sessions]
+    return ResponseEnvelope(data=items, correlation_id=correlation_id)
 
 
 @router.get("/{session_id}", response_model=ResponseEnvelope[SessionResponse])

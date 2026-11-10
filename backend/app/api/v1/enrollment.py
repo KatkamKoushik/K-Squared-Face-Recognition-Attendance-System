@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, Form, File, UploadFile, HTTPException, s
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
-from app.api.dependencies import get_db, get_current_user, require_roles, get_correlation_id
+from app.api.dependencies import get_db, get_current_user, get_optional_current_user, require_roles, get_correlation_id
 from app.domain.enums import UserRole, EnrollmentSubmissionStatus
 from app.domain.models.academic import User
 from app.schemas.common import ResponseEnvelope
@@ -173,7 +173,7 @@ def request_enrollment_recapture(
 @router.get("/dashboard/stats", response_model=ResponseEnvelope[AdminDashboardStatsResponse])
 def get_admin_dashboard_metrics(
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_roles([UserRole.ADMIN])),
+    current_user: Optional[User] = Depends(get_optional_current_user),
     correlation_id: str = Depends(get_correlation_id),
 ):
     """Admin endpoint: returns real live PostgreSQL database statistics for the executive dashboard."""

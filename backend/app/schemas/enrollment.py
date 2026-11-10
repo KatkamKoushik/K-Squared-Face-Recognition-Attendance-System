@@ -42,10 +42,27 @@ class EnrollmentReviewActionRequest(BaseModel):
     reason: Optional[str] = Field(None, max_length=500, description="Reason for rejection or targeted recapture guidance")
 
 
+class RecentSessionItem(BaseModel):
+    session_id: str
+    subject_code: str
+    subject_name: str
+    cohort: str
+    faculty: str
+    conducted_units: int
+    present_count: int
+    total_enrolled: int
+    attendance_percent: str
+    receipt_hash: str
+    timestamp: str
+
+
 class AdminDashboardStatsResponse(BaseModel):
     total_enrolled_students: int
     total_active_offerings: int
     pending_submissions_count: int
     finalized_sessions_count: int
-    recent_sessions: List[Dict[str, Any]]
+    conducted_units_today: int = 0
+    active_departments_count: int = 0
+    active_cohorts_count: int = 0
+    recent_sessions: List[RecentSessionItem] = []
     system_readiness: str
