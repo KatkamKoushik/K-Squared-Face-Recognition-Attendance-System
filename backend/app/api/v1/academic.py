@@ -288,7 +288,7 @@ def list_students(
     cohort_id: Optional[str] = None,
     limit: int = 100,
     db: Session = Depends(get_db),
-    current_user: Optional[User] = Depends(get_optional_current_user),
+    current_user: User = Depends(get_current_user),
     correlation_id: str = Depends(get_correlation_id),
 ):
     """

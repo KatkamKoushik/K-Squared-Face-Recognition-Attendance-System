@@ -29,41 +29,19 @@ def get_current_user(
     db: Session = Depends(get_db),
 ) -> User:
     """Validates the Bearer token and returns the authenticated user."""
-    def _dev_admin_fallback() -> Optional[User]:
-        if settings.ENVIRONMENT in ("development", "staging", "test"):
-            admin_user = db.query(User).filter(User.role == UserRole.ADMIN, User.is_active == True).first()
-            if admin_user:
-                return admin_user
-        return None
-
     if not auth or not auth.credentials or auth.credentials in ("null", "undefined"):
-        dev_admin = _dev_admin_fallback()
-        if dev_admin:
-            return dev_admin
         raise AuthenticationError("Authorization header missing or invalid", reason_code="TOKEN_MISSING")
 
-    try:
-        payload = decode_access_token(auth.credentials)
-        user_id = payload.get("user_id") or payload.get("sub")
-        if not user_id:
-            dev_admin = _dev_admin_fallback()
-            if dev_admin:
-                return dev_admin
-            raise AuthenticationError("Invalid token claims", reason_code="TOKEN_MALFORMED")
+    payload = decode_access_token(auth.credentials)
+    user_id = payload.get("user_id") or payload.get("sub")
+    if not user_id:
+        raise AuthenticationError("Invalid token claims", reason_code="TOKEN_MALFORMED")
 
-        user = db.get(User, user_id)
-        if not user or not user.is_active:
-            dev_admin = _dev_admin_fallback()
-            if dev_admin:
-                return dev_admin
-            raise AuthenticationError("User is inactive or not found", reason_code="USER_NOT_ACTIVE")
+    user = db.get(User, user_id)
+    if not user or not user.is_active:
+        raise AuthenticationError("User is inactive or not found", reason_code="USER_NOT_ACTIVE")
 
-        return user
-    except Exception:
-        dev_admin = _dev_admin_fallback()
-        if dev_admin:
-            return dev_admin
-        raise
+    return user
 
 
 def get_optional_current_user(
