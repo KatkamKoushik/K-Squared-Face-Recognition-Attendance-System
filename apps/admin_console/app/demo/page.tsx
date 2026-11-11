@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import Link from "next/link";
 import {
   Camera,
   Upload,
@@ -14,6 +15,9 @@ import {
   Users,
   Image as ImageIcon,
   ArrowRight,
+  Database,
+  Sparkles,
+  ExternalLink,
 } from "lucide-react";
 import {
   analyzeDemoPhoto,
@@ -31,6 +35,8 @@ export default function DemoVisualizerPage() {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<DemoAnalysisResponse | null>(null);
   const [enrolledCount, setEnrolledCount] = useState<number>(0);
+  const [enrolledStudents, setEnrolledStudents] = useState<DemoEnrolledStudentSummary[]>([]);
+  const [enrolledLoading, setEnrolledLoading] = useState<boolean>(true);
   const [selectedFaceIdx, setSelectedFaceIdx] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<"granted" | "absent" | "strangers">("granted");
 
@@ -43,10 +49,23 @@ export default function DemoVisualizerPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    getDemoEnrolledStudents().then((students) => {
-      if (students) setEnrolledCount(students.length);
-    });
+    loadEnrolledGallery();
   }, []);
+
+  const loadEnrolledGallery = async () => {
+    setEnrolledLoading(true);
+    try {
+      const students = await getDemoEnrolledStudents();
+      if (students) {
+        setEnrolledStudents(students);
+        setEnrolledCount(students.length);
+      }
+    } catch {
+      // Non-blocking fallback
+    } finally {
+      setEnrolledLoading(false);
+    }
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -73,6 +92,27 @@ export default function DemoVisualizerPage() {
     }
   };
 
+  const testStudentPhoto = async (student: DemoEnrolledStudentSummary) => {
+    if (!student.photo_url) return;
+    try {
+      setLoading(true);
+      setError(null);
+      setPreviewUrl(student.photo_url);
+      setResult(null);
+      setSelectedFaceIdx(null);
+
+      // Fetch the Cloudinary photo as a Blob
+      const res = await fetch(student.photo_url);
+      const blob = await res.blob();
+      const testFile = new File([blob], `${student.roll_number}_ref.jpg`, { type: blob.type || "image/jpeg" });
+      setFile(testFile);
+      await triggerInference(testFile);
+    } catch (err: any) {
+      setError(err?.message || "Failed to load reference photo for testing.");
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-6 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
       {/* Header Banner */}
@@ -83,12 +123,12 @@ export default function DemoVisualizerPage() {
             <span>Universal Ground-Truth Sandbox • Branch-Agnostic</span>
           </div>
           <h1 className="text-2xl font-serif font-bold text-slate-900 tracking-tight">
-            Face Recognition Ground-Truth Inspector
+            Face Recognition Ground-Truth Inspector & Live Visualizer
           </h1>
-          <p className="text-xs text-slate-500 mt-1 max-w-2xl">
-            Upload any group photograph with enrolled students and unknown visitors. The system runs real YuNet
-            face detection and 128-D SFace embedding extraction to visually prove who is awarded attendance and who is
-            rejected without false positives.
+          <p className="text-xs text-slate-500 mt-1 max-w-2xl leading-relaxed">
+            Upload any group photograph with enrolled students and unknown visitors, or select an enrolled student below.
+            The system runs YuNet face detection and 128-D SFace embedding extraction to visually prove who is awarded attendance
+            and who is rejected without false positives.
           </p>
         </div>
 
@@ -105,7 +145,7 @@ export default function DemoVisualizerPage() {
             className="px-4 py-2 rounded-xl text-xs font-semibold bg-institutional-navy text-white hover:bg-slate-800 transition flex items-center space-x-2 shadow-sm"
           >
             <Upload className="w-4 h-4" />
-            <span>Select Group Photo</span>
+            <span>Select Photo to Test</span>
           </button>
           <input
             ref={fileInputRef}
@@ -115,6 +155,111 @@ export default function DemoVisualizerPage() {
             onChange={handleFileChange}
           />
         </div>
+      </div>
+
+      {/* Section 1: Enrolled Database Biometrics Gallery */}
+      <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-slate-100">
+          <div className="flex items-center space-x-3">
+            <div className="w-9 h-9 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600">
+              <Database className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-base font-serif font-bold text-slate-900 flex items-center space-x-2">
+                <span>Enrolled Database Biometric Gallery</span>
+                <span className="text-xs font-mono font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
+                  {enrolledCount} Registered Identities
+                </span>
+              </h2>
+              <p className="text-xs text-slate-500">
+                Authoritative student photographs and 128-D SFace feature templates stored in PostgreSQL and Cloudinary.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={loadEnrolledGallery}
+              disabled={enrolledLoading}
+              className="inline-flex items-center space-x-1.5 px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-medium text-slate-700 bg-slate-50 hover:bg-slate-100 transition shadow-xs"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 text-slate-500 ${enrolledLoading ? "animate-spin" : ""}`} />
+              <span>Refresh Gallery</span>
+            </button>
+            <Link
+              href="/admin/enrollment"
+              className="inline-flex items-center space-x-1 px-3 py-1.5 text-xs font-medium text-institutional-navy hover:text-institutional-blue transition"
+            >
+              <span>Manage Biometric Queue</span>
+              <ExternalLink className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+        </div>
+
+        {enrolledLoading ? (
+          <div className="py-12 text-center text-slate-500 text-xs flex flex-col items-center justify-center space-y-2">
+            <RefreshCw className="w-5 h-5 animate-spin text-institutional-navy" />
+            <span>Loading database biometric templates...</span>
+          </div>
+        ) : enrolledStudents.length === 0 ? (
+          <div className="py-10 text-center text-slate-500 text-xs">
+            <p>No active enrolled students found in database.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {enrolledStudents.map((student) => (
+              <div
+                key={student.student_id}
+                className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-slate-50 hover:border-emerald-300 transition-all shadow-xs flex flex-col justify-between space-y-3"
+              >
+                <div className="flex items-start space-x-3">
+                  <div className="relative shrink-0">
+                    {student.photo_url ? (
+                      <img
+                        src={student.photo_url}
+                        alt={student.full_name}
+                        className="w-14 h-14 rounded-xl object-cover border border-slate-200 shadow-xs"
+                      />
+                    ) : (
+                      <div className="w-14 h-14 rounded-xl bg-slate-200 flex items-center justify-center text-slate-600 font-bold text-sm">
+                        {student.full_name.slice(0, 2).toUpperCase()}
+                      </div>
+                    )}
+                    <span
+                      className="absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full bg-emerald-500 border-2 border-white"
+                      title="128-D Biometric Vector Active"
+                    />
+                  </div>
+
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-bold text-slate-900 truncate" title={student.full_name}>
+                      {student.full_name}
+                    </p>
+                    <p className="text-[11px] font-mono font-semibold text-institutional-navy">
+                      {student.roll_number}
+                    </p>
+                    <span className="inline-flex items-center space-x-1 mt-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+                      <Sparkles className="w-2.5 h-2.5" />
+                      <span>128-D SFace Enrolled</span>
+                    </span>
+                  </div>
+                </div>
+
+                {student.photo_url && (
+                  <button
+                    type="button"
+                    onClick={() => testStudentPhoto(student)}
+                    disabled={loading}
+                    className="w-full py-1.5 px-2 bg-white hover:bg-institutional-navy hover:text-white text-slate-700 border border-slate-200 rounded-lg text-xs font-semibold transition-colors flex items-center justify-center space-x-1.5 shadow-xs"
+                  >
+                    <Camera className="w-3.5 h-3.5" />
+                    <span>Test Match In Visualizer</span>
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Calibration Controls */}
@@ -178,11 +323,11 @@ export default function DemoVisualizerPage() {
           <div className="flex items-center justify-between pb-2 border-b border-slate-100">
             <h2 className="text-sm font-semibold text-slate-800 flex items-center space-x-2">
               <Camera className="w-4 h-4 text-slate-500" />
-              <span>Augmented Group Photo (Visual Ground Truth)</span>
+              <span>Augmented Photo Canvas (Visual Ground Truth)</span>
             </h2>
             {result && (
-              <span className="text-xs font-mono text-slate-500">
-                {result.total_detected_faces} Faces Spotted
+              <span className="text-xs font-mono font-bold text-slate-600">
+                {result.total_detected_faces} Face{result.total_detected_faces === 1 ? "" : "s"} Detected
               </span>
             )}
           </div>
@@ -191,7 +336,7 @@ export default function DemoVisualizerPage() {
             <div className="relative rounded-xl overflow-hidden bg-slate-900 flex items-center justify-center min-h-[380px] max-h-[540px]">
               <img
                 src={previewUrl}
-                alt="Uploaded group"
+                alt="Target for testing"
                 className="max-h-[540px] w-auto object-contain select-none"
               />
 
@@ -214,7 +359,7 @@ export default function DemoVisualizerPage() {
                           height={`${(y2 - y1) * 100}%`}
                           fill="none"
                           stroke={face.color_hex}
-                          strokeWidth={isSelected ? "0.8" : "0.4"}
+                          strokeWidth={isSelected ? "1.0" : "0.5"}
                           rx="1"
                         />
                       </g>
@@ -247,7 +392,7 @@ export default function DemoVisualizerPage() {
                 <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm flex flex-col items-center justify-center text-white space-y-3 z-20">
                   <RefreshCw className="w-8 h-8 animate-spin text-emerald-400" />
                   <p className="text-sm font-semibold">Running YuNet Detection & SFace Extraction...</p>
-                  <p className="text-xs text-slate-300">Searching {enrolledCount} enrolled identities in PostgreSQL</p>
+                  <p className="text-xs text-slate-300">Matching against {enrolledCount} enrolled database identities</p>
                 </div>
               )}
             </div>
@@ -261,11 +406,11 @@ export default function DemoVisualizerPage() {
               </div>
               <h3 className="text-sm font-semibold text-slate-800">No Photo Selected</h3>
               <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
-                Click here or use the button above to upload a classroom or group photo containing multiple students and visitors.
+                Click here or use the button above to upload a classroom or group photo containing enrolled students or visitors.
               </p>
               <div className="mt-4 inline-flex items-center space-x-1.5 px-3 py-1 bg-white border border-slate-200 rounded-full text-xs font-medium text-slate-600 shadow-sm">
-                <Users className="w-3.5 h-3.5 text-slate-500" />
-                <span>Test Gallery: {enrolledCount} Students Active</span>
+                <Users className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Active Gallery: {enrolledCount} Enrolled Students Ready</span>
               </div>
             </div>
           )}
@@ -291,7 +436,7 @@ export default function DemoVisualizerPage() {
           </div>
         </div>
 
-        {/* Right Column: Ground-Truth Split-Screen Evidence Ledger */}
+        {/* Right Column: Ground-Truth Evidence Ledger */}
         <div className="lg:col-span-5 bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col h-[640px]">
           {/* Summary Pills */}
           <div className="p-4 border-b border-slate-100 flex items-center justify-between gap-2">

@@ -261,6 +261,16 @@ class _DemoVisualizerScreenState extends ConsumerState<DemoVisualizerScreen> wit
         ),
         actions: [
           IconButton(
+            icon: const Icon(Icons.refresh),
+            tooltip: 'Refresh Gallery & Re-Analyze',
+            onPressed: () {
+              _loadEnrolledGalleryCount();
+              if (_selectedImageBytes != null && _selectedImageName != null) {
+                _runInference(_selectedImageBytes!, _selectedImageName!);
+              }
+            },
+          ),
+          IconButton(
             icon: const Icon(Icons.tune),
             tooltip: 'Calibration Settings',
             onPressed: _showSettingsModal,

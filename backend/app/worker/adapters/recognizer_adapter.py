@@ -18,11 +18,20 @@ from app.worker.contracts import EmbeddingResult, RetrievalCandidate, QualityRes
 class RecognizerAdapter:
 
     MODEL_HASH = "0ba9fbfa01b5270c96627c4ef784da859931e02f04419c829e83484087c34e79"
+    FINETUNED_HASH = "61c33636f356cd235ac42526231ff54733985a00848a74cf0860d7ccb9617a3e"
     NAMESPACE = "sface_128d_v1"
     DEFAULT_FILENAME = "face_recognition_sface_2021dec.onnx"
+    FINETUNED_FILENAME = "kucet_frs_sface_finetuned.onnx"
+
+    APPROVED_HASHES = {
+        MODEL_HASH: "sface_128d_v1",
+        FINETUNED_HASH: "kucet_frs_sface_finetuned_v1",
+    }
 
     def __init__(self, model_path: Optional[Path] = None, strict_mode: Optional[bool] = None):
         self.strict_mode = strict_mode if strict_mode is not None else (os.getenv("STRICT_INFERENCE", "1") == "1")
+        self.model_hash = self.MODEL_HASH
+        self.namespace = self.NAMESPACE
         self.model_path = self._resolve_model_path(model_path)
         self._recognizer: Optional[cv2.FaceRecognizerSF] = None
         self._init_recognizer()
@@ -38,7 +47,16 @@ class RecognizerAdapter:
         """Discovers SFace ONNX model path across local, repo-relative, and container locations."""
         if explicit_path:
             return Path(explicit_path)
+        preferred_filename = (
+            self.FINETUNED_FILENAME
+            if os.getenv("USE_FINETUNED_MODEL") == "1"
+            else self.DEFAULT_FILENAME
+        )
         candidates = [
+            Path("backend/models") / preferred_filename,
+            Path("models") / preferred_filename,
+            Path(__file__).resolve().parent.parent.parent.parent / "models" / preferred_filename,
+            Path("/app/models") / preferred_filename,
             Path("backend/models") / self.DEFAULT_FILENAME,
             Path("models") / self.DEFAULT_FILENAME,
             Path(__file__).resolve().parent.parent.parent.parent / "models" / self.DEFAULT_FILENAME,
@@ -48,7 +66,7 @@ class RecognizerAdapter:
             resolved = p.resolve()
             if resolved.is_file():
                 return resolved
-        return Path("backend/models") / self.DEFAULT_FILENAME
+        return Path("backend/models") / preferred_filename
 
     def _init_recognizer(self):
         resolved = Path(self.model_path).resolve()
@@ -62,13 +80,16 @@ class RecognizerAdapter:
             return
 
         actual_hash = self._compute_sha256(resolved)
-        if actual_hash != self.MODEL_HASH:
+        if actual_hash not in self.APPROVED_HASHES:
             if self.strict_mode:
                 raise ValueError(
-                    f"SFace model SHA-256 hash mismatch: expected {self.MODEL_HASH}, got {actual_hash}"
+                    f"SFace model SHA-256 hash mismatch: expected one of {list(self.APPROVED_HASHES.keys())}, got {actual_hash}"
                 )
             self._recognizer = None
             return
+
+        self.model_hash = actual_hash
+        self.namespace = self.APPROVED_HASHES[actual_hash]
 
         try:
             self._recognizer = cv2.FaceRecognizerSF.create(
@@ -106,8 +127,8 @@ class RecognizerAdapter:
             return EmbeddingResult(
                 vector=vec.tolist(),
                 dimension=128,
-                namespace=self.NAMESPACE,
-                recognizer_model_hash=self.MODEL_HASH,
+                namespace=self.namespace,
+                recognizer_model_hash=self.model_hash,
             )
         except Exception as e:
             raise RuntimeError(f"SFace alignCrop/feature extraction failed: {e}") from e
@@ -132,8 +153,8 @@ class RecognizerAdapter:
             return EmbeddingResult(
                 vector=vec.tolist(),
                 dimension=128,
-                namespace=self.NAMESPACE,
-                recognizer_model_hash=self.MODEL_HASH,
+                namespace=self.namespace,
+                recognizer_model_hash=self.model_hash,
             )
         except Exception as e:
             raise RuntimeError(f"SFace feature extraction failed: {e}") from e

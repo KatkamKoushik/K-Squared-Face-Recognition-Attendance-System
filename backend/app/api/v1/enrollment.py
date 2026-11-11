@@ -176,7 +176,7 @@ def request_enrollment_recapture(
 @router.get("/dashboard/stats", response_model=ResponseEnvelope[AdminDashboardStatsResponse])
 def get_admin_dashboard_metrics(
     db: Session = Depends(get_db),
-    current_user: Optional[User] = Depends(get_optional_current_user),
+    current_user: User = Depends(require_roles([UserRole.ADMIN])),
     correlation_id: str = Depends(get_correlation_id),
 ):
     """Admin endpoint: returns real live PostgreSQL database statistics for the executive dashboard."""

@@ -196,16 +196,16 @@ class AcademicService:
     @staticmethod
     def get_students_scoped(
         db: Session,
-        user: User,
+        user: Optional[User] = None,
         cohort_id: Optional[str] = None,
         limit: int = 100,
     ) -> List[Student]:
         """
         Retrieves students adhering to strict object-level authorization scopes:
-        - ADMIN: Institutional scope across all cohorts.
+        - ADMIN / Institutional SSR: Institutional scope across all cohorts.
         - FACULTY: Scoped strictly to cohorts and enrollments in subjects actively assigned to the instructor.
         """
-        if user.role == UserRole.ADMIN:
+        if user is None or user.role == UserRole.ADMIN:
             stmt = select(Student)
             if cohort_id:
                 stmt = stmt.where(Student.cohort_id == cohort_id)

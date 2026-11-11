@@ -11,6 +11,7 @@ import {
   UserPlus,
   ShieldAlert,
   RefreshCw,
+  Camera,
 } from "lucide-react";
 import { getAdminDashboardMetrics, AdminDashboardMetrics } from "@/lib/api";
 
@@ -86,6 +87,13 @@ export default function AdminDashboardPage() {
           >
             <UserPlus className="w-4 h-4 text-institutional-blue" />
             <span>Student Portal</span>
+          </Link>
+          <Link
+            href="/demo"
+            className="inline-flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition-colors shadow-xs"
+          >
+            <Camera className="w-4 h-4" />
+            <span>Demo Face Visualizer</span>
           </Link>
           <Link
             href="/admin/enrollment"

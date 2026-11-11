@@ -123,3 +123,42 @@ def test_recognizer_quality_assessment():
     textured_crop = Image.fromarray(arr)
     res_std = adapter.assess_quality(textured_crop)
     assert res_std.is_usable is True
+
+
+def test_finetuned_model_loading_and_inference(db_session: Session):
+    """
+    KUCET ArcFace Fine-Tuned Model:
+    Validates fine-tuned SFace weights loaded from backend/models/kucet_frs_sface_finetuned.onnx,
+    exact SHA-256 hash match, unit hypersphere normalization, and registry persistence.
+    """
+    finetuned_path = Path("backend/models/kucet_frs_sface_finetuned.onnx")
+    if not finetuned_path.is_file():
+        pytest.skip("Fine-tuned ONNX model not present in local workspace")
+
+    # 1. Adapter initialization with fine-tuned model path
+    adapter = RecognizerAdapter(model_path=finetuned_path, strict_mode=True)
+    assert adapter._recognizer is not None
+    assert adapter.model_hash == RecognizerAdapter.FINETUNED_HASH
+    assert adapter.namespace == "kucet_frs_sface_finetuned_v1"
+
+    # 2. Embedding calculation and unit hypersphere assertion
+    face_crop = Image.new("RGB", (112, 112), color=(140, 100, 80))
+    emb = adapter.compute_embedding(face_crop)
+    assert emb.dimension == 128
+    assert emb.namespace == "kucet_frs_sface_finetuned_v1"
+    assert emb.recognizer_model_hash == RecognizerAdapter.FINETUNED_HASH
+
+    vec = np.array(emb.vector, dtype=np.float32)
+    norm = np.linalg.norm(vec)
+    assert abs(norm - 1.0) < 1e-4
+
+    # 3. Model registry seeding and artifact verification
+    policy = ModelRegistryService.seed_default_registry(db_session)
+    finetuned_artifact = ModelRegistryService.get_model_artifact_by_hash(
+        db_session, RecognizerAdapter.FINETUNED_HASH
+    )
+    assert finetuned_artifact is not None
+    assert finetuned_artifact.name == "kucet_frs_sface_finetuned"
+    assert finetuned_artifact.approval_status == "APPROVED"
+    assert finetuned_artifact.embedding_dimension == 128
+

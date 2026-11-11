@@ -1,0 +1,28 @@
+{
+  "model_name": "kucet_frs_sface_finetuned",
+  "version": "7.1.0",
+  "framework": "PyTorch / ONNX",
+  "architecture": "FaceRecognitionNet-ArcFace",
+  "embedding_dim": 128,
+  "input_shape": [
+    1,
+    3,
+    112,
+    112
+  ],
+  "training_steps": 5000,
+  "sha256": "61c33636f356cd235ac42526231ff54733985a00848a74cf0860d7ccb9617a3e",
+  "file_size_kb": 9230.19,
+  "metrics": {
+    "mean_genuine": 1.0,
+    "mean_impostor": 0.056,
+    "separation_margin": 0.944,
+    "decision_threshold": 0.363
+  },
+  "provenance": {
+    "institution": "Kakatiya University College of Engineering & Technology",
+    "author": "Koushik Katkam",
+    "hf_repository": "https://huggingface.co/Koushik-Katkam/kucet-frs-face-recognition",
+    "timestamp": "2026-11-10T17:19:08Z"
+  }
+}

@@ -1,0 +1,17 @@
+# FRS V7.1 K² — Kaggle Environment Requirements
+# Target: Ubuntu 22.04 LTS, Python 3.10+, Dual Tesla T4 GPUs (GPU T4 x 2)
+
+opencv-python-headless>=4.8.0
+numpy>=1.24.0,<2.0.0
+matplotlib>=3.7.0
+pillow>=10.0.0
+pyyaml>=6.0.0
+requests>=2.31.0
+huggingface_hub>=0.20.0
+onnx>=1.14.0
+onnxruntime>=1.16.0
+onnxscript>=0.1.0
+albumentations>=1.3.1
+scikit-learn>=1.3.0
+tqdm>=4.66.0
+pyngrok>=7.0.0

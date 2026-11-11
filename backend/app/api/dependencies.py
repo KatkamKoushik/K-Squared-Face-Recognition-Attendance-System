@@ -9,6 +9,7 @@ from fastapi import Depends, Header, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+from app.core.config import settings
 from app.core.database import get_db
 from app.core.errors import AuthenticationError, PermissionDeniedError
 from app.core.security import decode_access_token
@@ -28,7 +29,7 @@ def get_current_user(
     db: Session = Depends(get_db),
 ) -> User:
     """Validates the Bearer token and returns the authenticated user."""
-    if not auth:
+    if not auth or not auth.credentials or auth.credentials in ("null", "undefined"):
         raise AuthenticationError("Authorization header missing or invalid", reason_code="TOKEN_MISSING")
 
     payload = decode_access_token(auth.credentials)

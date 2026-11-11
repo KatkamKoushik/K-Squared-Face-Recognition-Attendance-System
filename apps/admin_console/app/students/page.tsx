@@ -1,7 +1,7 @@
 import React from "react";
 import Link from "next/link";
-import { UserPlus, Search, Filter, ShieldAlert, Database } from "lucide-react";
-import { getStudents } from "@/lib/api";
+import { UserPlus, Search, Filter, ShieldAlert, Database, Camera, CheckCircle2 } from "lucide-react";
+import { getStudents, getDemoEnrolledStudents } from "@/lib/api";
 import StudentImportButton from "./StudentImportButton";
 
 interface StudentDirectoryRow {
@@ -12,31 +12,43 @@ interface StudentDirectoryRow {
   cohort: string;
   enrollmentStatus: "ACTIVE" | "ON_LEAVE" | "GRADUATED";
   effectiveStartDate: string;
+  photoUrl?: string;
+  hasBiometrics: boolean;
 }
 
 export default async function StudentsDirectoryPage() {
-  const serverStudents = await getStudents();
-  const isLive = serverStudents !== null;
+  const [serverStudents, enrolledBiometrics] = await Promise.all([
+    getStudents(),
+    getDemoEnrolledStudents().catch(() => null),
+  ]);
 
-  const students: StudentDirectoryRow[] = (serverStudents || []).map((s) => ({
-    studentId: s.id,
-    rollNumber: s.roll_number,
-    fullName: s.full_name,
-    department: "Computer Science & Engineering",
-    cohort: `Term ${s.current_term}`,
-    enrollmentStatus: (s.status as any) || "ACTIVE",
-    effectiveStartDate: s.enrollment_date || "2023-08-01",
-  }));
+  const isLive = serverStudents !== null;
+  const bioMap = new Map((enrolledBiometrics || []).map((b) => [b.roll_number, b]));
+
+  const students: StudentDirectoryRow[] = (serverStudents || []).map((s) => {
+    const bio = bioMap.get(s.roll_number);
+    return {
+      studentId: s.id,
+      rollNumber: s.roll_number,
+      fullName: s.full_name,
+      department: "Computer Science & Engineering",
+      cohort: `Term ${s.current_term}`,
+      enrollmentStatus: (s.status as any) || "ACTIVE",
+      effectiveStartDate: s.enrollment_date || "2023-08-01",
+      photoUrl: bio?.photo_url,
+      hasBiometrics: Boolean(bio),
+    };
+  });
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="font-serif text-2xl font-bold text-institutional-navy">
-            Student Directory & Enrolment Management
+            Student Directory & Biometric Enrolment Registry
           </h1>
           <p className="text-sm text-institutional-muted">
-            Authoritative student registry, effective enrolment periods, and cohort assignments.
+            Authoritative student registry, registered facial portraits, and 128-D SFace feature template status.
           </p>
         </div>
         <div className="flex items-center space-x-3">
@@ -65,7 +77,7 @@ export default async function StudentsDirectoryPage() {
             Academic Authority Principle:
           </span>{" "}
           Academic enrolment is purely administrative. Attendance proposals never modify student
-          enrolment status or cohort membership.
+          enrolment status or cohort membership. All facial templates are stored as 128-D hyperspherical vectors.
         </div>
       </div>
 
@@ -80,13 +92,20 @@ export default async function StudentsDirectoryPage() {
           />
         </div>
         <div className="flex items-center space-x-2">
-          <button
-            type="button"
-            className="inline-flex items-center space-x-1.5 px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-medium text-slate-600 hover:bg-slate-50"
+          <Link
+            href="/demo"
+            className="inline-flex items-center space-x-1.5 px-3 py-1.5 border border-emerald-300 rounded-lg text-xs font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 transition shadow-xs"
+          >
+            <Camera className="w-3.5 h-3.5 text-emerald-600" />
+            <span>Open Demo Face Visualizer</span>
+          </Link>
+          <Link
+            href="/admin/enrollment"
+            className="inline-flex items-center space-x-1.5 px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-medium text-slate-600 hover:bg-slate-50 transition shadow-xs"
           >
             <Filter className="w-3.5 h-3.5" />
-            <span>Filter Cohort</span>
-          </button>
+            <span>Biometric Queue</span>
+          </Link>
         </div>
       </div>
 
@@ -95,25 +114,41 @@ export default async function StudentsDirectoryPage() {
         <table className="w-full text-left text-sm">
           <thead className="bg-slate-50 border-b border-slate-200 text-xs font-semibold uppercase tracking-wider text-slate-500">
             <tr>
+              <th className="px-6 py-3">Portrait</th>
               <th className="px-6 py-3">Roll Number</th>
               <th className="px-6 py-3">Student Name</th>
               <th className="px-6 py-3">Department</th>
               <th className="px-6 py-3">Cohort</th>
-              <th className="px-6 py-3">Effective Since</th>
+              <th className="px-6 py-3">Biometrics</th>
               <th className="px-6 py-3">Status</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-200">
             {students.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-6 py-12 text-center text-slate-500 text-xs">
+                <td colSpan={7} className="px-6 py-12 text-center text-slate-500 text-xs">
                   No enrolled student records found in database. Students appear here after biometric application review and approval.
                 </td>
               </tr>
             ) : (
               students.map((student) => (
                 <tr key={student.studentId} className="hover:bg-slate-50/80 transition-colors">
-                  <td className="px-6 py-4 font-mono font-medium text-xs text-institutional-navy">
+                  <td className="px-6 py-3">
+                    <div className="relative w-11 h-11 rounded-xl overflow-hidden border border-slate-200 bg-slate-100 flex items-center justify-center shrink-0 shadow-xs">
+                      {student.photoUrl ? (
+                        <img
+                          src={student.photoUrl}
+                          alt={student.fullName}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center font-bold text-xs text-slate-500 bg-slate-200">
+                          {student.fullName.slice(0, 2).toUpperCase()}
+                        </div>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 font-mono font-bold text-xs text-institutional-navy">
                     {student.rollNumber}
                   </td>
                   <td className="px-6 py-4 font-medium text-slate-900">
@@ -125,8 +160,17 @@ export default async function StudentsDirectoryPage() {
                   <td className="px-6 py-4 text-slate-600 text-xs">
                     {student.cohort}
                   </td>
-                  <td className="px-6 py-4 font-mono text-xs text-slate-500">
-                    {student.effectiveStartDate}
+                  <td className="px-6 py-4">
+                    {student.hasBiometrics ? (
+                      <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                        <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                        <span>128-D Enrolled</span>
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-slate-100 text-slate-600">
+                        <span>No Biometrics</span>
+                      </span>
+                    )}
                   </td>
                   <td className="px-6 py-4">
                     <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">

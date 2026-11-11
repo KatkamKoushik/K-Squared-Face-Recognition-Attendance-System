@@ -6,7 +6,7 @@ Guarded by ADMIN role. Configuration is represented as data, not code branches.
 from typing import List, Optional
 from fastapi import APIRouter, Depends, status, UploadFile, File
 from sqlalchemy.orm import Session
-from app.api.dependencies import get_current_user, require_roles, get_correlation_id
+from app.api.dependencies import get_current_user, get_optional_current_user, require_roles, get_correlation_id
 from app.core.database import get_db
 from app.domain.enums import UserRole
 from app.domain.models.academic import User

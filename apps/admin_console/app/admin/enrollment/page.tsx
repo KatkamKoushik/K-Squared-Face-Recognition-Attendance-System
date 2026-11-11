@@ -34,7 +34,7 @@ export default function AdminEnrollmentQueuePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [statusFilter, setStatusFilter] = useState<string>("PENDING_REVIEW");
+  const [statusFilter, setStatusFilter] = useState<string>("ALL");
   const [searchTerm, setSearchTerm] = useState<string>("");
 
   // Review modal state
@@ -274,6 +274,7 @@ export default function AdminEnrollmentQueuePage() {
             <table className="w-full text-left border-collapse text-xs">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold uppercase tracking-wider">
+                  <th className="py-3 px-4">Portrait</th>
                   <th className="py-3 px-4">Roll Number</th>
                   <th className="py-3 px-4">Student Name</th>
                   <th className="py-3 px-4">Department</th>
@@ -286,6 +287,23 @@ export default function AdminEnrollmentQueuePage() {
               <tbody className="divide-y divide-slate-100">
                 {submissions.map((sub) => (
                   <tr key={sub.id} className="hover:bg-slate-50/80 transition-colors">
+                    <td className="py-3 px-4">
+                      <div
+                        onClick={() => handleOpenReview(sub)}
+                        className="cursor-pointer relative w-11 h-11 rounded-xl overflow-hidden border border-slate-200 bg-slate-100 flex items-center justify-center shrink-0 hover:ring-2 hover:ring-institutional-navy transition-all shadow-xs"
+                        title="Click to inspect portrait"
+                      >
+                        {sub.photo_storage_path ? (
+                          <img
+                            src={getSubmissionPhotoUrl(sub.id, sub.photo_storage_path)}
+                            alt={sub.full_name}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <Camera className="w-5 h-5 text-slate-400" />
+                        )}
+                      </div>
+                    </td>
                     <td className="py-3 px-4 font-mono font-bold text-slate-900">{sub.roll_number}</td>
                     <td className="py-3 px-4 font-medium text-slate-800">{sub.full_name}</td>
                     <td className="py-3 px-4 text-slate-600">{sub.department}</td>

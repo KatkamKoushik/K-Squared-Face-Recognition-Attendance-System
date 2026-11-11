@@ -229,6 +229,24 @@ def test_complete_12_step_real_workflow():
         cs401_offering = next((o for o in offerings if o.get("subject_code") == "CS401"), offerings[0])
         offering_id = cs401_offering["id"]
 
+        # Ensure approved_student is enrolled in offering so roster snapshot contains at least 1 student
+        from app.domain.models.student import Enrollment as AcademicEnrollment
+        from app.domain.enums import EnrollmentStatus
+        from datetime import date
+        existing_enr = db.query(AcademicEnrollment).filter(
+            AcademicEnrollment.student_id == approved_student.id,
+            AcademicEnrollment.offering_id == offering_id,
+        ).first()
+        if not existing_enr:
+            enr = AcademicEnrollment(
+                student_id=approved_student.id,
+                offering_id=offering_id,
+                status=EnrollmentStatus.ACTIVE,
+                effective_start=date(2023, 8, 1),
+            )
+            db.add(enr)
+            db.commit()
+
         # Create session with frozen roster
         session_create_res = client.post(
             "/api/v1/sessions",

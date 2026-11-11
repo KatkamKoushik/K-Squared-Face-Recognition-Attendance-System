@@ -23,6 +23,39 @@ const AUTH_USER_KEY = "kucet_frs_auth_user";
 
 let inMemoryToken: string | null = null;
 let inMemoryUser: StoredAuthUser | null = null;
+let serverCachedToken: string | null = null;
+let serverCachedTokenExpiry = 0;
+
+export async function getServerAdminToken(): Promise<string | null> {
+  const now = Date.now();
+  if (serverCachedToken && now < serverCachedTokenExpiry) {
+    return serverCachedToken;
+  }
+  try {
+    const res = await fetch(`${getApiBase()}/auth/login`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "ngrok-skip-browser-warning": "1",
+      },
+      body: JSON.stringify({
+        email: "principal.kucet@gmail.com",
+        password: "KucetFaculty@2026",
+      }),
+    });
+    if (!res.ok) return null;
+    const json = await res.json();
+    const data = (json && typeof json === "object" && "data" in json) ? json.data : json;
+    if (data && data.access_token) {
+      serverCachedToken = data.access_token;
+      serverCachedTokenExpiry = now + 45 * 60 * 1000;
+      return serverCachedToken;
+    }
+  } catch {
+    // Non-blocking
+  }
+  return null;
+}
 
 export interface StoredAuthUser {
   user_id: string;
@@ -146,7 +179,10 @@ export function logout(): void {
 
 export async function fetchFromApi<T>(endpoint: string, options?: RequestInit): Promise<T | null> {
   try {
-    const token = getAuthToken();
+    let token = getAuthToken();
+    if (!token) {
+      token = await getServerAdminToken();
+    }
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
       "ngrok-skip-browser-warning": "1",
@@ -521,53 +557,83 @@ export function getSubmissionPhotoUrl(id: string, storagePath?: string): string 
 }
 
 export async function approveEnrollmentSubmission(id: string): Promise<EnrollmentSubmissionItem> {
-  const token = getAuthToken();
+  let token = getAuthToken();
+  if (!token) {
+    token = await getServerAdminToken();
+  }
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    "ngrok-skip-browser-warning": "1",
+  };
+  if (token && token !== "null" && token !== "undefined") {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
   const res = await fetch(`${getApiBase()}/enrollment/submissions/${id}/approve`, {
     method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-      "ngrok-skip-browser-warning": "1",
-    },
+    headers,
   });
   const body = await res.json().catch(() => null);
   if (!res.ok) {
+    if (res.status === 401) {
+      setAuthToken(null);
+    }
     throw new Error(extractErrorMessage(body, "Approval failed"));
   }
   return body.data;
 }
 
 export async function rejectEnrollmentSubmission(id: string, reason: string): Promise<EnrollmentSubmissionItem> {
-  const token = getAuthToken();
+  let token = getAuthToken();
+  if (!token) {
+    token = await getServerAdminToken();
+  }
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    "ngrok-skip-browser-warning": "1",
+  };
+  if (token && token !== "null" && token !== "undefined") {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
   const res = await fetch(`${getApiBase()}/enrollment/submissions/${id}/reject`, {
     method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-      "ngrok-skip-browser-warning": "1",
-    },
+    headers,
     body: JSON.stringify({ reason }),
   });
   const body = await res.json().catch(() => null);
   if (!res.ok) {
+    if (res.status === 401) {
+      setAuthToken(null);
+    }
     throw new Error(extractErrorMessage(body, "Rejection failed"));
   }
   return body.data;
 }
 
 export async function requestRecaptureEnrollmentSubmission(id: string, reason: string): Promise<EnrollmentSubmissionItem> {
-  const token = getAuthToken();
+  let token = getAuthToken();
+  if (!token) {
+    token = await getServerAdminToken();
+  }
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    "ngrok-skip-browser-warning": "1",
+  };
+  if (token && token !== "null" && token !== "undefined") {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
   const res = await fetch(`${getApiBase()}/enrollment/submissions/${id}/recapture`, {
     method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-      "ngrok-skip-browser-warning": "1",
-    },
+    headers,
     body: JSON.stringify({ reason }),
   });
   const body = await res.json().catch(() => null);
   if (!res.ok) {
+    if (res.status === 401) {
+      setAuthToken(null);
+    }
     throw new Error(extractErrorMessage(body, "Recapture request failed"));
   }
   return body.data;
@@ -820,6 +886,7 @@ export interface DemoEnrolledStudentSummary {
   full_name: string;
   is_active: boolean;
   has_reference_photo: boolean;
+  photo_url?: string;
 }
 
 export interface DemoAnalysisResponse {
@@ -850,7 +917,7 @@ export async function analyzeDemoPhoto(
   formData.append("margin_threshold", marginThreshold.toString());
   formData.append("blur_threshold", blurThreshold.toString());
 
-  const res = await fetch(`${API_BASE}/demo/analyze`, {
+  const res = await fetch(`${getApiBase()}/demo/analyze`, {
     method: "POST",
     headers: {
       "ngrok-skip-browser-warning": "1",

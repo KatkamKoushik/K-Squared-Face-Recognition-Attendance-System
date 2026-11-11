@@ -91,6 +91,7 @@ class DemoService:
                     full_name=student.full_name,
                     is_active=student.is_active,
                     has_reference_photo=bool(photo_path and (photo_path.startswith("http") or os.path.exists(photo_path))),
+                    photo_url=photo_path if (photo_path and (photo_path.startswith("http://") or photo_path.startswith("https://"))) else None,
                 )
             )
         return results
@@ -155,17 +156,80 @@ class DemoService:
 
         detections = detector.detect_faces(image)
 
-        detected_boxes: List[DemoFaceBox] = []
-        matched_student_ids: Dict[str, Tuple[float, str]] = {}  # student_id -> (score, face_crop_base64)
-        unidentified_boxes: List[DemoFaceBox] = []
-
+        # Pass 1: Extract all embeddings and evaluate candidate matches individually
+        extracted_faces: List[Dict[str, Any]] = []
         for idx, det in enumerate(detections, start=1):
             crop = Preprocessor.extract_face_crop(image, det.box)
             crop_base64 = DemoService._pil_to_base64_jpeg(crop, quality=85)
             quality = recognizer.assess_quality(crop, min_variance=blur_threshold, min_size=24)
 
-            # Fail closed on low quality
             if not quality.is_usable:
+                extracted_faces.append({
+                    "idx": idx,
+                    "det": det,
+                    "quality": quality,
+                    "crop_base64": crop_base64,
+                    "is_quality_usable": False,
+                    "candidate": None,
+                })
+                continue
+
+            if det.raw_face is not None:
+                try:
+                    emb = recognizer.align_and_compute_embedding(cv_img, det.raw_face)
+                except Exception:
+                    emb = recognizer.compute_embedding(crop)
+            else:
+                emb = recognizer.compute_embedding(crop)
+
+            candidate = recognizer.search_exact_roster(
+                query_vector=emb.vector,
+                enrolled_profiles=enrolled_gallery,
+                match_threshold=match_threshold,
+                margin_threshold=margin_threshold,
+            )
+
+            extracted_faces.append({
+                "idx": idx,
+                "det": det,
+                "quality": quality,
+                "crop_base64": crop_base64,
+                "is_quality_usable": True,
+                "candidate": candidate,
+            })
+
+        # Pass 2: Mutual Exclusivity - A single physical student identity can only be assigned to AT MOST ONE face.
+        # Find which student_ids are claimed by multiple faces, and award the identity to the HIGHEST similarity face.
+        claimed_students: Dict[str, List[int]] = {}
+        for f_idx, item in enumerate(extracted_faces):
+            if item["is_quality_usable"] and item["candidate"] and item["candidate"].is_matched:
+                claimed_students.setdefault(item["candidate"].student_id, []).append(f_idx)
+
+        winning_faces: set = set()
+        duplicate_conflicts: Dict[int, Tuple[str, float, float]] = {}
+
+        for s_id, face_indices in claimed_students.items():
+            face_indices.sort(key=lambda i: extracted_faces[i]["candidate"].similarity_score, reverse=True)
+            winner_idx = face_indices[0]
+            winning_faces.add(winner_idx)
+            winner_score = extracted_faces[winner_idx]["candidate"].similarity_score
+
+            for duplicate_idx in face_indices[1:]:
+                dup_score = extracted_faces[duplicate_idx]["candidate"].similarity_score
+                duplicate_conflicts[duplicate_idx] = (s_id, dup_score, winner_score)
+
+        # Pass 3: Build face boxes with duplicate conflicts cleanly marked
+        detected_boxes: List[DemoFaceBox] = []
+        matched_student_ids: Dict[str, Tuple[float, str]] = {}
+        unidentified_boxes: List[DemoFaceBox] = []
+
+        for f_idx, item in enumerate(extracted_faces):
+            idx = item["idx"]
+            det = item["det"]
+            quality = item["quality"]
+            crop_base64 = item["crop_base64"]
+
+            if not item["is_quality_usable"]:
                 face_box = DemoFaceBox(
                     face_index=idx,
                     box=det.box,
@@ -184,24 +248,9 @@ class DemoService:
                 unidentified_boxes.append(face_box)
                 continue
 
-            # Compute embedding with 5-landmark alignment
-            if det.raw_face is not None:
-                try:
-                    emb = recognizer.align_and_compute_embedding(cv_img, det.raw_face)
-                except Exception:
-                    emb = recognizer.compute_embedding(crop)
-            else:
-                emb = recognizer.compute_embedding(crop)
+            candidate = item["candidate"]
 
-            # Linear search against enrolled gallery
-            candidate = recognizer.search_exact_roster(
-                query_vector=emb.vector,
-                enrolled_profiles=enrolled_gallery,
-                match_threshold=match_threshold,
-                margin_threshold=margin_threshold,
-            )
-
-            if candidate.is_matched and candidate.student_id in student_metadata:
+            if f_idx in winning_faces and candidate.student_id in student_metadata:
                 s_meta = student_metadata[candidate.student_id]
                 ref_b64 = DemoService._load_reference_photo_base64(
                     s_meta["photo_path"], s_meta["full_name"], s_meta["roll_number"]
@@ -225,12 +274,30 @@ class DemoService:
                     badge_label=f"{s_meta['full_name']} ({s_meta['roll_number']})",
                 )
                 detected_boxes.append(face_box)
-                # Track best score per student if multiple sightings
-                if (
-                    candidate.student_id not in matched_student_ids
-                    or candidate.similarity_score > matched_student_ids[candidate.student_id][0]
-                ):
-                    matched_student_ids[candidate.student_id] = (candidate.similarity_score, crop_base64)
+                matched_student_ids[candidate.student_id] = (candidate.similarity_score, crop_base64)
+
+            elif f_idx in duplicate_conflicts:
+                s_id, dup_sim, best_sim = duplicate_conflicts[f_idx]
+                s_meta = student_metadata.get(s_id, {})
+                face_box = DemoFaceBox(
+                    face_index=idx,
+                    box=det.box,
+                    detection_score=det.score,
+                    quality_score=quality.score,
+                    quality_reason=quality.reason_code,
+                    face_crop_base64=crop_base64,
+                    status="DUPLICATE_CONFLICT",
+                    attendance_granted=False,
+                    student_id=s_id,
+                    roll_number=s_meta.get("roll_number"),
+                    full_name=s_meta.get("full_name"),
+                    similarity_score=dup_sim,
+                    margin=candidate.margin_to_second,
+                    color_hex="#F59E0B",  # Amber orange
+                    badge_label=f"Duplicate Match: {s_meta.get('full_name', s_id)} (Sim: {dup_sim:.3f} < {best_sim:.3f})",
+                )
+                detected_boxes.append(face_box)
+                unidentified_boxes.append(face_box)
 
             elif candidate.reason_code == "AMBIGUOUS_LOOKALIKE_CONFLICT":
                 s_meta = student_metadata.get(candidate.student_id, {})
