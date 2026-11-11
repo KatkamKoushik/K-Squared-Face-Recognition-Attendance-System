@@ -522,16 +522,23 @@ export function getSubmissionPhotoUrl(id: string, storagePath?: string): string 
 
 export async function approveEnrollmentSubmission(id: string): Promise<EnrollmentSubmissionItem> {
   const token = getAuthToken();
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    "ngrok-skip-browser-warning": "1",
+  };
+  if (token && token !== "null" && token !== "undefined") {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
   const res = await fetch(`${getApiBase()}/enrollment/submissions/${id}/approve`, {
     method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-      "ngrok-skip-browser-warning": "1",
-    },
+    headers,
   });
   const body = await res.json().catch(() => null);
   if (!res.ok) {
+    if (res.status === 401) {
+      setAuthToken(null);
+    }
     throw new Error(extractErrorMessage(body, "Approval failed"));
   }
   return body.data;
@@ -539,17 +546,24 @@ export async function approveEnrollmentSubmission(id: string): Promise<Enrollmen
 
 export async function rejectEnrollmentSubmission(id: string, reason: string): Promise<EnrollmentSubmissionItem> {
   const token = getAuthToken();
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    "ngrok-skip-browser-warning": "1",
+  };
+  if (token && token !== "null" && token !== "undefined") {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
   const res = await fetch(`${getApiBase()}/enrollment/submissions/${id}/reject`, {
     method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-      "ngrok-skip-browser-warning": "1",
-    },
+    headers,
     body: JSON.stringify({ reason }),
   });
   const body = await res.json().catch(() => null);
   if (!res.ok) {
+    if (res.status === 401) {
+      setAuthToken(null);
+    }
     throw new Error(extractErrorMessage(body, "Rejection failed"));
   }
   return body.data;
@@ -557,17 +571,24 @@ export async function rejectEnrollmentSubmission(id: string, reason: string): Pr
 
 export async function requestRecaptureEnrollmentSubmission(id: string, reason: string): Promise<EnrollmentSubmissionItem> {
   const token = getAuthToken();
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    "ngrok-skip-browser-warning": "1",
+  };
+  if (token && token !== "null" && token !== "undefined") {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
   const res = await fetch(`${getApiBase()}/enrollment/submissions/${id}/recapture`, {
     method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-      "ngrok-skip-browser-warning": "1",
-    },
+    headers,
     body: JSON.stringify({ reason }),
   });
   const body = await res.json().catch(() => null);
   if (!res.ok) {
+    if (res.status === 401) {
+      setAuthToken(null);
+    }
     throw new Error(extractErrorMessage(body, "Recapture request failed"));
   }
   return body.data;
@@ -820,6 +841,7 @@ export interface DemoEnrolledStudentSummary {
   full_name: string;
   is_active: boolean;
   has_reference_photo: boolean;
+  photo_url?: string;
 }
 
 export interface DemoAnalysisResponse {
@@ -850,7 +872,7 @@ export async function analyzeDemoPhoto(
   formData.append("margin_threshold", marginThreshold.toString());
   formData.append("blur_threshold", blurThreshold.toString());
 
-  const res = await fetch(`${API_BASE}/demo/analyze`, {
+  const res = await fetch(`${getApiBase()}/demo/analyze`, {
     method: "POST",
     headers: {
       "ngrok-skip-browser-warning": "1",

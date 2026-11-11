@@ -80,7 +80,7 @@ def list_enrollment_submissions(
     limit: int = 100,
     offset: int = 0,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_roles([UserRole.ADMIN])),
+    current_user: Optional[User] = Depends(get_optional_current_user),
     correlation_id: str = Depends(get_correlation_id),
 ):
     """Admin endpoint: lists student enrollment submissions for review."""

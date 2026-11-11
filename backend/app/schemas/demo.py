@@ -42,6 +42,7 @@ class DemoEnrolledStudentSummary(BaseModel):
     full_name: str
     is_active: bool
     has_reference_photo: bool
+    photo_url: Optional[str] = None
 
 
 class DemoAnalysisResponse(BaseModel):
