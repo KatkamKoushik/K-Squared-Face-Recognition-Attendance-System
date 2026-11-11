@@ -19,6 +19,7 @@ class RecognizerAdapter:
 
     MODEL_HASH = "0ba9fbfa01b5270c96627c4ef784da859931e02f04419c829e83484087c34e79"
     FINETUNED_HASH = "61c33636f356cd235ac42526231ff54733985a00848a74cf0860d7ccb9617a3e"
+    FINETUNED_HASH_V2 = "0d980b104c783bc4230b074d5b44b9bf329b6cc5d457ba92416b5d6b7000755f"
     NAMESPACE = "sface_128d_v1"
     DEFAULT_FILENAME = "face_recognition_sface_2021dec.onnx"
     FINETUNED_FILENAME = "kucet_frs_sface_finetuned.onnx"
@@ -26,6 +27,7 @@ class RecognizerAdapter:
     APPROVED_HASHES = {
         MODEL_HASH: "sface_128d_v1",
         FINETUNED_HASH: "kucet_frs_sface_finetuned_v1",
+        FINETUNED_HASH_V2: "kucet_frs_sface_finetuned_v2",
     }
 
     def __init__(self, model_path: Optional[Path] = None, strict_mode: Optional[bool] = None):
