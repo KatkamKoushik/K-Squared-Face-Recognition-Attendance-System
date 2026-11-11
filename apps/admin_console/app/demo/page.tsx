@@ -40,22 +40,23 @@ export default function DemoVisualizerPage() {
   const [selectedFaceIdx, setSelectedFaceIdx] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<"granted" | "absent" | "strangers">("granted");
 
-  // Threshold sliders
-  const [matchThreshold, setMatchThreshold] = useState<number>(0.363);
+  // Threshold sliders & filters
+  const [matchThreshold, setMatchThreshold] = useState<number>(0.460);
   const [marginThreshold, setMarginThreshold] = useState<number>(0.10);
   const [blurThreshold, setBlurThreshold] = useState<number>(50.0);
+  const [selectedDepartment, setSelectedDepartment] = useState<string>("ALL");
   const [showConfig, setShowConfig] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    loadEnrolledGallery();
-  }, []);
+    loadEnrolledGallery(selectedDepartment);
+  }, [selectedDepartment]);
 
-  const loadEnrolledGallery = async () => {
+  const loadEnrolledGallery = async (dept: string = selectedDepartment) => {
     setEnrolledLoading(true);
     try {
-      const students = await getDemoEnrolledStudents();
+      const students = await getDemoEnrolledStudents(dept);
       if (students) {
         setEnrolledStudents(students);
         setEnrolledCount(students.length);
@@ -82,7 +83,7 @@ export default function DemoVisualizerPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await analyzeDemoPhoto(targetFile, matchThreshold, marginThreshold, blurThreshold);
+      const res = await analyzeDemoPhoto(targetFile, matchThreshold, marginThreshold, blurThreshold, selectedDepartment);
       setResult(res);
       setEnrolledCount(res.total_enrolled_students);
     } catch (err: any) {
@@ -178,8 +179,23 @@ export default function DemoVisualizerPage() {
           </div>
 
           <div className="flex items-center space-x-2">
+            <select
+              value={selectedDepartment}
+              onChange={(e) => setSelectedDepartment(e.target.value)}
+              className="text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 bg-slate-50 text-slate-700 font-medium focus:outline-none focus:ring-1 focus:ring-institutional-navy"
+            >
+              <option value="ALL">All Departments (Universal)</option>
+              <option value="CSD">CSD (Data Science)</option>
+              <option value="CSE">CSE (Computer Science)</option>
+              <option value="ECE">ECE (Electronics)</option>
+              <option value="MECH">MECH (Mechanical)</option>
+              <option value="EEE">EEE (Electrical)</option>
+              <option value="CIVIL">CIVIL</option>
+              <option value="IT">IT</option>
+            </select>
+
             <button
-              onClick={loadEnrolledGallery}
+              onClick={() => loadEnrolledGallery(selectedDepartment)}
               disabled={enrolledLoading}
               className="inline-flex items-center space-x-1.5 px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-medium text-slate-700 bg-slate-50 hover:bg-slate-100 transition shadow-xs"
             >
@@ -334,59 +350,61 @@ export default function DemoVisualizerPage() {
 
           {previewUrl ? (
             <div className="relative rounded-xl overflow-hidden bg-slate-900 flex items-center justify-center min-h-[380px] max-h-[540px]">
-              <img
-                src={previewUrl}
-                alt="Target for testing"
-                className="max-h-[540px] w-auto object-contain select-none"
-              />
+              <div className="relative inline-block max-h-[540px]">
+                <img
+                  src={previewUrl}
+                  alt="Target for testing"
+                  className="max-h-[540px] w-auto object-contain select-none block"
+                />
 
-              {/* Bounding Box SVG Overlay */}
-              {result && (
-                <svg
-                  className="absolute inset-0 w-full h-full pointer-events-none"
-                  viewBox="0 0 100 100"
-                  preserveAspectRatio="none"
-                >
-                  {result.detected_faces.map((face: DemoFaceBox) => {
-                    const [x1, y1, x2, y2] = face.box;
-                    const isSelected = selectedFaceIdx === face.face_index;
+                {/* Bounding Box SVG Overlay */}
+                {result && (
+                  <svg
+                    className="absolute inset-0 w-full h-full pointer-events-none"
+                    viewBox="0 0 100 100"
+                    preserveAspectRatio="none"
+                  >
+                    {result.detected_faces.map((face: DemoFaceBox) => {
+                      const [x1, y1, x2, y2] = face.box;
+                      const isSelected = selectedFaceIdx === face.face_index;
+                      return (
+                        <g key={face.face_index} className="pointer-events-auto cursor-pointer" onClick={() => setSelectedFaceIdx(face.face_index)}>
+                          <rect
+                            x={`${x1 * 100}%`}
+                            y={`${y1 * 100}%`}
+                            width={`${(x2 - x1) * 100}%`}
+                            height={`${(y2 - y1) * 100}%`}
+                            fill="none"
+                            stroke={face.color_hex}
+                            strokeWidth={isSelected ? "1.0" : "0.5"}
+                            rx="1"
+                          />
+                        </g>
+                      );
+                    })}
+                  </svg>
+                )}
+
+                {/* Badges Overlay */}
+                {result &&
+                  result.detected_faces.map((face: DemoFaceBox) => {
+                    const [x1, y1] = face.box;
                     return (
-                      <g key={face.face_index} className="pointer-events-auto cursor-pointer" onClick={() => setSelectedFaceIdx(face.face_index)}>
-                        <rect
-                          x={`${x1 * 100}%`}
-                          y={`${y1 * 100}%`}
-                          width={`${(x2 - x1) * 100}%`}
-                          height={`${(y2 - y1) * 100}%`}
-                          fill="none"
-                          stroke={face.color_hex}
-                          strokeWidth={isSelected ? "1.0" : "0.5"}
-                          rx="1"
-                        />
-                      </g>
+                      <div
+                        key={`badge-${face.face_index}`}
+                        onClick={() => setSelectedFaceIdx(face.face_index)}
+                        style={{
+                          left: `${x1 * 100}%`,
+                          top: `${Math.max(1, y1 * 100 - 4)}%`,
+                          backgroundColor: face.color_hex,
+                        }}
+                        className="absolute transform -translate-y-full px-2 py-0.5 rounded text-[10px] font-bold text-white shadow-md cursor-pointer whitespace-nowrap z-10 transition hover:scale-105"
+                      >
+                        {face.badge_label}
+                      </div>
                     );
                   })}
-                </svg>
-              )}
-
-              {/* Badges Overlay */}
-              {result &&
-                result.detected_faces.map((face: DemoFaceBox) => {
-                  const [x1, y1] = face.box;
-                  return (
-                    <div
-                      key={`badge-${face.face_index}`}
-                      onClick={() => setSelectedFaceIdx(face.face_index)}
-                      style={{
-                        left: `${x1 * 100}%`,
-                        top: `${Math.max(1, y1 * 100 - 4)}%`,
-                        backgroundColor: face.color_hex,
-                      }}
-                      className="absolute transform -translate-y-full px-2 py-0.5 rounded text-[10px] font-bold text-white shadow-md cursor-pointer whitespace-nowrap z-10 transition hover:scale-105"
-                    >
-                      {face.badge_label}
-                    </div>
-                  );
-                })}
+              </div>
 
               {loading && (
                 <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm flex flex-col items-center justify-center text-white space-y-3 z-20">

@@ -890,6 +890,9 @@ class DemoFaceBox {
   final String? referencePhotoBase64;
   final String colorHex;
   final String badgeLabel;
+  final double? effectiveThreshold;
+  final int? faceWidthPx;
+  final int? faceHeightPx;
 
   const DemoFaceBox({
     required this.faceIndex,
@@ -908,6 +911,9 @@ class DemoFaceBox {
     this.referencePhotoBase64,
     required this.colorHex,
     required this.badgeLabel,
+    this.effectiveThreshold,
+    this.faceWidthPx,
+    this.faceHeightPx,
   });
 
   factory DemoFaceBox.fromJson(Map<String, dynamic> json) {
@@ -928,6 +934,9 @@ class DemoFaceBox {
       referencePhotoBase64: json['reference_photo_base64'] as String?,
       colorHex: json['color_hex'] as String,
       badgeLabel: json['badge_label'] as String,
+      effectiveThreshold: (json['effective_threshold'] as num?)?.toDouble(),
+      faceWidthPx: json['face_width_px'] as int?,
+      faceHeightPx: json['face_height_px'] as int?,
     );
   }
 }
@@ -941,6 +950,7 @@ class DemoStudentResult {
   final double? similarityScore;
   final String? faceCropBase64;
   final String? referencePhotoBase64;
+  final String? departmentCode;
 
   const DemoStudentResult({
     required this.studentId,
@@ -951,6 +961,7 @@ class DemoStudentResult {
     this.similarityScore,
     this.faceCropBase64,
     this.referencePhotoBase64,
+    this.departmentCode,
   });
 
   factory DemoStudentResult.fromJson(Map<String, dynamic> json) {
@@ -963,6 +974,7 @@ class DemoStudentResult {
       similarityScore: (json['similarity_score'] as num?)?.toDouble(),
       faceCropBase64: json['face_crop_base64'] as String?,
       referencePhotoBase64: json['reference_photo_base64'] as String?,
+      departmentCode: json['department_code'] as String?,
     );
   }
 }
@@ -973,6 +985,9 @@ class DemoAnalysisResponse {
   final int presentCount;
   final int absentCount;
   final int unknownCount;
+  final int? imageWidth;
+  final int? imageHeight;
+  final String? departmentFilter;
   final List<DemoFaceBox> detectedFaces;
   final List<DemoStudentResult> attendanceGranted;
   final List<DemoStudentResult> attendanceNotGranted;
@@ -984,6 +999,9 @@ class DemoAnalysisResponse {
     required this.presentCount,
     required this.absentCount,
     required this.unknownCount,
+    this.imageWidth,
+    this.imageHeight,
+    this.departmentFilter,
     required this.detectedFaces,
     required this.attendanceGranted,
     required this.attendanceNotGranted,
@@ -997,6 +1015,9 @@ class DemoAnalysisResponse {
       presentCount: json['present_count'] as int,
       absentCount: json['absent_count'] as int,
       unknownCount: json['unknown_count'] as int,
+      imageWidth: json['image_width'] as int?,
+      imageHeight: json['image_height'] as int?,
+      departmentFilter: json['department_filter'] as String?,
       detectedFaces: (json['detected_faces'] as List)
           .map((e) => DemoFaceBox.fromJson(e as Map<String, dynamic>))
           .toList(),

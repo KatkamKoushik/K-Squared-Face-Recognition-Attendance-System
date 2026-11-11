@@ -878,6 +878,9 @@ export interface DemoStudentResult {
   similarity_score?: number | null;
   face_crop_base64?: string | null;
   reference_photo_base64?: string | null;
+  face_width_px?: number | null;
+  face_height_px?: number | null;
+  effective_threshold?: number | null;
 }
 
 export interface DemoEnrolledStudentSummary {
@@ -887,6 +890,7 @@ export interface DemoEnrolledStudentSummary {
   is_active: boolean;
   has_reference_photo: boolean;
   photo_url?: string;
+  department_code?: string | null;
 }
 
 export interface DemoAnalysisResponse {
@@ -895,27 +899,35 @@ export interface DemoAnalysisResponse {
   present_count: number;
   absent_count: number;
   unknown_count: number;
+  image_width?: number;
+  image_height?: number;
+  department_filter?: string | null;
   detected_faces: DemoFaceBox[];
   attendance_granted: DemoStudentResult[];
   attendance_not_granted: DemoStudentResult[];
   unidentified_faces: DemoFaceBox[];
 }
 
-export async function getDemoEnrolledStudents(): Promise<DemoEnrolledStudentSummary[] | null> {
-  return fetchFromApi<DemoEnrolledStudentSummary[]>("/demo/enrolled-students");
+export async function getDemoEnrolledStudents(departmentCode?: string): Promise<DemoEnrolledStudentSummary[] | null> {
+  const query = departmentCode && departmentCode !== "ALL" ? `?department_code=${encodeURIComponent(departmentCode)}` : "";
+  return fetchFromApi<DemoEnrolledStudentSummary[]>(`/demo/enrolled-students${query}`);
 }
 
 export async function analyzeDemoPhoto(
   file: File,
-  matchThreshold: number = 0.363,
+  matchThreshold: number = 0.460,
   marginThreshold: number = 0.10,
-  blurThreshold: number = 50.0
+  blurThreshold: number = 50.0,
+  departmentCode?: string
 ): Promise<DemoAnalysisResponse> {
   const formData = new FormData();
   formData.append("file", file);
   formData.append("match_threshold", matchThreshold.toString());
   formData.append("margin_threshold", marginThreshold.toString());
   formData.append("blur_threshold", blurThreshold.toString());
+  if (departmentCode && departmentCode !== "ALL") {
+    formData.append("department_code", departmentCode);
+  }
 
   const res = await fetch(`${getApiBase()}/demo/analyze`, {
     method: "POST",
