@@ -143,7 +143,7 @@ def get_offering_analytics(
     Guarded by object-level authorization: Admins have institutional scope, faculty
     must hold an active FacultyAssignment for the requested offering.
     """
-    if current_user.role != UserRole.ADMIN:
+    if current_user.role not in (UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.DEVELOPER):
         faculty = db.execute(
             select(Faculty).where(Faculty.user_id == current_user.id)
         ).scalar_one_or_none()
@@ -176,7 +176,7 @@ def export_offering_attendance_csv(
     import csv
     import io
 
-    if current_user.role != UserRole.ADMIN:
+    if current_user.role not in (UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.DEVELOPER):
         faculty = db.execute(
             select(Faculty).where(Faculty.user_id == current_user.id)
         ).scalar_one_or_none()

@@ -42,7 +42,7 @@ router = APIRouter(prefix="/academic", tags=["Academic Administration"])
 def create_department(
     data: DepartmentCreate,
     db: Session = Depends(get_db),
-    admin_user=Depends(require_roles([UserRole.ADMIN])),
+    admin_user=Depends(require_roles([UserRole.SUPER_ADMIN])),
     correlation_id: str = Depends(get_correlation_id),
 ):
     dept = AcademicService.create_department(db, data)
@@ -64,20 +64,21 @@ def list_departments(
 def create_cohort(
     data: CohortCreate,
     db: Session = Depends(get_db),
-    admin_user=Depends(require_roles([UserRole.ADMIN])),
+    admin_user=Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
     correlation_id: str = Depends(get_correlation_id),
 ):
-    cohort = AcademicService.create_cohort(db, data)
+    cohort = AcademicService.create_cohort(db, data, user=admin_user)
     return ResponseEnvelope(data=CohortResponse.model_validate(cohort), correlation_id=correlation_id)
 
 
 @router.get("/cohorts", response_model=ResponseEnvelope[List[CohortResponse]])
 def list_cohorts(
+    department_id: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
     correlation_id: str = Depends(get_correlation_id),
 ):
-    cohorts = AcademicService.get_cohorts(db)
+    cohorts = AcademicService.get_cohorts(db, department_id=department_id, user=current_user)
     items = [CohortResponse.model_validate(c) for c in cohorts]
     return ResponseEnvelope(data=items, correlation_id=correlation_id)
 
@@ -86,7 +87,7 @@ def list_cohorts(
 def create_academic_year(
     data: AcademicYearCreate,
     db: Session = Depends(get_db),
-    admin_user=Depends(require_roles([UserRole.ADMIN])),
+    admin_user=Depends(require_roles([UserRole.SUPER_ADMIN])),
     correlation_id: str = Depends(get_correlation_id),
 ):
     ay = AcademicService.create_academic_year(db, data)
@@ -108,7 +109,7 @@ def list_academic_years(
 def create_term(
     data: TermCreate,
     db: Session = Depends(get_db),
-    admin_user=Depends(require_roles([UserRole.ADMIN])),
+    admin_user=Depends(require_roles([UserRole.SUPER_ADMIN])),
     correlation_id: str = Depends(get_correlation_id),
 ):
     term = AcademicService.create_term(db, data)
@@ -130,20 +131,21 @@ def list_terms(
 def create_subject(
     data: SubjectCreate,
     db: Session = Depends(get_db),
-    admin_user=Depends(require_roles([UserRole.ADMIN])),
+    admin_user=Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
     correlation_id: str = Depends(get_correlation_id),
 ):
-    subject = AcademicService.create_subject(db, data)
+    subject = AcademicService.create_subject(db, data, user=admin_user)
     return ResponseEnvelope(data=SubjectResponse.model_validate(subject), correlation_id=correlation_id)
 
 
 @router.get("/subjects", response_model=ResponseEnvelope[List[SubjectResponse]])
 def list_subjects(
+    department_id: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
     correlation_id: str = Depends(get_correlation_id),
 ):
-    subjects = AcademicService.get_subjects(db)
+    subjects = AcademicService.get_subjects(db, department_id=department_id, user=current_user)
     items = [SubjectResponse.model_validate(s) for s in subjects]
     return ResponseEnvelope(data=items, correlation_id=correlation_id)
 
@@ -152,10 +154,10 @@ def list_subjects(
 def create_offering(
     data: SubjectOfferingCreate,
     db: Session = Depends(get_db),
-    admin_user=Depends(require_roles([UserRole.ADMIN])),
+    admin_user=Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
     correlation_id: str = Depends(get_correlation_id),
 ):
-    offering = AcademicService.create_offering(db, data)
+    offering = AcademicService.create_offering(db, data, user=admin_user)
     return ResponseEnvelope(data=SubjectOfferingResponse.model_validate(offering), correlation_id=correlation_id)
 
 
@@ -168,16 +170,17 @@ def list_offerings(
     from app.domain.models.academic import Cohort, Faculty, FacultyAssignment, Subject
     from app.domain.models.student import Student
 
-    offerings = AcademicService.get_offerings(db)
+    offerings = AcademicService.get_offerings(db, user=current_user)
 
     # If the user is a faculty member, filter to their actively assigned offerings
-    if current_user.role == UserRole.FACULTY or str(current_user.role) == "FACULTY":
+    if current_user.role in (UserRole.FACULTY, UserRole.SUB_ADMIN) or str(current_user.role) in ("FACULTY", "SUB_ADMIN"):
         faculty = db.query(Faculty).filter_by(user_id=current_user.id).first()
         if faculty:
             assigned_offering_ids = {
                 a.offering_id for a in faculty.assignments if a.is_active
             }
             if assigned_offering_ids:
+                offerings = [o for o in offerings if o.id in assigned_offering_ids]
                 offerings = [o for o in offerings if o.id in assigned_offering_ids]
 
     subject_map = {s.id: s for s in db.query(Subject).all()}
@@ -276,10 +279,10 @@ def list_faculty_assignments(
 def create_student(
     data: StudentCreate,
     db: Session = Depends(get_db),
-    admin_user=Depends(require_roles([UserRole.ADMIN])),
+    admin_user=Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
     correlation_id: str = Depends(get_correlation_id),
 ):
-    student = AcademicService.create_student(db, data)
+    student = AcademicService.create_student(db, data, user=admin_user)
     return ResponseEnvelope(data=StudentResponse.model_validate(student), correlation_id=correlation_id)
 
 

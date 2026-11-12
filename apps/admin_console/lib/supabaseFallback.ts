@@ -39,11 +39,11 @@ export async function fallbackFromSupabase<T>(endpoint: string): Promise<T | nul
         recordsRes,
       ] = await Promise.all([
         supabaseFetch("/rest/v1/students?select=id"),
-        supabaseFetch("/rest/v1/subject_offerings?select=id,section,subject_id,faculty_id"),
+        supabaseFetch("/rest/v1/subject_offerings?select=id,section,subject_id"),
         supabaseFetch("/rest/v1/departments?select=id,code,name"),
         supabaseFetch("/rest/v1/cohorts?select=id,name"),
         supabaseFetch("/rest/v1/enrollment_submissions?select=id&status=eq.PENDING_REVIEW"),
-        supabaseFetch("/rest/v1/attendance_sessions?select=id,session_date,state,offering_id,created_at&order=created_at.desc&limit=10"),
+        supabaseFetch("/rest/v1/attendance_sessions?select=id,session_date,state,offering_id,faculty_id,created_at&order=created_at.desc&limit=10"),
         supabaseFetch("/rest/v1/attendance_units?select=id,session_id,is_conducted,status"),
         supabaseFetch("/rest/v1/subjects?select=id,code,name"),
         supabaseFetch("/rest/v1/faculty?select=id,full_name"),
@@ -71,7 +71,7 @@ export async function fallbackFromSupabase<T>(endpoint: string): Promise<T | nul
       const recentSessions: DashboardRecentSessionItem[] = sessions.map((s: any) => {
         const off = offerings.find((o: any) => o.id === s.offering_id);
         const subj = subjects.find((sb: any) => sb.id === off?.subject_id);
-        const fac = faculty.find((f: any) => f.id === off?.faculty_id);
+        const fac = faculty.find((f: any) => f.id === s.faculty_id);
         const rec = receipts.find((r: any) => r.session_id === s.id);
         const sessionUnits = units.filter((u: any) => u.session_id === s.id && u.is_conducted);
         const sessionRecords = records.filter((ar: any) => ar.session_id === s.id);

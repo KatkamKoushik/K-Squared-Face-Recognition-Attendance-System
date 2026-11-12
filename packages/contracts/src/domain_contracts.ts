@@ -4,7 +4,10 @@
  */
 
 export enum UserRole {
+  DEVELOPER = "DEVELOPER",
+  SUPER_ADMIN = "SUPER_ADMIN",
   ADMIN = "ADMIN",
+  SUB_ADMIN = "SUB_ADMIN",
   FACULTY = "FACULTY",
   STUDENT = "STUDENT",
   OPERATOR = "OPERATOR",

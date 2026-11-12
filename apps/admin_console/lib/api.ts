@@ -63,6 +63,7 @@ export interface StoredAuthUser {
   user_id: string;
   email: string;
   role: string;
+  department_id?: string | null;
 }
 
 export interface LoginResponse {
@@ -72,6 +73,7 @@ export interface LoginResponse {
   user_id: string;
   role: string;
   email: string;
+  department_id?: string | null;
 }
 
 export function getAuthToken(): string | null {
@@ -164,6 +166,7 @@ export async function login(email: string, password: string, remember: boolean =
         user_id: loginData.user_id,
         email: loginData.email,
         role: loginData.role,
+        department_id: loginData.department_id,
       }, remember);
       return loginData;
     }

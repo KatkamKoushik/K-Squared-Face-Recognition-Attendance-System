@@ -33,6 +33,8 @@ class AuthService:
                 faculty_id = fac.id
 
         claims = {"user_id": user.id}
+        if user.department_id:
+            claims["department_id"] = user.department_id
         if faculty_id:
             claims["faculty_id"] = faculty_id
 
@@ -49,6 +51,7 @@ class AuthService:
             user_id=user.id,
             role=role_enum,
             email=user.email,
+            department_id=user.department_id,
         )
 
     @staticmethod
