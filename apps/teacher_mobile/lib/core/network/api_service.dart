@@ -15,7 +15,7 @@ class SessionExpiredException implements Exception {
 class FrsApiService {
   static const String defaultBaseUrl = String.fromEnvironment(
     'API_URL',
-    defaultValue: 'https://straddle-deflate-footwear.ngrok-free.dev/api/v1',
+    defaultValue: 'http://127.0.0.1:8000/api/v1',
   );
 
   String baseUrl;

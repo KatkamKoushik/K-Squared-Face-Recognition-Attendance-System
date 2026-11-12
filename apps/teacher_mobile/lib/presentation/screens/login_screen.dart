@@ -160,7 +160,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     label: const Text('Wi-Fi LAN', style: TextStyle(fontSize: 11)),
                     onPressed: () {
                       setDialogState(() {
-                        urlController.text = 'http://192.168.0.3:8000/api/v1';
+                        urlController.text = 'http://192.168.0.9:8000/api/v1';
                         testResult = null;
                       });
                     },
