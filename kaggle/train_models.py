@@ -31,6 +31,13 @@ warnings.filterwarnings("ignore", category=UserWarning, module="torch.optim.lr_s
 # -----------------------------------------------------------------------------
 # 1. Dataset Generators
 # -----------------------------------------------------------------------------
+# NOTICE (BIO-04 - Pipeline Demarcation):
+# ClassroomFaceDataset generates synthetic geometric drawings for training pipeline
+# testing and ONNX export validation only. It does NOT represent real human biometrics.
+# Models trained on synthetic ellipses collapse human feature representation (inter-identity
+# similarity > 0.90). Production environments MUST use pre-trained OpenCV Zoo weights
+# (face_recognition_sface_2021dec.onnx) or fine-tune against consented human facial imagery.
+# -----------------------------------------------------------------------------
 class ClassroomFaceDataset(Dataset):
     def __init__(self, num_identities: int = 50, samples_per_id: int = 150, image_size: int = 112, is_train: bool = True):
         self.num_identities = num_identities

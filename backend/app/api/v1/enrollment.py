@@ -110,9 +110,9 @@ def get_enrollment_submission(
 def get_submission_photo(
     submission_id: str,
     db: Session = Depends(get_db),
-    current_user: Optional[User] = Depends(get_optional_current_user),
+    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.FACULTY])),
 ):
-    """Admin endpoint: securely serves the private enrollment photograph for verification."""
+    """Protected endpoint: securely serves the private enrollment photograph for authorized verification."""
     sub = EnrollmentService.get_submission_by_id(db, submission_id)
     if sub.photo_storage_path and (sub.photo_storage_path.startswith("http://") or sub.photo_storage_path.startswith("https://")):
         return RedirectResponse(url=sub.photo_storage_path, status_code=status.HTTP_307_TEMPORARY_REDIRECT)

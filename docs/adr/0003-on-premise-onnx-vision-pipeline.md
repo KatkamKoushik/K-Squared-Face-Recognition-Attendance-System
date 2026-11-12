@@ -9,7 +9,7 @@ Commercial cloud computer vision services (such as AWS Rekognition, Azure Face, 
 ## Decision
 1. All face detection, landmark alignment, and embedding extraction runs exclusively on-premise on university-controlled infrastructure using ONNX Runtime.
 2. The vision pipeline utilizes:
-   * **Face Detector:** SCRFD (Sample and Computation Redistribution for Efficient Face Detection), 2.5M parameters (`scrfd_2.5g_k2_v7.onnx`).
+   * **Face Detector:** OpenCV YuNet 2023mar ONNX, 320x320 BGR (`face_detection_yunet_2023mar.onnx`).
    * **Feature Embedder:** ArcFace (Additive Angular Margin Loss, ResNet-50 backbone), 512-dimensional output embeddings (`arcface_w600k_r50_v7.onnx`).
 3. Query embeddings are normalized ($\|\mathbf{v}\|_2 = 1.0$), enabling cosine similarity computation via vector dot product against enrolled gallery templates.
 

@@ -206,7 +206,8 @@ jobs:
             mkdir -p ~/.ssh
             echo "$HOST_SSH_KEY" > ~/.ssh/id_rsa
             chmod 600 ~/.ssh/id_rsa
-            ssh -o StrictHostKeyChecking=no "${HOST_SSH_USER:-deploy}@$HOST_SSH_IP" "echo \"$GHCR_TOKEN\" | docker login ghcr.io -u \"$ACTOR\" --password-stdin && docker compose pull backend-api vision-worker admin-console && docker compose up -d --remove-orphans"
+            ssh-keyscan -H "$HOST_SSH_IP" >> ~/.ssh/known_hosts 2>/dev/null || true
+            ssh -o StrictHostKeyChecking=accept-new "${HOST_SSH_USER:-deploy}@$HOST_SSH_IP" "echo \"$GHCR_TOKEN\" | docker login ghcr.io -u \"$ACTOR\" --password-stdin && docker compose pull backend-api vision-worker admin-console && docker compose up -d --remove-orphans"
           else
             echo "HOST_SSH secrets not configured. Skipping SSH docker compose rollout."
           fi

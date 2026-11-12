@@ -151,3 +151,31 @@ def test_analyze_demo_image_blank_returns_zero_detections(client: TestClient):
     assert len(payload["detected_faces"]) == 0
     assert payload["present_count"] == 0
     assert payload["absent_count"] == payload["total_enrolled_students"]
+
+
+def test_demo_privacy_sanitization_for_unauthenticated_callers(client: TestClient, db_session, seed_data):
+    """SEC-02: Public unauthenticated callers must receive masked roll numbers and sanitized portrait URLs."""
+    from app.core.security import create_access_token
+    from app.domain.models.academic import User
+    from app.domain.enums import UserRole
+
+    # 1. Unauthenticated request -> masked roll and no photo_url
+    res_anon = client.get("/api/v1/demo/enrolled-students")
+    assert res_anon.status_code == 200
+    anon_students = res_anon.json()["data"]
+    assert len(anon_students) > 0
+    assert anon_students[0]["photo_url"] is None
+    assert anon_students[0]["roll_number"].endswith("***")
+
+    # 2. Authenticated Admin request -> full roll and photo_url preserved
+    admin = db_session.query(User).filter(User.role == UserRole.ADMIN).first()
+    token = create_access_token(subject=str(admin.id), role=admin.role.value)
+    res_admin = client.get(
+        "/api/v1/demo/enrolled-students",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert res_admin.status_code == 200
+    admin_students = res_admin.json()["data"]
+    assert len(admin_students) > 0
+    assert not admin_students[0]["roll_number"].endswith("***")
+

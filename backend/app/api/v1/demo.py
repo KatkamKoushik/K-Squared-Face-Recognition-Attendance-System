@@ -8,8 +8,10 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
-from app.api.dependencies import get_correlation_id
+from app.api.dependencies import get_correlation_id, get_optional_current_user
 from app.core.database import get_db
+from app.domain.enums import UserRole
+from app.domain.models.academic import User
 from app.schemas.common import ResponseEnvelope
 from app.schemas.demo import (
     DemoAnalysisResponse,
@@ -24,12 +26,19 @@ router = APIRouter(prefix="/demo", tags=["Universal Demo Testing"])
 def list_demo_students(
     department_code: Optional[str] = None,
     db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_optional_current_user),
     correlation_id: str = Depends(get_correlation_id),
 ):
     """
     Returns the enrolled students with registered face profiles, optionally filtered by department.
+    Sanitizes private biometric portraits and roll numbers for unauthenticated callers (SEC-02).
     """
-    students = DemoService.list_enrolled_demo_students(db, department_code=department_code)
+    is_authorized = bool(
+        current_user and current_user.role in (UserRole.ADMIN, UserRole.FACULTY)
+    )
+    students = DemoService.list_enrolled_demo_students(
+        db, department_code=department_code, is_authorized=is_authorized
+    )
     return ResponseEnvelope(data=students, correlation_id=correlation_id)
 
 
@@ -41,6 +50,7 @@ async def analyze_demo_image(
     blur_threshold: float = Form(50.0),
     department_code: Optional[str] = Form(None),
     db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_optional_current_user),
     correlation_id: str = Depends(get_correlation_id),
 ):
     """
@@ -50,7 +60,7 @@ async def analyze_demo_image(
     - Applies resolution-adaptive cosine thresholding for distant/crowd faces.
     - Searches against enrolled student identities (optionally scoped to a department).
     - Enforces bipartite mutual exclusivity to eliminate duplicate identity collisions.
-    - Returns normalized bounding boxes, face crops, and attendance reconciliation.
+    - Sanitizes reference photographs for unauthenticated callers (SEC-02).
     """
     file_bytes = await file.read()
     if not file_bytes:
@@ -60,6 +70,9 @@ async def analyze_demo_image(
         )
 
     try:
+        is_authorized = bool(
+            current_user and current_user.role in (UserRole.ADMIN, UserRole.FACULTY)
+        )
         result = DemoService.analyze_demo_photo(
             db=db,
             image_bytes=file_bytes,
@@ -67,6 +80,7 @@ async def analyze_demo_image(
             margin_threshold=margin_threshold,
             blur_threshold=blur_threshold,
             department_code=department_code,
+            is_authorized=is_authorized,
         )
         return ResponseEnvelope(data=result, correlation_id=correlation_id)
     except ValueError as ve:

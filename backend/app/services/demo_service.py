@@ -67,6 +67,7 @@ class DemoService:
     def list_enrolled_demo_students(
         db: Session,
         department_code: Optional[str] = None,
+        is_authorized: bool = True,
     ) -> List[DemoEnrolledStudentSummary]:
         """Lists enrolled students with active face profiles, optionally filtered by department code."""
         stmt = (
@@ -92,14 +93,20 @@ class DemoService:
             if student.id in seen_ids:
                 continue
             seen_ids.add(student.id)
+            display_roll = student.roll_number if is_authorized else (student.roll_number[:4] + "***")
+            display_photo = (
+                photo_path
+                if (is_authorized and photo_path and (photo_path.startswith("http://") or photo_path.startswith("https://")))
+                else None
+            )
             results.append(
                 DemoEnrolledStudentSummary(
                     student_id=student.id,
-                    roll_number=student.roll_number,
+                    roll_number=display_roll,
                     full_name=student.full_name,
                     is_active=student.is_active,
                     has_reference_photo=bool(photo_path and (photo_path.startswith("http") or os.path.exists(photo_path))),
-                    photo_url=photo_path if (photo_path and (photo_path.startswith("http://") or photo_path.startswith("https://"))) else None,
+                    photo_url=display_photo,
                     department_code=dept_code,
                 )
             )
@@ -113,6 +120,7 @@ class DemoService:
         margin_threshold: float = 0.10,
         blur_threshold: float = 50.0,
         department_code: Optional[str] = None,
+        is_authorized: bool = True,
     ) -> DemoAnalysisResponse:
         """
         Processes a group or individual classroom photograph for ground-truth inspection:
@@ -297,9 +305,14 @@ class DemoService:
 
             if f_idx in winning_faces and candidate.student_id in student_metadata:
                 s_meta = student_metadata[candidate.student_id]
-                ref_b64 = DemoService._load_reference_photo_base64(
-                    s_meta["photo_path"], s_meta["full_name"], s_meta["roll_number"]
+                ref_b64 = (
+                    DemoService._load_reference_photo_base64(
+                        s_meta["photo_path"], s_meta["full_name"], s_meta["roll_number"]
+                    )
+                    if is_authorized
+                    else None
                 )
+                display_roll = s_meta["roll_number"] if is_authorized else (s_meta["roll_number"][:4] + "***")
                 face_box = DemoFaceBox(
                     face_index=idx,
                     box=det.box,
@@ -310,13 +323,13 @@ class DemoService:
                     status="MATCHED",
                     attendance_granted=True,
                     student_id=candidate.student_id,
-                    roll_number=s_meta["roll_number"],
+                    roll_number=display_roll,
                     full_name=s_meta["full_name"],
                     similarity_score=candidate.similarity_score,
                     margin=candidate.margin_to_second,
                     reference_photo_base64=ref_b64,
                     color_hex="#10B981",  # Emerald green
-                    badge_label=f"{s_meta['full_name']} ({s_meta['roll_number']})",
+                    badge_label=f"{s_meta['full_name']} ({display_roll})",
                     face_width_px=face_w,
                     face_height_px=face_h,
                     effective_threshold=eff_thresh,
@@ -407,16 +420,21 @@ class DemoService:
         attendance_not_granted_list: List[DemoStudentResult] = []
 
         for s_id, s_meta in student_metadata.items():
-            ref_b64 = DemoService._load_reference_photo_base64(
-                s_meta["photo_path"], s_meta["full_name"], s_meta["roll_number"]
+            ref_b64 = (
+                DemoService._load_reference_photo_base64(
+                    s_meta["photo_path"], s_meta["full_name"], s_meta["roll_number"]
+                )
+                if is_authorized
+                else None
             )
+            display_roll = s_meta["roll_number"] if is_authorized else (s_meta["roll_number"][:4] + "***")
             dept = s_meta.get("department_code")
             if s_id in matched_student_ids:
                 best_score, crop_b64 = matched_student_ids[s_id]
                 attendance_granted_list.append(
                     DemoStudentResult(
                         student_id=s_id,
-                        roll_number=s_meta["roll_number"],
+                        roll_number=display_roll,
                         full_name=s_meta["full_name"],
                         attendance_granted=True,
                         status="PRESENT",
@@ -430,7 +448,7 @@ class DemoService:
                 attendance_not_granted_list.append(
                     DemoStudentResult(
                         student_id=s_id,
-                        roll_number=s_meta["roll_number"],
+                        roll_number=display_roll,
                         full_name=s_meta["full_name"],
                         attendance_granted=False,
                         status="ABSENT",

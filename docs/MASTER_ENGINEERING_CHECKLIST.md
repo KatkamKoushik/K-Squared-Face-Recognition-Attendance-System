@@ -307,7 +307,7 @@
   - **Priority:** P0
   - **Owner:** KatkamKoushik
   - **Status:** Complete
-  - **Acceptance criteria:** SCRFD (detection) + ArcFace ResNet-50 (embeddings) with cosine separation margin $\Delta s \ge 0.15$.
+  - **Acceptance criteria:** OpenCV YuNet (detection) + SFace 128-D (embeddings) with cosine separation margin $\Delta s \ge 0.15$.
   - **Verification / evidence:** `docs/adr/0003-on-premise-onnx-vision-pipeline.md`, `wiki/Computer-Vision-Pipeline.md`.
   - **Last reviewed:** 2026-11-01
 
