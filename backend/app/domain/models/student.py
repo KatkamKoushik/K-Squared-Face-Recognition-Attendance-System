@@ -99,7 +99,7 @@ class EnrollmentSubmission(Base):
     __tablename__ = "enrollment_submissions"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    roll_number: Mapped[str] = mapped_column(String(50), index=True, nullable=False)
+    roll_number: Mapped[str] = mapped_column(String(50), nullable=False)
     full_name: Mapped[str] = mapped_column(String(100), nullable=False)
     institutional_email: Mapped[str] = mapped_column(String(255), nullable=False)
     department: Mapped[str] = mapped_column(String(100), nullable=False)
@@ -111,7 +111,7 @@ class EnrollmentSubmission(Base):
     photo_mime: Mapped[str] = mapped_column(String(50), nullable=False)
 
     status: Mapped[EnrollmentSubmissionStatus] = mapped_column(
-        String(30), default=EnrollmentSubmissionStatus.PENDING_REVIEW, nullable=False, index=True
+        String(30), default=EnrollmentSubmissionStatus.PENDING_REVIEW, nullable=False
     )
     consent_acknowledged: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     rejection_reason: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
@@ -153,4 +153,6 @@ class StudentDataCorrection(Base):
 
     __table_args__ = (
         Index("idx_correction_student_status", "student_id", "status"),
+        Index("idx_fk_student_data_corrections_student", "student_id"),
+        Index("idx_fk_student_data_corrections_reviewed_by", "reviewed_by_user_id"),
     )

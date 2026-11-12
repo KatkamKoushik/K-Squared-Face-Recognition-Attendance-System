@@ -348,3 +348,103 @@ def test_kucet_institutional_seeder_and_consent_invariants(db_session: Session):
     assert res2["profiles_active"] == 0
     assert res2["profiles_withheld"] == 0
 
+
+def test_governance_hierarchical_permissions_and_student_self_consent(db_session: Session, seed_data):
+    """
+    Verifies that:
+    1. SUPER_ADMIN and DEVELOPER roles can trigger frame purges.
+    2. STUDENTS can manage their own biometric consent.
+    3. Cross-student consent tampering is rejected with STUDENT_OWNERSHIP_REQUIRED.
+    4. Unauthorized roles are rejected.
+    """
+    students = seed_data["students"]
+    target_student = students[0]
+    other_student = students[1]
+
+    target_student.institutional_email = "aarav@kucet.ac.in"
+    other_student.institutional_email = "diya@kucet.ac.in"
+    db_session.flush()
+
+    super_admin = User(
+        email="superadmin.gov@kucet.edu",
+        hashed_password="dummy_hash_super",
+        role=UserRole.SUPER_ADMIN,
+        is_active=True,
+    )
+    dev_user = User(
+        email="dev.gov@kucet.edu",
+        hashed_password="dummy_hash_dev",
+        role=UserRole.DEVELOPER,
+        is_active=True,
+    )
+    student_user = User(
+        email=target_student.institutional_email,
+        hashed_password="dummy_hash_student",
+        role=UserRole.STUDENT,
+        is_active=True,
+    )
+    intruder_student = User(
+        email="intruder@kucet.edu",
+        hashed_password="dummy_hash_intruder",
+        role=UserRole.STUDENT,
+        is_active=True,
+    )
+    db_session.add_all([super_admin, dev_user, student_user, intruder_student])
+    db_session.flush()
+
+    # 1. Purge permission check: SUPER_ADMIN and DEVELOPER allowed
+    # (will return empty purge response when no finalized frames exist, but must NOT raise PermissionDeniedError)
+    resp_super = GovernanceService.purge_raw_frames(
+        db=db_session,
+        request=PurgeRequest(retention_days=30),
+        user=super_admin,
+        correlation_id="corr-super-purge",
+    )
+    assert resp_super is not None
+
+    resp_dev = GovernanceService.purge_raw_frames(
+        db=db_session,
+        request=PurgeRequest(retention_days=30),
+        user=dev_user,
+        correlation_id="corr-dev-purge",
+    )
+    assert resp_dev is not None
+
+    # Student cannot purge raw frames
+    with pytest.raises(PermissionDeniedError) as exc_purge:
+        GovernanceService.purge_raw_frames(
+            db=db_session,
+            request=PurgeRequest(retention_days=30),
+            user=student_user,
+            correlation_id="corr-student-purge",
+        )
+    assert exc_purge.value.reason_code == "ADMIN_PRIVILEGE_REQUIRED"
+
+    # 2. Student self-consent toggle: Student can update their own consent
+    consent_self = GovernanceService.toggle_student_biometric_consent(
+        db=db_session,
+        request=ConsentToggleRequest(
+            student_id=target_student.id,
+            consent_active=False,
+            reason="Self-revocation for testing",
+        ),
+        user=student_user,
+        correlation_id="corr-student-self-consent",
+    )
+    assert consent_self.biometric_consent_active is False
+
+    # 3. Cross-student consent tampering: intruder student cannot toggle target_student's consent
+    with pytest.raises(PermissionDeniedError) as exc_tamper:
+        GovernanceService.toggle_student_biometric_consent(
+            db=db_session,
+            request=ConsentToggleRequest(
+                student_id=target_student.id,
+                consent_active=True,
+                reason="Unauthorized toggle attempt",
+            ),
+            user=intruder_student,
+            correlation_id="corr-student-tamper",
+        )
+    assert exc_tamper.value.reason_code == "STUDENT_OWNERSHIP_REQUIRED"
+
+
