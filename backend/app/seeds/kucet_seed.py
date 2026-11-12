@@ -41,7 +41,7 @@ def get_seed_password(env_var: str, role_default: str) -> str:
     configured = os.getenv(env_var)
     if configured:
         return configured
-    if settings.ENVIRONMENT == "development":
+    if settings.ENVIRONMENT in ("development", "test"):
         return role_default
     return secrets.token_urlsafe(24)
 

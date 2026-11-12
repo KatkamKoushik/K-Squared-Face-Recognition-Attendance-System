@@ -43,3 +43,4 @@ class EventMessage(BaseModel):
             "payload": self.payload
         })
         return f"id: {self.event_id}\nevent: {self.event_type.value}\ndata: {data}\n\n"
+
