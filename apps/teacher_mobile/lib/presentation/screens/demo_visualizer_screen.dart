@@ -296,16 +296,7 @@ class _DemoVisualizerScreenState extends ConsumerState<DemoVisualizerScreen> wit
     return Scaffold(
       backgroundColor: Colors.grey.shade50,
       appBar: AppBar(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Ground-Truth Visualizer', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-            Text(
-              'Universal Test Sandbox (${_totalEnrolledStudents > 0 ? "$_totalEnrolledStudents Enrolled" : "All Branches"})',
-              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.normal),
-            ),
-          ],
-        ),
+        title: const Text('Face Visualizer', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -321,16 +312,6 @@ class _DemoVisualizerScreenState extends ConsumerState<DemoVisualizerScreen> wit
             icon: const Icon(Icons.tune),
             tooltip: 'Calibration Settings',
             onPressed: _showSettingsModal,
-          ),
-          IconButton(
-            icon: const Icon(Icons.photo_library_outlined),
-            tooltip: 'Pick from Gallery',
-            onPressed: _isAnalyzing ? null : () => _pickImage(ImageSource.gallery),
-          ),
-          IconButton(
-            icon: const Icon(Icons.camera_alt),
-            tooltip: 'Take Photo',
-            onPressed: _isAnalyzing ? null : () => _pickImage(ImageSource.camera),
           ),
         ],
       ),
@@ -543,24 +524,25 @@ class _DemoVisualizerScreenState extends ConsumerState<DemoVisualizerScreen> wit
               ),
             ),
             const SizedBox(height: 32),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+            Wrap(
+              alignment: WrapAlignment.center,
+              spacing: 12,
+              runSpacing: 12,
               children: [
                 ElevatedButton.icon(
                   onPressed: () => _pickImage(ImageSource.camera),
                   icon: const Icon(Icons.camera_alt),
-                  label: const Text('Take Camera Photo'),
+                  label: const Text('Take Photo'),
                   style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
                   ),
                 ),
-                const SizedBox(width: 12),
                 OutlinedButton.icon(
                   onPressed: () => _pickImage(ImageSource.gallery),
                   icon: const Icon(Icons.photo_library_outlined),
-                  label: const Text('Pick from Gallery'),
+                  label: const Text('Pick Gallery'),
                   style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
                   ),
                 ),
               ],
