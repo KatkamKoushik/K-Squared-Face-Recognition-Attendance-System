@@ -35,15 +35,22 @@ def get_current_user(
     payload = verify_token(auth.credentials)
     user_id = payload.get("user_id") or payload.get("sub")
     email = payload.get("email")
+    firebase_uid = payload.get("firebase", {}).get("uid") if isinstance(payload.get("firebase"), dict) else None
 
     user = None
     if user_id:
         user = db.get(User, user_id)
+    if not user and firebase_uid:
+        user = db.execute(select(User).where(User.firebase_uid == firebase_uid)).scalar_one_or_none()
     if not user and email:
         user = db.execute(select(User).where(User.email == email)).scalar_one_or_none()
 
     if not user or not user.is_active:
         raise AuthenticationError("User is inactive or not found", reason_code="USER_NOT_ACTIVE")
+
+    token_ver = payload.get("token_version")
+    if token_ver is not None and token_ver != user.token_version:
+        raise AuthenticationError("Session has been revoked or expired. Please log in again.", reason_code="TOKEN_REVOKED")
 
     return user
 
@@ -59,14 +66,20 @@ def get_optional_current_user(
         payload = verify_token(auth.credentials)
         user_id = payload.get("user_id") or payload.get("sub")
         email = payload.get("email")
+        firebase_uid = payload.get("firebase", {}).get("uid") if isinstance(payload.get("firebase"), dict) else None
 
         user = None
         if user_id:
             user = db.get(User, user_id)
+        if not user and firebase_uid:
+            user = db.execute(select(User).where(User.firebase_uid == firebase_uid)).scalar_one_or_none()
         if not user and email:
             user = db.execute(select(User).where(User.email == email)).scalar_one_or_none()
 
         if user and user.is_active:
+            token_ver = payload.get("token_version")
+            if token_ver is not None and token_ver != user.token_version:
+                return None
             return user
     except Exception:
         return None

@@ -6,10 +6,11 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-from app.api.dependencies import get_current_faculty, get_optional_current_user, get_correlation_id
+from app.api.dependencies import get_current_faculty, get_current_user, get_correlation_id
 from app.core.database import get_db
 from app.core.errors import PermissionDeniedError
-from app.domain.models.academic import Faculty, User
+from app.domain.enums import UserRole
+from app.domain.models.academic import Faculty, User, Subject, SubjectOffering
 from app.domain.models.session import AttendanceSession
 from app.schemas.common import ResponseEnvelope
 from app.schemas.session import (
@@ -45,12 +46,36 @@ def create_session(
 def list_recent_sessions(
     limit: int = 10,
     db: Session = Depends(get_db),
-    current_user: Optional[User] = Depends(get_optional_current_user),
+    current_user: User = Depends(get_current_user),
     correlation_id: str = Depends(get_correlation_id),
 ):
-    """Returns recent attendance sessions from the authoritative ledger."""
-    stmt = select(AttendanceSession).order_by(AttendanceSession.created_at.desc()).limit(limit)
-    sessions = list(db.execute(stmt).scalars().all())
+    """Returns recent attendance sessions scoped strictly to caller's institutional role and department."""
+    if current_user.role == UserRole.STUDENT:
+        raise PermissionDeniedError(
+            message="Students must access attendance history through the student portal.",
+            reason_code="ROLE_NOT_AUTHORIZED",
+        )
+
+    stmt = select(AttendanceSession).order_by(AttendanceSession.created_at.desc())
+
+    if current_user.role in (UserRole.FACULTY, UserRole.SUB_ADMIN):
+        fac = db.execute(select(Faculty).where(Faculty.user_id == current_user.id)).scalar_one_or_none()
+        if not fac:
+            return ResponseEnvelope(data=[], correlation_id=correlation_id)
+        stmt = stmt.where(AttendanceSession.faculty_id == fac.id)
+    elif current_user.role == UserRole.ADMIN:
+        if not current_user.department_id:
+            raise PermissionDeniedError(
+                message="Department administrator has no assigned department.",
+                reason_code="DEPARTMENT_ACCESS_RESTRICTED",
+            )
+        stmt = (
+            stmt.join(SubjectOffering, AttendanceSession.offering_id == SubjectOffering.id)
+            .join(Subject, SubjectOffering.subject_id == Subject.id)
+            .where(Subject.department_id == current_user.department_id)
+        )
+
+    sessions = list(db.execute(stmt.limit(limit)).scalars().all())
     items = [SessionResponse.model_validate(s) for s in sessions]
     return ResponseEnvelope(data=items, correlation_id=correlation_id)
 

@@ -326,3 +326,262 @@ def test_firebase_token_exchange_flow(db_session: Session, rbac_fixture: dict, m
     assert bad_res.status_code == 401
     assert bad_res.json()["error"]["reason_code"] == "USER_NOT_REGISTERED"
 
+
+def test_enrollment_department_isolation(db_session: Session, rbac_fixture: dict):
+    """CSE Admin cannot view or approve ECE student enrollment submissions."""
+    from app.domain.models.student import EnrollmentSubmission
+    from app.domain.enums import EnrollmentSubmissionStatus
+
+    cse_sub = EnrollmentSubmission(
+        id=str(uuid.uuid4()),
+        roll_number="CSE-SUB-01",
+        full_name="CSE Applicant",
+        institutional_email="applicant.cse@kucet.ac.in",
+        department="CSE",
+        academic_year="2026-2027",
+        cohort_id=rbac_fixture["cse_cohort"].id,
+        photo_storage_path="/tmp/cse_photo.jpg",
+        photo_sha256="hash1",
+        photo_mime="image/jpeg",
+        status=EnrollmentSubmissionStatus.PENDING_REVIEW,
+        consent_acknowledged=True,
+    )
+    ece_sub = EnrollmentSubmission(
+        id=str(uuid.uuid4()),
+        roll_number="ECE-SUB-01",
+        full_name="ECE Applicant",
+        institutional_email="applicant.ece@kucet.ac.in",
+        department="ECE",
+        academic_year="2026-2027",
+        cohort_id=rbac_fixture["ece_cohort"].id,
+        photo_storage_path="/tmp/ece_photo.jpg",
+        photo_sha256="hash2",
+        photo_mime="image/jpeg",
+        status=EnrollmentSubmissionStatus.PENDING_REVIEW,
+        consent_acknowledged=True,
+    )
+    db_session.add_all([cse_sub, ece_sub])
+    db_session.commit()
+
+    cse_client = make_client(db_session, rbac_fixture["cse_admin_user"])
+    super_client = make_client(db_session, rbac_fixture["super_admin_user"])
+
+    # 1. CSE Admin listing submissions only sees CSE submissions
+    list_res = cse_client.get("/api/v1/enrollment/submissions")
+    assert list_res.status_code == 200
+    rolls = [s["roll_number"] for s in list_res.json()["data"]]
+    assert "CSE-SUB-01" in rolls
+    assert "ECE-SUB-01" not in rolls
+
+    # 2. Super Admin listing submissions sees all departments
+    super_list = super_client.get("/api/v1/enrollment/submissions")
+    assert super_list.status_code == 200
+    all_rolls = [s["roll_number"] for s in super_list.json()["data"]]
+    assert "CSE-SUB-01" in all_rolls and "ECE-SUB-01" in all_rolls
+
+    # 3. CSE Admin attempting to view ECE submission -> 403 Forbidden
+    cross_view = cse_client.get(f"/api/v1/enrollment/submissions/{ece_sub.id}")
+    assert cross_view.status_code == 403
+    assert cross_view.json()["error"]["reason_code"] == "DEPARTMENT_ACCESS_RESTRICTED"
+
+    # 4. CSE Admin attempting to reject ECE submission -> 403 Forbidden
+    cross_reject = cse_client.post(
+        f"/api/v1/enrollment/submissions/{ece_sub.id}/reject",
+        json={"reason": "Rejected by wrong dept"},
+    )
+    assert cross_reject.status_code == 403
+    assert cross_reject.json()["error"]["reason_code"] == "DEPARTMENT_ACCESS_RESTRICTED"
+
+
+def test_audit_events_endpoint_isolation_and_auth(db_session: Session, rbac_fixture: dict):
+    """Audit events endpoint requires admin authentication and enforces department isolation."""
+    from app.domain.models.audit import AuditEvent
+    from app.domain.enums import AuditAction
+
+    app = create_application()
+    app.dependency_overrides[get_db] = lambda: db_session
+    unauth_client = TestClient(app)
+
+    # 1. Unauthenticated request -> 401 Unauthorized
+    unauth_res = unauth_client.get("/api/v1/audit/events")
+    assert unauth_res.status_code == 401
+
+    # 2. Seed audit event for CSE actor
+    event = AuditEvent(
+        id=str(uuid.uuid4()),
+        session_id=None,
+        actor_id=rbac_fixture["cse_admin_user"].id,
+        action=AuditAction.ATTENDANCE_COMMITTED,
+        reason="Test audit logging",
+        correlation_id="corr-test-123",
+    )
+    db_session.add(event)
+    db_session.commit()
+
+    # 3. CSE Admin can query and sees the event
+    cse_client = make_client(db_session, rbac_fixture["cse_admin_user"])
+    cse_res = cse_client.get("/api/v1/audit/events")
+    assert cse_res.status_code == 200
+    assert len(cse_res.json()["data"]) >= 1
+
+    # 4. ECE Admin queries and does not see CSE event
+    ece_client = make_client(db_session, rbac_fixture["ece_admin_user"])
+    ece_res = ece_client.get("/api/v1/audit/events")
+    assert ece_res.status_code == 200
+    assert len(ece_res.json()["data"]) == 0
+
+
+def test_sessions_endpoint_auth_and_role_scoping(db_session: Session, rbac_fixture: dict):
+    """GET /sessions requires authentication, rejects students, and scopes appropriately."""
+    app = create_application()
+    app.dependency_overrides[get_db] = lambda: db_session
+    unauth_client = TestClient(app)
+
+    # 1. Unauthenticated -> 401 Unauthorized
+    assert unauth_client.get("/api/v1/sessions").status_code == 401
+
+    # 2. Student -> 403 Forbidden
+    student_client = make_client(db_session, rbac_fixture["student_user"])
+    assert student_client.get("/api/v1/sessions").status_code == 403
+
+    # 3. Super Admin -> 200 OK
+    super_client = make_client(db_session, rbac_fixture["super_admin_user"])
+    assert super_client.get("/api/v1/sessions").status_code == 200
+
+
+def test_user_lifecycle_account_suspension_and_token_revocation(db_session: Session, rbac_fixture: dict):
+    """Suspending a user or logging out immediately revokes active JWT sessions."""
+    app = create_application()
+    app.dependency_overrides[get_db] = lambda: db_session
+
+    student = rbac_fixture["student_user"]
+    token = create_access_token(
+        subject=student.email,
+        role=student.role.value,
+        additional_claims={"user_id": student.id, "token_version": student.token_version},
+    )
+    student_client = TestClient(app)
+    student_client.headers.update({"Authorization": f"Bearer {token}"})
+
+    # Student can initially access /student/me
+    init_res = student_client.get("/api/v1/student/me")
+    assert init_res.status_code == 200
+
+    # CSE Admin suspends student
+    cse_client = make_client(db_session, rbac_fixture["cse_admin_user"])
+    suspend_res = cse_client.patch(f"/api/v1/auth/users/{student.id}/status", json={"is_active": False})
+    assert suspend_res.status_code == 200
+    assert suspend_res.json()["data"]["is_active"] is False
+
+    # Student's existing token is immediately rejected as revoked / inactive
+    revoked_res = student_client.get("/api/v1/student/me")
+    assert revoked_res.status_code == 401
+
+
+def test_logout_session_revocation(db_session: Session, rbac_fixture: dict):
+    """Logging out increments token_version and invalidates the previous session token."""
+    app = create_application()
+    app.dependency_overrides[get_db] = lambda: db_session
+
+    admin = rbac_fixture["cse_admin_user"]
+    token = create_access_token(
+        subject=admin.email,
+        role=admin.role.value,
+        additional_claims={"user_id": admin.id, "token_version": admin.token_version},
+    )
+    client = TestClient(app)
+    client.headers.update({"Authorization": f"Bearer {token}"})
+
+    # Valid before logout
+    assert client.get("/api/v1/auth/me").status_code == 200
+
+    # Execute logout
+    logout_res = client.post("/api/v1/auth/logout")
+    assert logout_res.status_code == 200
+
+    # Old token fails closed
+    after_res = client.get("/api/v1/auth/me")
+    assert after_res.status_code == 401
+    assert after_res.json()["error"]["reason_code"] == "TOKEN_REVOKED"
+
+
+def test_complete_role_permission_matrix(db_session: Session, rbac_fixture: dict):
+    """
+    Comprehensive institutional permission matrix test across all 5 tiers:
+    DEVELOPER > SUPER_ADMIN > ADMIN > SUB_ADMIN/FACULTY > STUDENT (> UNAUTHENTICATED).
+    """
+    app = create_application()
+    app.dependency_overrides[get_db] = lambda: db_session
+    unauth = TestClient(app)
+
+    sub_admin = User(
+        id=str(uuid.uuid4()),
+        email="subadmin.cse@kucet.ac.in",
+        hashed_password="hash",
+        role=UserRole.SUB_ADMIN,
+        department_id=rbac_fixture["cse_dept"].id,
+        is_active=True,
+    )
+    db_session.add(sub_admin)
+    db_session.commit()
+
+    clients = {
+        "UNAUTH": unauth,
+        "STUDENT": make_client(db_session, rbac_fixture["student_user"]),
+        "SUB_ADMIN": make_client(db_session, sub_admin),
+        "ADMIN_CSE": make_client(db_session, rbac_fixture["cse_admin_user"]),
+        "ADMIN_ECE": make_client(db_session, rbac_fixture["ece_admin_user"]),
+        "SUPER_ADMIN": make_client(db_session, rbac_fixture["super_admin_user"]),
+        "DEVELOPER": make_client(db_session, rbac_fixture["developer_user"]),
+    }
+
+    # Matrix: (method, path, payload, expected_codes_by_role)
+    matrix = [
+        # Institutional global governance / department creation
+        (
+            "POST",
+            "/api/v1/academic/departments",
+            {"code": "BIO", "name": "Biotechnology"},
+            {"UNAUTH": 401, "STUDENT": 403, "SUB_ADMIN": 403, "ADMIN_CSE": 403, "SUPER_ADMIN": 201},
+        ),
+        # Audit events read access
+        (
+            "GET",
+            "/api/v1/audit/events",
+            None,
+            {"UNAUTH": 401, "STUDENT": 403, "SUB_ADMIN": 403, "ADMIN_CSE": 200, "SUPER_ADMIN": 200, "DEVELOPER": 200},
+        ),
+        # Governance summary status
+        (
+            "GET",
+            "/api/v1/governance/status",
+            None,
+            {"UNAUTH": 401, "STUDENT": 403, "SUB_ADMIN": 200, "ADMIN_CSE": 200, "SUPER_ADMIN": 200, "DEVELOPER": 200},
+        ),
+        # Student personal profile
+        (
+            "GET",
+            "/api/v1/student/me",
+            None,
+            {"UNAUTH": 401, "STUDENT": 200},
+        ),
+        # Cross-department cohort access blocked for ECE admin querying CSE dept
+        (
+            "GET",
+            f"/api/v1/academic/cohorts?department_id={rbac_fixture['cse_dept'].id}",
+            None,
+            {"UNAUTH": 401, "STUDENT": 200, "ADMIN_ECE": 403, "ADMIN_CSE": 200, "SUPER_ADMIN": 200, "DEVELOPER": 200},
+        ),
+    ]
+
+    for method, path, payload, expectations in matrix:
+        for role_key, expected_code in expectations.items():
+            c = clients[role_key]
+            if method == "GET":
+                resp = c.get(path)
+            else:
+                resp = c.post(path, json=payload)
+            assert resp.status_code == expected_code, (
+                f"Role {role_key} on {method} {path}: expected {expected_code}, got {resp.status_code} ({resp.text})"
+            )
+

@@ -183,8 +183,19 @@ class EnrollmentService:
         search: Optional[str] = None,
         limit: int = 100,
         offset: int = 0,
+        department_code: Optional[str] = None,
+        department_id: Optional[str] = None,
     ) -> List[EnrollmentSubmission]:
         stmt = select(EnrollmentSubmission)
+        if department_id or department_code:
+            from app.domain.models.academic import Cohort
+            dept_conditions = []
+            if department_code:
+                dept_conditions.append(EnrollmentSubmission.department.ilike(department_code.strip()))
+            if department_id:
+                dept_cohort_ids = select(Cohort.id).where(Cohort.department_id == department_id)
+                dept_conditions.append(EnrollmentSubmission.cohort_id.in_(dept_cohort_ids))
+            stmt = stmt.where(or_(*dept_conditions))
         if status:
             stmt = stmt.where(EnrollmentSubmission.status == status)
         if search:
@@ -315,7 +326,7 @@ class EnrollmentService:
         return sub
 
     @staticmethod
-    def get_dashboard_stats(db: Session) -> Dict[str, Any]:
+    def get_dashboard_stats(db: Session, department_id: Optional[str] = None) -> Dict[str, Any]:
         from datetime import date
         from app.domain.models.student import Student, EnrollmentSubmission
         from app.domain.models.academic import SubjectOffering, Department, Cohort, Subject, Faculty
@@ -324,40 +335,95 @@ class EnrollmentService:
         from app.domain.enums import EnrollmentSubmissionStatus, SessionState, UnitStatus
         from sqlalchemy import func, desc
 
-        total_students = db.execute(select(func.count(Student.id))).scalar() or 0
-        total_offerings = db.execute(select(func.count(SubjectOffering.id))).scalar() or 0
-        total_departments = db.execute(select(func.count(Department.id))).scalar() or 0
-        total_cohorts = db.execute(select(func.count(Cohort.id))).scalar() or 0
-        pending_subs = db.execute(
-            select(func.count(EnrollmentSubmission.id)).where(
+        if department_id:
+            dept = db.get(Department, department_id)
+            dept_code = dept.code if dept else None
+            dept_cohorts_sub = select(Cohort.id).where(Cohort.department_id == department_id)
+            dept_subjects_sub = select(Subject.id).where(Subject.department_id == department_id)
+            dept_offerings_sub = select(SubjectOffering.id).where(SubjectOffering.subject_id.in_(dept_subjects_sub))
+
+            total_students = db.execute(
+                select(func.count(Student.id)).where(Student.cohort_id.in_(dept_cohorts_sub))
+            ).scalar() or 0
+            total_offerings = db.execute(
+                select(func.count(SubjectOffering.id)).where(SubjectOffering.subject_id.in_(dept_subjects_sub))
+            ).scalar() or 0
+            total_departments = 1 if dept else 0
+            total_cohorts = db.execute(
+                select(func.count(Cohort.id)).where(Cohort.department_id == department_id)
+            ).scalar() or 0
+            sub_stmt = select(func.count(EnrollmentSubmission.id)).where(
                 EnrollmentSubmission.status == EnrollmentSubmissionStatus.PENDING_REVIEW
             )
-        ).scalar() or 0
-        finalized_sessions = db.execute(
-            select(func.count(AttendanceSession.id)).where(
-                AttendanceSession.state == SessionState.FINALIZED
-            )
-        ).scalar() or 0
+            if dept_code:
+                sub_stmt = sub_stmt.where(
+                    or_(
+                        EnrollmentSubmission.department.ilike(dept_code),
+                        EnrollmentSubmission.cohort_id.in_(dept_cohorts_sub),
+                    )
+                )
+            else:
+                sub_stmt = sub_stmt.where(EnrollmentSubmission.cohort_id.in_(dept_cohorts_sub))
+            pending_subs = db.execute(sub_stmt).scalar() or 0
+            finalized_sessions = db.execute(
+                select(func.count(AttendanceSession.id)).where(
+                    AttendanceSession.state == SessionState.FINALIZED,
+                    AttendanceSession.offering_id.in_(dept_offerings_sub),
+                )
+            ).scalar() or 0
+            today = date.today()
+            units_today = db.execute(
+                select(func.count(AttendanceUnit.id))
+                .join(AttendanceSession, AttendanceUnit.session_id == AttendanceSession.id)
+                .where(
+                    AttendanceSession.session_date == today,
+                    AttendanceSession.offering_id.in_(dept_offerings_sub),
+                    AttendanceUnit.is_conducted.is_(True),
+                    AttendanceUnit.status.in_([UnitStatus.COMMITTED, UnitStatus.CONDUCTED_CONFIRMED]),
+                )
+            ).scalar() or 0
+            recent_sessions_rows = db.execute(
+                select(AttendanceSession)
+                .where(
+                    AttendanceSession.state == SessionState.FINALIZED,
+                    AttendanceSession.offering_id.in_(dept_offerings_sub),
+                )
+                .order_by(desc(AttendanceSession.finalized_at))
+                .limit(10)
+            ).scalars().all()
+        else:
+            total_students = db.execute(select(func.count(Student.id))).scalar() or 0
+            total_offerings = db.execute(select(func.count(SubjectOffering.id))).scalar() or 0
+            total_departments = db.execute(select(func.count(Department.id))).scalar() or 0
+            total_cohorts = db.execute(select(func.count(Cohort.id))).scalar() or 0
+            pending_subs = db.execute(
+                select(func.count(EnrollmentSubmission.id)).where(
+                    EnrollmentSubmission.status == EnrollmentSubmissionStatus.PENDING_REVIEW
+                )
+            ).scalar() or 0
+            finalized_sessions = db.execute(
+                select(func.count(AttendanceSession.id)).where(
+                    AttendanceSession.state == SessionState.FINALIZED
+                )
+            ).scalar() or 0
 
-        # Sum of conducted units today
-        today = date.today()
-        units_today = db.execute(
-            select(func.count(AttendanceUnit.id))
-            .join(AttendanceSession, AttendanceUnit.session_id == AttendanceSession.id)
-            .where(
-                AttendanceSession.session_date == today,
-                AttendanceUnit.is_conducted.is_(True),
-                AttendanceUnit.status.in_([UnitStatus.COMMITTED, UnitStatus.CONDUCTED_CONFIRMED]),
-            )
-        ).scalar() or 0
+            today = date.today()
+            units_today = db.execute(
+                select(func.count(AttendanceUnit.id))
+                .join(AttendanceSession, AttendanceUnit.session_id == AttendanceSession.id)
+                .where(
+                    AttendanceSession.session_date == today,
+                    AttendanceUnit.is_conducted.is_(True),
+                    AttendanceUnit.status.in_([UnitStatus.COMMITTED, UnitStatus.CONDUCTED_CONFIRMED]),
+                )
+            ).scalar() or 0
 
-        # Query recent finalized sessions joined with receipts, offerings, subjects, cohorts, faculty
-        recent_sessions_rows = db.execute(
-            select(AttendanceSession)
-            .where(AttendanceSession.state == SessionState.FINALIZED)
-            .order_by(desc(AttendanceSession.finalized_at))
-            .limit(10)
-        ).scalars().all()
+            recent_sessions_rows = db.execute(
+                select(AttendanceSession)
+                .where(AttendanceSession.state == SessionState.FINALIZED)
+                .order_by(desc(AttendanceSession.finalized_at))
+                .limit(10)
+            ).scalars().all()
 
         recent_sessions = []
         for s in recent_sessions_rows:
