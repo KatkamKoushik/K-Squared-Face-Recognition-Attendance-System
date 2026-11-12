@@ -1,5 +1,5 @@
 """
-FRS V7.1 K² — Student Portal, Academic Bulk Import & Attendance Export Integration Tests.
+K² FRS — Student Portal, Academic Bulk Import & Attendance Export Integration Tests.
 Verifies:
 1. Student authentication and profile resolution.
 2. Tenant-isolated attendance summary and unit-level ledger.

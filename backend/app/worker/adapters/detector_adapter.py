@@ -1,5 +1,5 @@
 """
-FRS V7.1 K2 -- Face Detector Adapter Interface.
+K² FRS -- Face Detector Adapter Interface.
 Executes rights-cleared YuNet face detector with strict fail-closed inference.
 """
 

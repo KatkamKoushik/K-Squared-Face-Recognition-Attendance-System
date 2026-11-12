@@ -1,4 +1,4 @@
-# FRS V7.1 K² — Live Demo Remediation & Action Plan
+# K² FRS — Live Demo Remediation & Action Plan
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 > **Branch Constraint:** All changes are isolated on `feat/real-demo-readiness`. No commits to `main` without explicit user permission.

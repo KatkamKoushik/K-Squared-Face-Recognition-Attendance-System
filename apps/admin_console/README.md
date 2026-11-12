@@ -1,4 +1,4 @@
-# FRS V7.1 K² — Admin Web Console
+# K² FRS — Admin Web Console
 
 Institutional academic administration and attendance governance portal built on **Next.js 15.5**, **React 19**, and **Tailwind CSS**.
 

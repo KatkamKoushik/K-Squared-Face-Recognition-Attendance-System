@@ -1,6 +1,6 @@
-# FRS V7.1 K² — Controlled Institutional Pilot Protocol & Operational Plan
+# K² FRS — Controlled Institutional Pilot Protocol & Operational Plan
 
-Document ID: `KUCET-PILOT-PROTO-V7.1`  
+Document ID: `KUCET-PILOT-PROTO-K² FRS`  
 Target Institution: Kakatiya University College of Engineering & Technology (KUCET), Warangal - 506009  
 Academic Term: Odd Semester 2026-2027 (VII Semester)  
 Supervising Department: Department of Computer Science & Engineering  
@@ -13,11 +13,11 @@ Protocol Status: APPROVED FOR SUPERVISED CONTROLLED EXECUTION
 
 ## 1. Executive Mission & Controlled Scope
 
-The objective of this protocol is to conduct an authoritative, controlled 14-day institutional pilot of the **FRS V7.1 K² Classroom Attendance Proposal System** at KUCET Warangal.
+The objective of this protocol is to conduct an authoritative, controlled 14-day institutional pilot of the **K² FRS Classroom Attendance Proposal System** at KUCET Warangal.
 
 Under this protocol, the computer vision subsystem functions strictly as an **evidence producer**, not an autonomous decision maker. Attendance recording operates in a **Dual-Ledger Mode**:
 1. **Primary Legal Ledger**: The physical university attendance register maintained by the course instructor.
-2. **Evaluation Ledger**: The FRS V7.1 K² PostgreSQL immutable transaction ledger populated via multi-photo camera sweeps, faculty review adjudication, and cryptographic HMAC-SHA256 commit receipts.
+2. **Evaluation Ledger**: The K² FRS PostgreSQL immutable transaction ledger populated via multi-photo camera sweeps, faculty review adjudication, and cryptographic HMAC-SHA256 commit receipts.
 
 > [!IMPORTANT]
 > At no point during the 14-day controlled pilot shall an automated computer vision inference result directly disadvantage a student. Any discrepancy between the physical roll call and the proposal system must be resolved in favor of the instructor's physical observation.

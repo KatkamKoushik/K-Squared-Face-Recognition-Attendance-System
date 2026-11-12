@@ -1,5 +1,5 @@
 """
-FRS V7.1 K² — Typed Environment Configuration and Secret Boundaries.
+K² FRS — Typed Environment Configuration and Secret Boundaries.
 Adheres to Pydantic V2 and Clean Architecture principles.
 """
 
@@ -31,7 +31,7 @@ def mask_database_url(url: str) -> str:
 
 class Settings(BaseSettings):
     # Application identity
-    APP_NAME: str = "FRS V7.1 K² Control Plane"
+    APP_NAME: str = "K² FRS Control Plane"
     ENVIRONMENT: Literal["development", "staging", "production", "test"] = "development"
     DEBUG: bool = False
     API_V1_STR: str = "/api/v1"

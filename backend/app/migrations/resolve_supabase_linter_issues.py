@@ -1,5 +1,5 @@
 """
-FRS V7.1 K² — Supabase Database Linter & Security Advisor Remediation.
+K² FRS — Supabase Database Linter & Security Advisor Remediation.
 Addresses all issues reported by Supabase Database Linter:
 1. rls_enabled_no_policy: Creates explicit, scoped policies for service_role and authenticated access.
 2. unindexed_foreign_keys: Adds covering B-tree indexes for all 26 foreign key constraints.

@@ -1,5 +1,5 @@
 """
-FRS V7.1 K2 -- Recognizer & Exact Roster Search Adapter.
+K² FRS -- Recognizer & Exact Roster Search Adapter.
 Enforces exact cosine retrieval, margin evaluation, and open-set unknown classification.
 Executes rights-cleared OpenCV Zoo SFace ONNX model with strict SHA-256 integrity verification
 and fail-closed mathematical inference.
@@ -21,6 +21,7 @@ class RecognizerAdapter:
     FINETUNED_HASH = "61c33636f356cd235ac42526231ff54733985a00848a74cf0860d7ccb9617a3e"
     FINETUNED_HASH_V2 = "0d980b104c783bc4230b074d5b44b9bf329b6cc5d457ba92416b5d6b7000755f"
     NAMESPACE = "sface_128d_v1"
+    EMBEDDING_DIM = 128
     DEFAULT_FILENAME = "face_recognition_sface_2021dec.onnx"
     FINETUNED_FILENAME = "kucet_frs_sface_finetuned.onnx"
 
@@ -34,6 +35,8 @@ class RecognizerAdapter:
         self.strict_mode = strict_mode if strict_mode is not None else (os.getenv("STRICT_INFERENCE", "1") == "1")
         self.model_hash = self.MODEL_HASH
         self.namespace = self.NAMESPACE
+        self.embedding_dim = self.EMBEDDING_DIM
+        self.embedding_dimension = self.EMBEDDING_DIM
         self.model_path = self._resolve_model_path(model_path)
         self._recognizer: Optional[cv2.FaceRecognizerSF] = None
         self._init_recognizer()

@@ -26,7 +26,7 @@ void main() {
 
     // Initial unauthenticated launch defaults to LoginScreen
     expect(find.text('Faculty Sign In'), findsOneWidget);
-    expect(find.text('FRS V7.1 Faculty Portal'), findsOneWidget);
+    expect(find.text('K² FRS Faculty Portal'), findsOneWidget);
   });
 
   testWidgets('FRS Teacher App renders KUCET Faculty Portal when authenticated', (WidgetTester tester) async {

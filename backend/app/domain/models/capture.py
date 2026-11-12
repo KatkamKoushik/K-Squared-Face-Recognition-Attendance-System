@@ -1,5 +1,5 @@
 """
-FRS V7.1 K² — Capture Batch, Image Frame, and Face Evidence Domain Models.
+K² FRS — Capture Batch, Image Frame, and Face Evidence Domain Models.
 Enforces content hashes, size boundaries, and typed per-face evidence traces.
 """
 

@@ -1,5 +1,5 @@
 """
-FRS V7.1 K² — Supabase Row Level Security (RLS) Enablement Migration.
+K² FRS — Supabase Row Level Security (RLS) Enablement Migration.
 Enables RLS on all public schema tables to resolve Supabase Security Advisor Critical warnings,
 and defines access policies for service_role, postgres, and authenticated roles.
 """

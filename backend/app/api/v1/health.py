@@ -1,5 +1,5 @@
 """
-FRS V7.1 K² — Health, Liveness, and Readiness Endpoints.
+K² FRS — Health, Liveness, and Readiness Endpoints.
 Explicitly separates process liveness from operational readiness.
 Exposes standard Prometheus metrics format for scrapers and dashboards.
 """

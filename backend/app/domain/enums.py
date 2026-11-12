@@ -1,6 +1,6 @@
 """
-FRS V7.1 K² — Canonical Domain Enums.
-Strictly frozen state machine values matching the V7.1 Master Blueprint.
+K² FRS — Canonical Domain Enums.
+Strictly frozen state machine values matching the institutional specification.
 """
 
 from enum import Enum
@@ -118,3 +118,4 @@ class AuditAction(str, Enum):
     COHORT_ROLLOVER_EXECUTED = "COHORT_ROLLOVER_EXECUTED"
     CORRECTION_REQUESTED = "CORRECTION_REQUESTED"
     CORRECTION_PROCESSED = "CORRECTION_PROCESSED"
+    FIREBASE_IDENTITY_LINKED = "FIREBASE_IDENTITY_LINKED"

@@ -361,7 +361,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   // Title and Subtitle
                   const Center(
                     child: Text(
-                      'FRS V7.1 Faculty Portal',
+                      'K² FRS Faculty Portal',
                       style: TextStyle(
                         fontSize: 22,
                         fontWeight: FontWeight.bold,

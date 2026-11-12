@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "frs-backend"
 version = "7.1.0"
-description = "FRS V7.1 K² — Classroom Photo Attendance System Backend & Control Plane"
+description = "K² FRS — Classroom Photo Attendance System Backend & Control Plane"
 readme = "README.md"
 requires-python = ">=3.11"
 authors = [

@@ -1,11 +1,11 @@
 """
-FRS V7.1 K² — FastAPI Security & Route Dependencies.
+K² FRS — FastAPI Security & Route Dependencies.
 Enforces scoped authentication, server-side RBAC, and request correlation tracing.
 """
 
 import uuid
 from typing import List, Optional
-from fastapi import Depends, Header, HTTPException, status
+from fastapi import Depends, Header, HTTPException, Query, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -26,22 +26,29 @@ def get_correlation_id(x_correlation_id: Optional[str] = Header(None)) -> str:
 
 def get_current_user(
     auth: Optional[HTTPAuthorizationCredentials] = Depends(security_scheme),
+    token_param: Optional[str] = Query(None, alias="token"),
     db: Session = Depends(get_db),
 ) -> User:
-    """Validates the Bearer token (internal JWT or Firebase) and returns the authenticated user."""
-    if not auth or not auth.credentials or auth.credentials in ("null", "undefined"):
-        raise AuthenticationError("Authorization header missing or invalid", reason_code="TOKEN_MISSING")
+    """Validates the Bearer token (internal JWT) and returns the authenticated user."""
+    raw_token = auth.credentials if (auth and auth.credentials) else token_param
+    if not raw_token or raw_token in ("null", "undefined"):
+        raise AuthenticationError("Authorization header or token parameter missing or invalid", reason_code="TOKEN_MISSING")
 
-    payload = verify_token(auth.credentials)
+    payload = verify_token(raw_token)
+
+    # Session revocation hardening: raw Firebase ID tokens must be exchanged for an institutional session token
+    if payload.get("firebase") is not None or payload.get("token_type") == "firebase_id_token":
+        raise AuthenticationError(
+            "Direct Firebase ID tokens are not permitted for institutional API requests. Please exchange your token via POST /api/v1/auth/firebase.",
+            reason_code="SESSION_TOKEN_REQUIRED",
+        )
+
     user_id = payload.get("user_id") or payload.get("sub")
     email = payload.get("email")
-    firebase_uid = payload.get("firebase", {}).get("uid") if isinstance(payload.get("firebase"), dict) else None
 
     user = None
     if user_id:
         user = db.get(User, user_id)
-    if not user and firebase_uid:
-        user = db.execute(select(User).where(User.firebase_uid == firebase_uid)).scalar_one_or_none()
     if not user and email:
         user = db.execute(select(User).where(User.email == email)).scalar_one_or_none()
 
@@ -119,16 +126,22 @@ def check_department_access(current_user: User, department_id: Optional[str]) ->
     Enforces strict department scoping:
     - DEVELOPER and SUPER_ADMIN have campus-wide access across all departments.
     - ADMIN, SUB_ADMIN, and FACULTY are strictly restricted to their assigned department.
-      If their department_id is missing/None, they fail closed and cannot access any department.
+      If their department_id is missing/None, or target department_id is missing/None,
+      they fail closed and cannot access any department.
     """
-    if not department_id:
-        return
     if current_user.role in (UserRole.DEVELOPER, UserRole.SUPER_ADMIN):
         return
+
+    if not department_id:
+        raise PermissionDeniedError(
+            message="Operation requires an assigned department context.",
+            reason_code="DEPARTMENT_ACCESS_RESTRICTED",
+        )
+
     if current_user.role in (UserRole.ADMIN, UserRole.SUB_ADMIN, UserRole.FACULTY):
         if not current_user.department_id or current_user.department_id != department_id:
             raise PermissionDeniedError(
-                message="Access denied: Department administrator cannot access or modify records without an assigned department or across another department.",
+                message=f"Access denied: User is isolated to department '{current_user.department_id}' and cannot access department '{department_id}'.",
                 reason_code="DEPARTMENT_ACCESS_RESTRICTED",
             )
 

@@ -1,15 +1,15 @@
 """
-FRS V7.1 K² — Atomic Attendance Commit & Institutional Analytics Endpoints.
+K² FRS — Atomic Attendance Commit & Institutional Analytics Endpoints.
 """
 
 from fastapi import APIRouter, Depends, status, Response
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 from app.api.dependencies import get_current_user, get_current_faculty, get_correlation_id
 from app.core.database import get_db
-from app.core.errors import PermissionDeniedError
+from app.core.errors import PermissionDeniedError, ResourceNotFoundError
 from app.domain.enums import UserRole
-from app.domain.models.academic import User, Faculty
+from app.domain.models.academic import User, Faculty, SubjectOffering
 from app.schemas.attendance import (
     AttendanceCommitRequest,
     CommitReceiptResponse,
@@ -127,6 +127,50 @@ def apply_attendance_correction(
     return ResponseEnvelope(data=response, correlation_id=correlation_id)
 
 
+def _verify_offering_access(db: Session, current_user: User, offering_id: str) -> SubjectOffering:
+    """
+    Verifies offering access with strict department isolation for administrators
+    and active faculty assignments for teaching faculty.
+    """
+    offering = db.execute(
+        select(SubjectOffering)
+        .options(selectinload(SubjectOffering.subject))
+        .where(SubjectOffering.id == offering_id)
+    ).scalar_one_or_none()
+    if not offering:
+        raise ResourceNotFoundError(resource="SubjectOffering", identifier=offering_id)
+
+    # DEVELOPER and SUPER_ADMIN have campus-wide institutional access
+    if current_user.role in (UserRole.DEVELOPER, UserRole.SUPER_ADMIN):
+        return offering
+
+    # Department-scoped administrators (ADMIN and SUB_ADMIN)
+    if current_user.role in (UserRole.ADMIN, UserRole.SUB_ADMIN):
+        offering_dept_id = offering.subject.department_id if offering.subject else None
+        if not current_user.department_id or current_user.department_id != offering_dept_id:
+            raise PermissionDeniedError(
+                message=f"Access denied: Department administrator is isolated to department '{current_user.department_id}' and cannot access offerings of department '{offering_dept_id}'.",
+                reason_code="DEPARTMENT_ACCESS_RESTRICTED",
+            )
+        return offering
+
+    # Faculty members must hold an active assignment for the requested offering
+    faculty = db.execute(
+        select(Faculty).where(Faculty.user_id == current_user.id)
+    ).scalar_one_or_none()
+    if not faculty:
+        raise PermissionDeniedError(
+            message="User does not have an active faculty profile.",
+            reason_code="FACULTY_PROFILE_NOT_FOUND",
+        )
+    AcademicService.verify_faculty_assignment(
+        db=db,
+        faculty_id=faculty.id,
+        offering_id=offering_id,
+    )
+    return offering
+
+
 @router.get(
     "/offerings/{offering_id}/analytics",
     response_model=ResponseEnvelope[OfferingAttendanceAnalyticsResponse],
@@ -140,24 +184,9 @@ def get_offering_analytics(
     """
     Calculates institutional attendance arithmetic from committed student-unit records.
     Denominator rule: attended_conducted_units / eligible_conducted_units.
-    Guarded by object-level authorization: Admins have institutional scope, faculty
-    must hold an active FacultyAssignment for the requested offering.
+    Guarded by department-scoped authorization for admins and assignment checks for faculty.
     """
-    if current_user.role not in (UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.DEVELOPER):
-        faculty = db.execute(
-            select(Faculty).where(Faculty.user_id == current_user.id)
-        ).scalar_one_or_none()
-        if not faculty:
-            raise PermissionDeniedError(
-                message="User does not have an active faculty profile.",
-                reason_code="FACULTY_PROFILE_NOT_FOUND",
-            )
-        # Verify faculty assignment
-        AcademicService.verify_faculty_assignment(
-            db=db,
-            faculty_id=faculty.id,
-            offering_id=offering_id,
-        )
+    _verify_offering_access(db=db, current_user=current_user, offering_id=offering_id)
 
     analytics = AnalyticsService.get_offering_attendance_analytics(db, offering_id)
     return ResponseEnvelope(data=analytics, correlation_id=correlation_id)
@@ -176,20 +205,7 @@ def export_offering_attendance_csv(
     import csv
     import io
 
-    if current_user.role not in (UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.DEVELOPER):
-        faculty = db.execute(
-            select(Faculty).where(Faculty.user_id == current_user.id)
-        ).scalar_one_or_none()
-        if not faculty:
-            raise PermissionDeniedError(
-                message="User does not have an active faculty profile.",
-                reason_code="FACULTY_PROFILE_NOT_FOUND",
-            )
-        AcademicService.verify_faculty_assignment(
-            db=db,
-            faculty_id=faculty.id,
-            offering_id=offering_id,
-        )
+    _verify_offering_access(db=db, current_user=current_user, offering_id=offering_id)
 
     analytics = AnalyticsService.get_offering_attendance_analytics(db, offering_id)
 
@@ -253,20 +269,7 @@ def export_offering_attendance_xlsx(
     from app.domain.models.session import AttendanceSession
     from app.domain.models.audit import CommitReceipt
 
-    if current_user.role not in (UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.DEVELOPER):
-        faculty = db.execute(
-            select(Faculty).where(Faculty.user_id == current_user.id)
-        ).scalar_one_or_none()
-        if not faculty:
-            raise PermissionDeniedError(
-                message="User does not have an active faculty profile.",
-                reason_code="FACULTY_PROFILE_NOT_FOUND",
-            )
-        AcademicService.verify_faculty_assignment(
-            db=db,
-            faculty_id=faculty.id,
-            offering_id=offering_id,
-        )
+    _verify_offering_access(db=db, current_user=current_user, offering_id=offering_id)
 
     analytics = AnalyticsService.get_offering_attendance_analytics(db, offering_id)
 

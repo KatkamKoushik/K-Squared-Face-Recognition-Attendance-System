@@ -1,4 +1,4 @@
-# FRS V7.1 K² — Repository Layout & Contract Architecture (CLI-02 / Shot 42)
+# K² FRS — Repository Layout & Contract Architecture (CLI-02 / Shot 42)
 
 ## 1. Directory Structure & Boundary Separation
 
@@ -88,7 +88,7 @@ D:\k^2\
 ├── frontend/                    # [STRICTLY UNTOUCHED BY BACKEND DEVELOPER]
 │   ├── teacher_app/             # Flutter / Dart client (Managed by IDE Frontend prompts)
 │   └── admin_web/               # Next.js / TypeScript console (Managed by IDE Frontend prompts)
-└── FRS_V7_1_K2_Master_Project_Handbook_85_Prompt_Shot_Plan.md
+└── FRS_K2_K2_Master_Project_Handbook_85_Prompt_Shot_Plan.md
 ```
 
 ---

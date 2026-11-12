@@ -1,4 +1,4 @@
-# FRS V7.1 K² — Production Operations Runbook
+# K² FRS — Production Operations Runbook
 *Authoritative Operational Guide for Institutional Attendance Infrastructure at Kakatiya University College of Engineering & Technology (KUCET)*
 
 ---

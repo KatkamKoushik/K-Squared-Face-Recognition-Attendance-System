@@ -1,5 +1,5 @@
 """
-FRS V7.1 K² — Universal Demo Testing & Visual Ground-Truth Pipeline Tests.
+K² FRS — Universal Demo Testing & Visual Ground-Truth Pipeline Tests.
 Validates branch-agnostic inference, face box overlay calculation, and three-tier reconciliation.
 """
 

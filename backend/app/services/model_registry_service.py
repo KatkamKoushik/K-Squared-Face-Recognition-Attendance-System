@@ -1,5 +1,5 @@
 """
-FRS V7.1 K2 -- Model Registry Service & Integrity Gate.
+K² FRS -- Model Registry Service & Integrity Gate.
 Enforces governance, provenance checks, SHA-256 integrity verification,
 and policy version binding for vision models.
 """
@@ -15,7 +15,7 @@ from app.domain.models.model_registry import ModelArtifact, PolicyVersion
 
 class ModelRegistryService:
 
-    DEFAULT_POLICY_ID = "policy_kucet_v7_1_default"
+    DEFAULT_POLICY_ID = "policy_kucet_k2_default"
 
     @staticmethod
     def compute_file_sha256(file_path: Path) -> str:
@@ -209,13 +209,13 @@ class ModelRegistryService:
         if not policy:
             policy = PolicyVersion(
                 id=ModelRegistryService.DEFAULT_POLICY_ID,
-                policy_name="KUCET Institutional Attendance Policy V7.1",
+                policy_name="KUCET Institutional Attendance Policy K² FRS",
                 detector_model_hash=yunet_hash,
                 recognizer_model_hash=sface_hash,
                 match_cosine_threshold=0.363,
                 margin_threshold=0.10,
                 min_face_size_pixels=32,
-                pad_mandatory=False,
+                pad_mandatory=True,
                 pad_threshold=0.85,
                 is_active=True,
             )

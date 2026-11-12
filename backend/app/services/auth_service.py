@@ -1,5 +1,5 @@
 """
-FRS V7.1 K² — Authentication & User Management Service.
+K² FRS — Authentication & User Management Service.
 """
 
 from typing import Optional
@@ -57,6 +57,9 @@ class AuthService:
         decoded = verify_firebase_id_token(creds.id_token)
         firebase_uid = decoded.get("uid") or decoded.get("user_id")
         email = decoded.get("email")
+        email_verified = decoded.get("email_verified", False)
+        if isinstance(decoded.get("firebase"), dict):
+            email_verified = decoded["firebase"].get("email_verified", email_verified)
 
         user = None
         if firebase_uid:
@@ -65,9 +68,28 @@ class AuthService:
         if not user:
             if not email:
                 raise AuthenticationError("Firebase token contains no verified email", reason_code="FIREBASE_EMAIL_MISSING")
+
+            if not email_verified:
+                raise AuthenticationError(
+                    "Firebase email address has not been verified. Email verification is strictly required before institutional account linking.",
+                    reason_code="EMAIL_NOT_VERIFIED",
+                )
+
             user = db.execute(select(User).where(User.email == email)).scalar_one_or_none()
             if user and firebase_uid and not user.firebase_uid:
                 user.firebase_uid = firebase_uid
+                from app.domain.models.audit import AuditEvent
+                from app.domain.enums import AuditAction
+                audit = AuditEvent(
+                    session_id=None,
+                    actor_id=user.id,
+                    action=AuditAction.FIREBASE_IDENTITY_LINKED,
+                    reason=f"Firebase UID '{firebase_uid}' linked to user '{user.email}' after cryptographic email verification.",
+                    before_state={"firebase_uid": None},
+                    after_state={"firebase_uid": firebase_uid, "role": user.role.value if hasattr(user.role, "value") else str(user.role)},
+                    correlation_id=f"fb-link-{user.id[:8]}",
+                )
+                db.add(audit)
                 db.commit()
 
         if not user:

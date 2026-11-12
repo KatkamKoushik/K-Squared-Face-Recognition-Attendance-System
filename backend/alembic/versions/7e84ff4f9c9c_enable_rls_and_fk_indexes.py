@@ -46,10 +46,12 @@ def upgrade() -> None:
         op.execute("""
             DO $$
             BEGIN
-                IF NOT EXISTS (
-                    SELECT 1 FROM pg_policies WHERE tablename = 'alembic_version' AND policyname = 'service_role_all'
-                ) THEN
-                    CREATE POLICY service_role_all ON public.alembic_version FOR ALL TO service_role USING (true) WITH CHECK (true);
+                IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN
+                    IF NOT EXISTS (
+                        SELECT 1 FROM pg_policies WHERE tablename = 'alembic_version' AND policyname = 'service_role_all'
+                    ) THEN
+                        CREATE POLICY service_role_all ON public.alembic_version FOR ALL TO service_role USING (true) WITH CHECK (true);
+                    END IF;
                 END IF;
             END $$;
         """)
@@ -58,15 +60,19 @@ def upgrade() -> None:
         op.execute("""
             DO $$
             BEGIN
-                IF NOT EXISTS (
-                    SELECT 1 FROM pg_policies WHERE tablename = 'student_data_corrections' AND policyname = 'service_role_all'
-                ) THEN
-                    CREATE POLICY service_role_all ON public.student_data_corrections FOR ALL TO service_role USING (true) WITH CHECK (true);
+                IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN
+                    IF NOT EXISTS (
+                        SELECT 1 FROM pg_policies WHERE tablename = 'student_data_corrections' AND policyname = 'service_role_all'
+                    ) THEN
+                        CREATE POLICY service_role_all ON public.student_data_corrections FOR ALL TO service_role USING (true) WITH CHECK (true);
+                    END IF;
                 END IF;
-                IF NOT EXISTS (
-                    SELECT 1 FROM pg_policies WHERE tablename = 'student_data_corrections' AND policyname = 'authenticated_select'
-                ) THEN
-                    CREATE POLICY authenticated_select ON public.student_data_corrections FOR SELECT TO authenticated USING (true);
+                IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
+                    IF NOT EXISTS (
+                        SELECT 1 FROM pg_policies WHERE tablename = 'student_data_corrections' AND policyname = 'authenticated_select'
+                    ) THEN
+                        CREATE POLICY authenticated_select ON public.student_data_corrections FOR SELECT TO authenticated USING (true);
+                    END IF;
                 END IF;
             END $$;
         """)

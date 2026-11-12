@@ -1,5 +1,5 @@
 """
-FRS V7.1 K² — PostgreSQL Bounded Queue Service.
+K² FRS — PostgreSQL Bounded Queue Service.
 Implements atomic lease claiming, heartbeat renewal, and safe recovery from worker crashes.
 """
 

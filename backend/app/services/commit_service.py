@@ -1,5 +1,5 @@
 """
-FRS V7.1 K² — Atomic Attendance Commit & Idempotency Receipt Service.
+K² FRS — Atomic Attendance Commit & Idempotency Receipt Service.
 Executes an ACID transaction binding student-unit attendance records,
 durable receipts, and append-only audit events.
 """
@@ -29,6 +29,8 @@ from app.schemas.attendance import (
     AttendanceCorrectionResponse,
     ReceiptVerificationResponse,
 )
+from app.schemas.events import EventMessage, RealtimeEventType
+from app.services.event_broadcaster import broadcaster
 
 
 def utc_now() -> datetime:
@@ -248,6 +250,37 @@ class CommitService:
         db.add(audit)
 
         db.flush()
+
+        # Publish real-time events for session and department channels
+        dept_id = None
+        if hasattr(session, "offering") and session.offering and session.offering.subject:
+            dept_id = session.offering.subject.department_id
+
+        event_payload = {
+            "session_id": session_id,
+            "receipt_hash": receipt_hash,
+            "total_present": total_present,
+            "total_absent": total_absent,
+            "committed_by": user_id,
+            "committed_at": session.finalized_at.isoformat(),
+        }
+
+        broadcaster.publish_sync(
+            EventMessage(
+                event_type=RealtimeEventType.RECEIPT_ISSUED,
+                channel=f"session:{session_id}",
+                payload=event_payload,
+            )
+        )
+        if dept_id:
+            broadcaster.publish_sync(
+                EventMessage(
+                    event_type=RealtimeEventType.DASHBOARD_STATS_UPDATED,
+                    channel=f"department:{dept_id}",
+                    payload=event_payload,
+                )
+            )
+
         return receipt
 
     @staticmethod

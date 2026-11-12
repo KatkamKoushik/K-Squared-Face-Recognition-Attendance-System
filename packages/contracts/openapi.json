@@ -1,7 +1,7 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "FRS V7.1 K\u00b2 Control Plane",
+    "title": "K² FRS K\u00b2 Control Plane",
     "description": "Authoritative API Control Plane for KUCET Classroom Attendance Proposal System.",
     "version": "7.1.0"
   },

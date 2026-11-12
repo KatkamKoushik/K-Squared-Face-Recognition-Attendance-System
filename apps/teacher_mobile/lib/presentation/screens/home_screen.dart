@@ -17,15 +17,15 @@ class HomeScreen extends ConsumerWidget {
     final journal = ref.watch(offlineSyncJournalProvider);
     final auth = ref.watch(authProvider);
     final activeCoord = auth.email != null ? KucetFacultyDirectory.findByEmail(auth.email!) : null;
-    final facultyDisplayName = activeCoord?.name ?? KucetTeacherData.facultyName;
+    final facultyDisplayName = activeCoord?.name ?? auth.email ?? 'Faculty Member';
     final facultyDisplayDesignation = activeCoord != null
         ? '${activeCoord.designation} & ${activeCoord.category}'
-        : KucetTeacherData.facultyDesignation;
+        : 'Faculty & Academic Instructor';
     final facultyDisplayDept = activeCoord != null
         ? (activeCoord.department.startsWith('Department')
             ? activeCoord.department
             : 'Department of ${activeCoord.department}')
-        : KucetTeacherData.departmentName;
+        : (auth.role != null ? '${auth.role} Access' : 'Department Faculty');
 
     return Scaffold(
       appBar: AppBar(

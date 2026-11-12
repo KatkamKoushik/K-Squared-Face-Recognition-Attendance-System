@@ -1,5 +1,5 @@
 """
-FRS V7.1 K2 - Complete Blueprint Model Fine-Tuning & Export Script
+K² FRS - Complete Blueprint Model Fine-Tuning & Export Script
 Institution: Kakatiya University College of Engineering & Technology (KUCET), Warangal
 Target Environment: Kaggle (Dual Tesla T4 GPUs) / Linux / Windows
 Models Supported: SFace (128-D), EdgeFace-Base (512-D), GhostFaceNet (128-D), MiniFASNetV2 (PAD)
@@ -325,7 +325,7 @@ def run_training(model_target: str = "ALL", total_steps: int = 5000, batch_size:
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     gpu_count = torch.cuda.device_count()
     print("=" * 78)
-    print(f"KUCET FRS V7.1 K2 - BLUEPRINT MODEL TRAINING RUNNER")
+    print(f"KUCET K² FRS - BLUEPRINT MODEL TRAINING RUNNER")
     print(f"Target Device: {device} (Count: {gpu_count}) | Target: {model_target}")
     print("=" * 78)
 
@@ -445,7 +445,7 @@ def run_training(model_target: str = "ALL", total_steps: int = 5000, batch_size:
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="FRS V7.1 Model Fine-Tuning Script")
+    parser = argparse.ArgumentParser(description="K² FRS Model Fine-Tuning Script")
     parser.add_argument("--model", type=str, default="ALL", choices=["ALL", "sface", "edgeface", "ghostfacenet", "minifasnet"])
     parser.add_argument("--steps", type=int, default=5000)
     parser.add_argument("--batch_size", type=int, default=64)

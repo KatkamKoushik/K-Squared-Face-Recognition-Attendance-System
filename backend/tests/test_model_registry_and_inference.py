@@ -1,5 +1,5 @@
 """
-FRS V7.1 K2 -- Model Registry, Provenance & Real ONNX Inference Tests.
+K² FRS -- Model Registry, Provenance & Real ONNX Inference Tests.
 Verifies rights-cleared YuNet detector and SFace recognizer, exact SHA-256
 lineage, unit hypersphere normalization, and calibrated thresholds.
 """
@@ -20,7 +20,7 @@ def test_model_registry_seeding_and_integrity(db_session: Session):
     reproducible hashes, and calibrated decision policy.
     """
     policy = ModelRegistryService.seed_default_registry(db_session)
-    assert policy.id == "policy_kucet_v7_1_default"
+    assert policy.id == "policy_kucet_k2_default"
     assert policy.match_cosine_threshold == 0.363
     assert policy.margin_threshold == 0.10
     assert policy.is_active is True

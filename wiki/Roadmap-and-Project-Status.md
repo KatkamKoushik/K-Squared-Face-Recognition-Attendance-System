@@ -1,12 +1,12 @@
 # Roadmap & Operational Status
 
-This document lays out the verified status of the FRS V7.1 K² codebase, hardware operating constraints, and the planned engineering roadmap for Kakatiya University.
+This document lays out the verified status of the K² FRS codebase, hardware operating constraints, and the planned engineering roadmap for Kakatiya University.
 
 ---
 
-## Current Operational Status (Baseline V7.1)
+## Current Operational Status (Baseline K² FRS)
 
-All core components of the V7.1 architecture have been implemented, tested, and containerized:
+All core components of the K² FRS architecture have been implemented, tested, and containerized:
 
 | Layer | Component | Status | Test Coverage |
 | :--- | :--- | :--- | :--- |

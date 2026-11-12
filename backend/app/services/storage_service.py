@@ -1,5 +1,5 @@
 """
-FRS V7.1 K² — Cloudinary Object Storage and Image Management Service.
+K² FRS — Cloudinary Object Storage and Image Management Service.
 Handles Cloudinary uploads for student enrollment portraits and classroom frames,
 storing HTTPS CDN URLs in PostgreSQL and providing seamless remote-or-local byte retrieval.
 """
@@ -52,10 +52,11 @@ class CloudinaryStorageService:
         folder: str = "k2_frs/general",
         public_id: Optional[str] = None,
         tags: Optional[List[str]] = None,
+        authenticated: bool = True,
     ) -> Dict[str, Any]:
         """
-        Uploads image buffer to Cloudinary with fallback to local filesystem.
-        Returns dict containing 'url' and 'public_id'.
+        Uploads image buffer to Cloudinary with authenticated delivery mode and fallback to local filesystem.
+        Returns dict containing 'url', 'public_id', and 'provider'.
         """
         is_ready = cls._ensure_configured()
         if is_ready:
@@ -66,6 +67,8 @@ class CloudinaryStorageService:
                     "resource_type": "image",
                     "overwrite": True,
                 }
+                if authenticated:
+                    options["type"] = "authenticated"
                 if public_id:
                     options["public_id"] = public_id
                 if tags:
@@ -77,6 +80,7 @@ class CloudinaryStorageService:
                     "url": secure_url,
                     "public_id": res.get("public_id"),
                     "provider": "cloudinary",
+                    "authenticated": authenticated,
                 }
             except Exception as e:
                 logger.error("Cloudinary upload failed: %s. Falling back to local disk.", e)
@@ -93,7 +97,59 @@ class CloudinaryStorageService:
             "url": str(target_path.resolve()),
             "public_id": fname,
             "provider": "local",
+            "authenticated": authenticated,
         }
+
+    @classmethod
+    def generate_signed_url(
+        cls,
+        public_id: str,
+        expiration_seconds: int = 3600,
+    ) -> str:
+        """
+        Generates a short-lived cryptographically signed URL for an authenticated asset.
+        Prevents unauthorized public retrieval of raw biometric images.
+        """
+        if cls._ensure_configured():
+            try:
+                import cloudinary.utils
+                url, _ = cloudinary.utils.cloudinary_url(
+                    public_id,
+                    type="authenticated",
+                    sign_url=True,
+                    secure=True,
+                    expires_at=int(datetime.now(timezone.utc).timestamp()) + expiration_seconds,
+                )
+                return url
+            except Exception as e:
+                logger.error("Failed to generate signed Cloudinary URL: %s", e)
+        return public_id
+
+    @classmethod
+    def delete_image(cls, public_id_or_path: str, is_authenticated: bool = True) -> bool:
+        """
+        Physically deletes an image from Cloudinary or local disk for cryptographic retention purges.
+        """
+        if not public_id_or_path:
+            return False
+
+        if cls._ensure_configured() and not os.path.isabs(public_id_or_path):
+            try:
+                options = {"type": "authenticated"} if is_authenticated else {}
+                res = cloudinary.uploader.destroy(public_id_or_path, invalidate=True, **options)
+                return res.get("result") == "ok"
+            except Exception as e:
+                logger.error("Failed to delete Cloudinary asset '%s': %s", public_id_or_path, e)
+
+        # Check local disk
+        p = Path(public_id_or_path)
+        if p.exists() and p.is_file():
+            try:
+                p.unlink()
+                return True
+            except Exception as e:
+                logger.error("Failed to delete local image file '%s': %s", public_id_or_path, e)
+        return False
 
     @classmethod
     def upload_enrollment_portrait(

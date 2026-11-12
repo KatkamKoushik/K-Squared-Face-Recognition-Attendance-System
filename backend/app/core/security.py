@@ -1,5 +1,5 @@
 """
-FRS V7.1 K² — Cryptographic Security, Password Hashing & JWT Management.
+K² FRS — Cryptographic Security, Password Hashing & JWT Management.
 Uses NIST-approved PBKDF2-HMAC-SHA256 (standard library) and PyJWT for fail-safe operation.
 """
 
@@ -113,7 +113,9 @@ def verify_firebase_id_token(token: str) -> Dict[str, Any]:
             "sub": decoded.get("uid"),
             "user_id": decoded.get("uid"),
             "email": decoded.get("email"),
+            "email_verified": decoded.get("email_verified", False),
             "role": decoded.get("role"),
+            "token_type": "firebase_id_token",
             "firebase": decoded,
         }
     except Exception as e:

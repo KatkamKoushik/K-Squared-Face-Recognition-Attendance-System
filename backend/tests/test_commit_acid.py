@@ -1,5 +1,5 @@
 """
-FRS V7.1 K² — Atomic Attendance Commit, Uniqueness & Idempotency Tests.
+K² FRS — Atomic Attendance Commit, Uniqueness & Idempotency Tests.
 """
 
 import pytest

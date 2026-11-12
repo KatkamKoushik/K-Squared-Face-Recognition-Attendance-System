@@ -1,5 +1,5 @@
 """
-FRS V7.1 K² — Supabase Linter & Security Advisor Clean-up Migration.
+K² FRS — Supabase Linter & Security Advisor Clean-up Migration.
 1. Removes duplicate index on enrollment_submissions (idx_submission_roll).
 2. Drops wide-open public RLS policies to eliminate 'RLS Policy Always True' warnings.
 3. Keeps RLS enabled on all 29 tables; backend connects as postgres/service_role which bypasses RLS safely.

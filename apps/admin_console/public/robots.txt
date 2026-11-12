@@ -1,4 +1,4 @@
-# FRS V7.1 K² — Admin Console Robots Exclusion Policy
+# K² FRS — Admin Console Robots Exclusion Policy
 # Conforms to Checklist Section 11 (Private Institutional Portal Security)
 
 User-agent: *

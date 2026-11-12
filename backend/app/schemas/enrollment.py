@@ -1,5 +1,5 @@
 """
-FRS V7.1 K² — Student Biometric Enrollment & Lifecycle Schemas.
+K² FRS — Student Biometric Enrollment & Lifecycle Schemas.
 Conforms to strict enrollment pipeline contracts.
 """
 

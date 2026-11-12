@@ -1,5 +1,5 @@
 """
-FRS V7.1 K² — Universal Demo Testing & Ground-Truth Analysis Service.
+K² FRS — Universal Demo Testing & Ground-Truth Analysis Service.
 Executes real YuNet detection, 5-landmark alignment, and SFace 128-D embedding matching
 against registered students in the database with optional department filtering and
 resolution-adaptive open-set thresholding.
@@ -80,6 +80,29 @@ class DemoService:
         is_authorized: bool = True,
     ) -> List[DemoEnrolledStudentSummary]:
         """Lists enrolled students with active face profiles, optionally filtered by department code."""
+        if not is_authorized:
+            # Synthetic demonstration mode for public visitors (SEC-DEMO-01)
+            return [
+                DemoEnrolledStudentSummary(
+                    student_id="anon_demo_synthetic_01",
+                    roll_number="DEMO2026_01***",
+                    full_name=DemoService._mask_name("Synthetic Student Alpha"),
+                    is_active=True,
+                    has_reference_photo=False,
+                    photo_url=None,
+                    department_code="DEMO",
+                ),
+                DemoEnrolledStudentSummary(
+                    student_id="anon_demo_synthetic_02",
+                    roll_number="DEMO2026_02***",
+                    full_name=DemoService._mask_name("Synthetic Student Beta"),
+                    is_active=True,
+                    has_reference_photo=False,
+                    photo_url=None,
+                    department_code="DEMO",
+                ),
+            ]
+
         stmt = (
             select(Student, EnrollmentSubmission.photo_storage_path, Department.code)
             .join(EnrollmentProfile, Student.id == EnrollmentProfile.student_id)
@@ -160,23 +183,25 @@ class DemoService:
             raise ValueError(f"Image resolution too low ({w}x{h} px).")
 
         # 2. Fetch enrolled gallery vectors and metadata
-        stmt = (
-            select(Student, EnrollmentProfile, EnrollmentSubmission.photo_storage_path, Department.code)
-            .join(EnrollmentProfile, Student.id == EnrollmentProfile.student_id)
-            .outerjoin(Cohort, Student.cohort_id == Cohort.id)
-            .outerjoin(Department, Cohort.department_id == Department.id)
-            .join(
-                EnrollmentSubmission,
-                (Student.roll_number == EnrollmentSubmission.roll_number)
-                & (EnrollmentSubmission.status == EnrollmentSubmissionStatus.APPROVED),
-            )
-            .where(Student.is_active == True, EnrollmentProfile.is_active == True)
-        )
         normalized_dept = department_code.strip().upper() if (department_code and department_code.strip().upper() not in ("ALL", "")) else None
-        if normalized_dept:
-            stmt = stmt.where(Department.code == normalized_dept)
+        enrolled_rows = []
+        if is_authorized:
+            stmt = (
+                select(Student, EnrollmentProfile, EnrollmentSubmission.photo_storage_path, Department.code)
+                .join(EnrollmentProfile, Student.id == EnrollmentProfile.student_id)
+                .outerjoin(Cohort, Student.cohort_id == Cohort.id)
+                .outerjoin(Department, Cohort.department_id == Department.id)
+                .join(
+                    EnrollmentSubmission,
+                    (Student.roll_number == EnrollmentSubmission.roll_number)
+                    & (EnrollmentSubmission.status == EnrollmentSubmissionStatus.APPROVED),
+                )
+                .where(Student.is_active == True, EnrollmentProfile.is_active == True)
+            )
+            if normalized_dept:
+                stmt = stmt.where(Department.code == normalized_dept)
 
-        enrolled_rows = db.execute(stmt).all()
+            enrolled_rows = db.execute(stmt).all()
 
         enrolled_gallery: Dict[str, List[float]] = {}
         student_metadata: Dict[str, Dict[str, Any]] = {}

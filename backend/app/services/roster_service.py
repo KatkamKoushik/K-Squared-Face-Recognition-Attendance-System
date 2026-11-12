@@ -1,5 +1,5 @@
 """
-FRS V7.1 K² — Roster Snapshot & Academic Eligibility Resolution Service.
+K² FRS — Roster Snapshot & Academic Eligibility Resolution Service.
 Enforces immutable snapshot freezing and exact deduplicated union for joint classes.
 """
 

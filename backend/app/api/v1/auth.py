@@ -1,5 +1,5 @@
 """
-FRS V7.1 K² — Authentication Endpoints.
+K² FRS — Authentication Endpoints.
 """
 
 from fastapi import APIRouter, Depends, status

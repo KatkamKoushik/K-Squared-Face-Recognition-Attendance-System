@@ -1,12 +1,12 @@
 # Model Artifact Delivery & Runtime Verification Runbook
-**FRS V7.1 K² Operations Documentation**  
+**K² FRS Operations Documentation**  
 *Status: IMPLEMENTED & VERIFIED*
 
 ---
 
 ## 1. Overview & Architectural Policy
 
-FRS V7.1 K² requires genuine deep learning model artifacts for facial detection and facial recognition. The system rejects all synthetic embeddings, mock detection coordinates, and dummy model fallbacks.
+K² FRS requires genuine deep learning model artifacts for facial detection and facial recognition. The system rejects all synthetic embeddings, mock detection coordinates, and dummy model fallbacks.
 
 ### Critical Invariants
 1. **Cryptographic Integrity:** Every loaded ONNX model must match its approved SHA-256 hash listed in the canonical artifact manifest.

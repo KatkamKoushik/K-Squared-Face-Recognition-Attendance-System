@@ -1,5 +1,5 @@
 """
-FRS V7.1 K² — Faculty Proposal Review Endpoints.
+K² FRS — Faculty Proposal Review Endpoints.
 """
 
 from fastapi import APIRouter, Depends

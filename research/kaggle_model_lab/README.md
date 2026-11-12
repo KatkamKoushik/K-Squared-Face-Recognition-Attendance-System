@@ -1,4 +1,4 @@
-# FRS V7.1 K² — Kaggle Model Lab
+# K² FRS — Kaggle Model Lab
 
 **Target Environment**: Kaggle Notebooks (`Ubuntu 22.04 LTS`, Python 3.10+, Dual Tesla T4 GPUs — `GPU T4 x 2`)  
 **Institutional Context**: Kakatiya University College of Engineering & Technology (KUCE&T), Warangal  

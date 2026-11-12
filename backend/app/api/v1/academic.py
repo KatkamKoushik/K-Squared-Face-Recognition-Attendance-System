@@ -1,5 +1,5 @@
 """
-FRS V7.1 K² — Academic Administration Endpoints.
+K² FRS — Academic Administration Endpoints.
 Guarded by ADMIN role. Configuration is represented as data, not code branches.
 """
 

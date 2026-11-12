@@ -1,6 +1,6 @@
 # Security & Vulnerability Reporting Policy
 
-The **FRS V7.1 K²** engineering team takes the security of university systems, student records, and biometric data with the utmost seriousness.
+The **K² FRS** engineering team takes the security of university systems, student records, and biometric data with the utmost seriousness.
 
 ---
 
@@ -23,7 +23,7 @@ If you discover a security vulnerability or potential privacy leak (particularly
 
 Please report vulnerabilities via confidential communication to:
 * **Primary Contact:** `security-frs@kucet.ac.in`
-* **Subject Line:** `[SECURITY] FRS V7.1 Potential Vulnerability - <Brief Description>`
+* **Subject Line:** `[SECURITY] K² FRS Potential Vulnerability - <Brief Description>`
 
 ### Please Include:
 1. Description of the vulnerability and attack vector.

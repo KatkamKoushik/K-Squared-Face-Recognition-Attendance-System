@@ -1,5 +1,5 @@
 experiment:
-  name: "FRS_V7_1_Kaggle_T4x2_Inference_Benchmark"
+  name: "FRS_K2_Kaggle_T4x2_Inference_Benchmark"
   institution: "KU College of Engineering & Technology (KUCET)"
   target_hardware: "Kaggle GPU T4 x 2 (2x NVIDIA Tesla T4 16GB)"
   framework: "OpenCV Zoo C++ & Python Runtime + ONNX Runtime"

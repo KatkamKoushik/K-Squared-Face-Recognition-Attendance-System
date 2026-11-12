@@ -1,12 +1,12 @@
 # Student Enrollment & Biometric Gallery Flow
-**FRS V7.1 K² Architecture Documentation**  
+**K² FRS Architecture Documentation**  
 *Status: IMPLEMENTED & VERIFIED*
 
 ---
 
 ## 1. Overview & Architectural Principles
 
-The Student Enrollment and Biometric Gallery system in FRS V7.1 K² governs the complete lifecycle of student onboarding from identity registration to active biometric gallery matching. 
+The Student Enrollment and Biometric Gallery system in K² FRS governs the complete lifecycle of student onboarding from identity registration to active biometric gallery matching. 
 
 ### Core Invariants
 1. **Zero Synthetic Identities:** No fake faces, dummy embeddings, or synthetic vectors are ever written to the production database or matched in session attendance.

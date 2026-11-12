@@ -1,4 +1,4 @@
-# FRS V7.1 K² — Implementation & Blocker Audit
+# K² FRS — Implementation & Blocker Audit
 
 **Document ID:** `K2-AUDIT-2026-11-09-MONOREPO-UPGRADE`  
 **Date:** 9 November 2026  
@@ -52,7 +52,7 @@ The inspection surveyed exact occurrences of `strict_mode`, `fallback`, `mock`, 
 | **FIX-01** | **Real Camera Byte Upload** | `apps/teacher_mobile/lib/presentation/screens/capture_gallery_screen.dart` uploads physical JPEG bytes via multipart `uploadFrame`. Simulated capture removed. |
 | **FIX-02** | **5-Landmark SFace Face Alignment** | `backend/app/worker/adapters/recognizer_adapter.py` applies `cv2.FaceRecognizerSF.alignCrop` with 5 facial landmarks from YuNet. |
 | **FIX-03** | **Git Main History Protection** | All changes squashed and merged into `main` at `97b6f8a`. New work strictly isolated on feature branch `feat/k2-kaggle-strict-enrollment-admin`. |
-| **FIX-04** | **Release APK CI/CD Delivery** | Release workflow fixed in `deploy.yml`, generating `v7.1.0` release asset successfully. |
+| **FIX-04** | **Release APK CI/CD Delivery** | Release workflow fixed in `deploy.yml`, generating `1.0.0` release asset successfully. |
 
 ### 2.5 Blocked by External Dependencies or Authorization
 

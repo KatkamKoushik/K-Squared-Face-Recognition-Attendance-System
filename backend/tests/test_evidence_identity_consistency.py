@@ -1,5 +1,5 @@
 """
-FRS V7.1 K² — Adversarial Evidence-to-Identity Consistency Tests (P0.8).
+K² FRS — Adversarial Evidence-to-Identity Consistency Tests (P0.8).
 Proves the invariant that no proposal can associate a student identity
 with visual evidence unless that association has a traceable, valid evidence source.
 """

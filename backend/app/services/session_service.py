@@ -1,5 +1,5 @@
 """
-FRS V7.1 K² — Session Lifecycle & Conducted Unit Management Service.
+K² FRS — Session Lifecycle & Conducted Unit Management Service.
 """
 
 from datetime import date
@@ -10,6 +10,8 @@ from app.core.errors import ResourceNotFoundError, StateTransitionError
 from app.domain.enums import SessionState, UnitStatus
 from app.domain.models.session import AttendanceSession, AttendanceUnit, RosterSnapshot
 from app.schemas.session import SessionCreateRequest
+from app.schemas.events import EventMessage, RealtimeEventType
+from app.services.event_broadcaster import broadcaster
 from app.services.academic_service import AcademicService
 from app.services.roster_service import RosterService
 
@@ -75,6 +77,21 @@ class SessionService:
 
         session.state = SessionState.ROSTER_FROZEN
         db.flush()
+
+        # Publish real-time session state event
+        broadcaster.publish_sync(
+            EventMessage(
+                event_type=RealtimeEventType.SESSION_STATE_CHANGED,
+                channel=f"session:{session.id}",
+                payload={
+                    "session_id": session.id,
+                    "offering_id": session.offering_id,
+                    "faculty_id": session.faculty_id,
+                    "state": session.state.value,
+                    "planned_units": session.planned_units,
+                },
+            )
+        )
 
         return SessionService.get_session_by_id(db, session.id)
 

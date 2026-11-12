@@ -156,7 +156,7 @@ export function AdminSidebar() {
       {/* Footer Info & Sign-out */}
       <div className="p-4 border-t border-white/10">
         <div className="text-xs text-white/50 mb-3 px-2">
-          Blueprint V7.1 • Spec Ready
+          Institutional Release • Spec Ready
         </div>
         {user ? (
           <button

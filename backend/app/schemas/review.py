@@ -1,5 +1,5 @@
 """
-FRS V7.1 K² — Faculty Proposal Review & Uncertainty Schemas.
+K² FRS — Faculty Proposal Review & Uncertainty Schemas.
 """
 
 from typing import Optional, List

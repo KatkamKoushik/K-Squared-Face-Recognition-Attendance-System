@@ -1,6 +1,6 @@
 library;
 
-/// FRS V7.1 K² — Canonical Domain Enums and DTOs.
+/// K² FRS — Canonical Domain Enums and DTOs.
 /// Generated from OpenAPI / FastAPI source-of-truth.
 
 enum UserRole {

@@ -1,5 +1,5 @@
 """
-FRS V7.1 K² — Strict Inference, Fail-Closed PAD & Attendance Decision Invariant Tests.
+K² FRS — Strict Inference, Fail-Closed PAD & Attendance Decision Invariant Tests.
 Verifies zero synthetic identities, fail-closed liveness security gates,
 and atomic attendance decisions with complete cartesian product enforcement.
 """

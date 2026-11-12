@@ -1,5 +1,5 @@
 """
-FRS V7.1 K² — FastAPI Control Plane Application Factory & Lifecycle.
+K² FRS — FastAPI Control Plane Application Factory & Lifecycle.
 """
 
 from dotenv import load_dotenv
@@ -53,7 +53,7 @@ async def lifespan(app: FastAPI):
 def create_application() -> FastAPI:
     app = FastAPI(
         title=settings.APP_NAME,
-        version="7.1.0",
+        version="1.0.0",
         description="Authoritative API Control Plane for KUCET Classroom Attendance Proposal System.",
         docs_url="/docs",
         redoc_url="/redoc",

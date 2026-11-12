@@ -1,5 +1,5 @@
 """
-FRS V7.1 K² — Model Registry and Policy Version Models.
+K² FRS — Model Registry and Policy Version Models.
 Prevents unapproved models or uncalibrated thresholds from operating in production.
 """
 
@@ -56,7 +56,7 @@ class PolicyVersion(Base):
     """
     __tablename__ = "policy_versions"
 
-    id: Mapped[str] = mapped_column(String(50), primary_key=True)  # e.g., "policy_kucet_v7_1_default"
+    id: Mapped[str] = mapped_column(String(50), primary_key=True)  # e.g., "policy_kucet_k2_default"
     policy_name: Mapped[str] = mapped_column(String(100), nullable=False)
     detector_model_hash: Mapped[str] = mapped_column(String(64), nullable=False)
     recognizer_model_hash: Mapped[str] = mapped_column(String(64), nullable=False)
@@ -67,7 +67,7 @@ class PolicyVersion(Base):
     min_face_size_pixels: Mapped[int] = mapped_column(Integer, default=32, nullable=False)
 
     # Conditional independent PAD gate
-    pad_mandatory: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    pad_mandatory: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     pad_threshold: Mapped[float] = mapped_column(Float, default=0.85, nullable=False)
 
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)

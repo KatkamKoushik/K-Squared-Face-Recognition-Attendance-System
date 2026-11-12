@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-FRS V7.1 K² Kaggle Model Lab — Stage 02: YuNet Face Detection & Landmark Verification.
+K² FRS Kaggle Model Lab — Stage 02: YuNet Face Detection & Landmark Verification.
 """
 
 import sys

@@ -1,6 +1,6 @@
-# Contributing to FRS V7.1 K²
+# Contributing to K² FRS
 
-Thank you for your interest in contributing to the **Facial Recognition System (FRS) V7.1 K²** for Kakatiya University College of Engineering & Technology (KUCET).
+Thank you for your interest in contributing to the **Facial Recognition System (FRS) K² FRS K²** for Kakatiya University College of Engineering & Technology (KUCET).
 
 To maintain academic governance, mathematical accuracy, and data security, all contributions must adhere to the standards outlined in this guide.
 

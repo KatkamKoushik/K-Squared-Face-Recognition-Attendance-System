@@ -1,5 +1,5 @@
 """
-FRS V7.1 K² — Purge Mock and Seed Data Script.
+K² FRS — Purge Mock and Seed Data Script.
 Removes:
 - 22 seeded dummy students (roll numbers 00622501..00622522) and their profiles/enrollments.
 - All dummy attendance sessions, units, records, receipts, and vision jobs.

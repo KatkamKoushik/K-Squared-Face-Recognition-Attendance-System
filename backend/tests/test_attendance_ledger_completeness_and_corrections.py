@@ -1,5 +1,5 @@
 """
-FRS V7.1 K² — Phase P3 Attendance Ledger Completeness, Decision Matrix & Audited Corrections Tests.
+K² FRS — Phase P3 Attendance Ledger Completeness, Decision Matrix & Audited Corrections Tests.
 Verifies complete Cartesian product validation, immutable audit trails for post-commit overrides/appeals,
 and dynamic institutional analytics reconciliation.
 """

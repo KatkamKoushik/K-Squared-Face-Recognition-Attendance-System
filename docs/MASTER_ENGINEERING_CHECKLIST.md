@@ -1,7 +1,7 @@
-# FRS V7.1 K² — Complete Software Project Engineering Master Checklist
+# K² FRS — Complete Software Project Engineering Master Checklist
 *Consolidated Engineering Inventory for Designing, Building, Securing, Operating, and Retiring the KUCET Attendance Infrastructure*
 
-**Project:** FRS V7.1 K² — Classroom-Photo Attendance Proposal System  
+**Project:** K² FRS — Classroom-Photo Attendance Proposal System  
 **Lead Architect & Owner:** KatkamKoushik (`koushikkatkam@gmail.com`)  
 **Target Environment:** Kakatiya University College of Engineering and Technology (KUCET)  
 **Standard Status Convention:** `Complete` · `In progress` · `Not started` · `N/A` (with technical rationale)  
@@ -284,7 +284,7 @@
   - **Owner:** KatkamKoushik
   - **Status:** Complete
   - **Acceptance criteria:** Repeatable Alembic migrations tracking table creation and indexes.
-  - **Verification / evidence:** `backend/alembic/versions/3a42e90c6daf_initial_v7_1_baseline.py`.
+  - **Verification / evidence:** `backend/alembic/versions/3a42e90c6daf_initial_k2_baseline.py`.
   - **Last reviewed:** 2026-11-01
 
 ---
@@ -379,7 +379,7 @@
   - **Priority:** P3
   - **Owner:** KatkamKoushik
   - **Status:** N/A
-  - **Acceptance criteria:** FRS V7.1 is an institutional academic attendance recording system; no currency transactions exist.
+  - **Acceptance criteria:** K² FRS is an institutional academic attendance recording system; no currency transactions exist.
   - **Verification / evidence:** Institutional governance charter.
   - **Last reviewed:** 2026-11-01
 

@@ -297,7 +297,7 @@ export default function StudentEnrollmentPage() {
                 Kakatiya University College of Engineering & Technology
               </div>
               <div className="text-[11px] text-slate-500 font-medium">
-                KUCET Warangal • Student Biometric Enrollment Portal (FRS V7.1)
+                KUCET Warangal • Student Biometric Enrollment Portal
               </div>
             </div>
           </div>
@@ -827,7 +827,7 @@ export default function StudentEnrollmentPage() {
       <footer className="mt-16 border-t border-slate-200 bg-white py-8 text-center text-xs text-slate-500">
         <div className="max-w-4xl mx-auto px-4 space-y-2">
           <div>
-            FRS V7.1 K² — Face Recognition Attendance System • Kakatiya University College of Engineering & Technology
+            K² FRS — Face Recognition Attendance System • Kakatiya University College of Engineering & Technology
           </div>
           <div>
             Authoritative Ledger: PostgreSQL • Face Inference: OpenCV Zoo YuNet & SFace ONNX

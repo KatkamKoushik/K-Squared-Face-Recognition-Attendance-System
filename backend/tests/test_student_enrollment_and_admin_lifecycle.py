@@ -1,5 +1,5 @@
 """
-FRS V7.1 K² — Student Enrollment & Admin Verification Lifecycle Tests.
+K² FRS — Student Enrollment & Admin Verification Lifecycle Tests.
 Tests public submission validation, photo EXIF stripping, face verification,
 admin review actions, and SFace 128-D template promotion into active gallery.
 """

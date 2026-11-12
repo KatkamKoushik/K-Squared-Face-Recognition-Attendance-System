@@ -1,5 +1,5 @@
 """
-FRS V7.1 K² — Bounded Vision Job Queue Model.
+K² FRS — Bounded Vision Job Queue Model.
 Supports atomic leasing, bounded retry backoff, and idempotent job execution.
 """
 

@@ -1,5 +1,5 @@
 """
-FRS V7.1 K² — Academic Administration & Eligibility Service.
+K² FRS — Academic Administration & Eligibility Service.
 """
 
 from datetime import date, datetime, timezone

@@ -1,5 +1,5 @@
 """
-FRS V7.1 K² — Student Portal Service.
+K² FRS — Student Portal Service.
 Provides authoritative, isolated data access for student identity, enrolled attendance,
 and formal academic appeals without cross-student data leakage.
 """
@@ -17,6 +17,8 @@ from app.domain.models.session import AttendanceSession, AttendanceUnit
 from app.domain.models.attendance import AttendanceRecord, AttendanceAppeal
 from app.domain.models.audit import AuditEvent, CommitReceipt
 from app.schemas.attendance import AttendanceAppealCreate
+from app.schemas.events import EventMessage, RealtimeEventType
+from app.services.event_broadcaster import broadcaster
 
 
 def utc_now() -> datetime:
@@ -28,25 +30,31 @@ class StudentService:
     @staticmethod
     def get_student_for_user(db: Session, user: User) -> Student:
         """Resolves the authoritative Student profile associated with the authenticated user."""
-        student = db.execute(
-            select(Student)
-            .options(selectinload(Student.cohort))
-            .where(Student.institutional_email == user.email)
-        ).scalar_one_or_none()
+        student = None
 
-        if not student:
-            # Fallback check if user ID matches roll number or email prefix
-            roll_prefix = user.email.split("@")[0].upper()
+        # 1. Direct explicit foreign key relationship
+        if user.student_id:
             student = db.execute(
                 select(Student)
                 .options(selectinload(Student.cohort))
-                .where(Student.roll_number == roll_prefix)
+                .where(Student.id == user.student_id)
             ).scalar_one_or_none()
+
+        # 2. Institutional email exact match
+        if not student and user.email:
+            student = db.execute(
+                select(Student)
+                .options(selectinload(Student.cohort))
+                .where(Student.institutional_email == user.email)
+            ).scalar_one_or_none()
+            if student and not user.student_id:
+                user.student_id = student.id
+                db.flush()
 
         if not student:
             raise ResourceNotFoundError(
                 resource="StudentProfile",
-                identifier=user.email,
+                identifier=user.email or user.id,
             )
         return student
 
@@ -149,6 +157,23 @@ class StudentService:
 
         if not offering:
             raise ResourceNotFoundError(resource="SubjectOffering", identifier=offering_id)
+
+        # Enforce active enrollment ownership (Issue 3)
+        target_student_id = student.id if hasattr(student, "id") else student
+        enrollment = db.execute(
+            select(Enrollment).where(
+                and_(
+                    Enrollment.student_id == target_student_id,
+                    Enrollment.offering_id == offering_id,
+                    Enrollment.status == "ACTIVE",
+                )
+            )
+        ).scalar_one_or_none()
+        if not enrollment:
+            raise PermissionDeniedError(
+                message=f"Student {student.roll_number} is not actively enrolled in subject offering {offering_id}.",
+                reason_code="OFFERING_ENROLLMENT_REQUIRED",
+            )
 
         sessions = db.execute(
             select(AttendanceSession)
@@ -277,6 +302,30 @@ class StudentService:
         db.add(audit)
         db.commit()
         db.refresh(appeal)
+
+        dept_id = student.cohort.department_id if (student and student.cohort) else None
+        event_payload = {
+            "appeal_id": appeal.id,
+            "student_id": student.id,
+            "session_id": appeal.session_id,
+            "status": "PENDING",
+        }
+        broadcaster.publish_sync(
+            EventMessage(
+                event_type=RealtimeEventType.ATTENDANCE_APPEALED,
+                channel=f"user:{student.id}",
+                payload=event_payload,
+            )
+        )
+        if dept_id:
+            broadcaster.publish_sync(
+                EventMessage(
+                    event_type=RealtimeEventType.ATTENDANCE_APPEALED,
+                    channel=f"department:{dept_id}",
+                    payload=event_payload,
+                )
+            )
+
         return appeal
 
     @staticmethod
@@ -300,8 +349,18 @@ class StudentService:
         stmt = select(AttendanceAppeal).order_by(AttendanceAppeal.created_at.desc()).limit(limit)
         if status:
             stmt = stmt.where(AttendanceAppeal.status == status)
-        if user and user.role == UserRole.ADMIN and user.department_id:
-            stmt = stmt.join(Student, AttendanceAppeal.student_id == Student.id).join(Cohort, Student.cohort_id == Cohort.id).where(Cohort.department_id == user.department_id)
+
+        if user and user.role in (UserRole.ADMIN, UserRole.SUB_ADMIN):
+            if not user.department_id:
+                raise PermissionDeniedError(
+                    message="Department administrator must have an assigned department context.",
+                    reason_code="DEPARTMENT_ASSIGNMENT_REQUIRED",
+                )
+            stmt = (
+                stmt.join(Student, AttendanceAppeal.student_id == Student.id)
+                .join(Cohort, Student.cohort_id == Cohort.id)
+                .where(Cohort.department_id == user.department_id)
+            )
         result = db.execute(stmt)
         return list(result.scalars().all())
 
@@ -322,9 +381,21 @@ class StudentService:
         if not appeal:
             raise ResourceNotFoundError(resource="AttendanceAppeal", identifier=appeal_id)
 
-        if reviewer.role == UserRole.ADMIN and reviewer.department_id:
+        # Enforce valid state transition PENDING -> APPROVED / REJECTED (Issue 4)
+        if appeal.status != AppealStatus.PENDING:
+            raise BusinessRuleViolationError(
+                message=f"Appeal {appeal_id} has already been adjudicated with status '{appeal.status}'. Duplicate review is prohibited.",
+                reason_code="APPEAL_ALREADY_REVIEWED",
+            )
+
+        if reviewer.role in (UserRole.ADMIN, UserRole.SUB_ADMIN):
+            if not reviewer.department_id:
+                raise PermissionDeniedError(
+                    message="Department administrator must have an assigned department context.",
+                    reason_code="DEPARTMENT_ASSIGNMENT_REQUIRED",
+                )
             student = db.get(Student, appeal.student_id)
-            if student and student.cohort and student.cohort.department_id != reviewer.department_id:
+            if not student or not student.cohort or student.cohort.department_id != reviewer.department_id:
                 raise PermissionDeniedError(
                     message="Access denied: Department administrator cannot review appeals of another department.",
                     reason_code="DEPARTMENT_ACCESS_RESTRICTED",
@@ -363,6 +434,32 @@ class StudentService:
         db.add(audit)
         db.commit()
         db.refresh(appeal)
+
+        dept_id = reviewer.department_id
+        event_payload = {
+            "appeal_id": appeal.id,
+            "student_id": appeal.student_id,
+            "session_id": appeal.session_id,
+            "status": appeal_status_val,
+            "approved": approved,
+            "review_notes": review_notes,
+        }
+        broadcaster.publish_sync(
+            EventMessage(
+                event_type=RealtimeEventType.ATTENDANCE_APPEAL_REVIEWED,
+                channel=f"user:{appeal.student_id}",
+                payload=event_payload,
+            )
+        )
+        if dept_id:
+            broadcaster.publish_sync(
+                EventMessage(
+                    event_type=RealtimeEventType.ATTENDANCE_APPEAL_REVIEWED,
+                    channel=f"department:{dept_id}",
+                    payload=event_payload,
+                )
+            )
+
         return appeal
 
     @staticmethod
@@ -403,6 +500,31 @@ class StudentService:
         db.add(audit)
         db.commit()
         db.refresh(correction)
+
+        dept_id = student.cohort.department_id if (student and student.cohort) else None
+        event_payload = {
+            "correction_id": correction.id,
+            "student_id": student.id,
+            "field_name": field_name,
+            "requested_value": requested_value,
+            "status": "PENDING",
+        }
+        broadcaster.publish_sync(
+            EventMessage(
+                event_type=RealtimeEventType.CORRECTION_SUBMITTED,
+                channel=f"user:{student.id}",
+                payload=event_payload,
+            )
+        )
+        if dept_id:
+            broadcaster.publish_sync(
+                EventMessage(
+                    event_type=RealtimeEventType.CORRECTION_SUBMITTED,
+                    channel=f"department:{dept_id}",
+                    payload=event_payload,
+                )
+            )
+
         return correction
 
     @staticmethod
@@ -426,7 +548,12 @@ class StudentService:
         stmt = select(StudentDataCorrection).order_by(StudentDataCorrection.created_at.desc()).limit(limit)
         if status:
             stmt = stmt.where(StudentDataCorrection.status == status)
-        if user and user.role == UserRole.ADMIN and user.department_id:
+        if user and user.role in (UserRole.ADMIN, UserRole.SUB_ADMIN):
+            if not user.department_id:
+                raise PermissionDeniedError(
+                    message="Department administrator must have an assigned department context.",
+                    reason_code="DEPARTMENT_ASSIGNMENT_REQUIRED",
+                )
             stmt = (
                 stmt.join(Student, StudentDataCorrection.student_id == Student.id)
                 .join(Cohort, Student.cohort_id == Cohort.id)
@@ -449,9 +576,21 @@ class StudentService:
         if not correction:
             raise ResourceNotFoundError(resource="StudentDataCorrection", identifier=request_id)
 
+        # Enforce valid state transition PENDING -> APPROVED / REJECTED (Issue 4)
+        if correction.status != "PENDING":
+            raise BusinessRuleViolationError(
+                message=f"Data correction request {request_id} has already been adjudicated with status '{correction.status}'. Duplicate review is prohibited.",
+                reason_code="CORRECTION_ALREADY_REVIEWED",
+            )
+
         student = db.get(Student, correction.student_id)
-        if reviewer.role == UserRole.ADMIN and reviewer.department_id:
-            if student and student.cohort and student.cohort.department_id != reviewer.department_id:
+        if reviewer.role in (UserRole.ADMIN, UserRole.SUB_ADMIN):
+            if not reviewer.department_id:
+                raise PermissionDeniedError(
+                    message="Department administrator must have an assigned department context.",
+                    reason_code="DEPARTMENT_ASSIGNMENT_REQUIRED",
+                )
+            if not student or not student.cohort or student.cohort.department_id != reviewer.department_id:
                 raise PermissionDeniedError(
                     message="Access denied: Department administrator cannot review data corrections for another department.",
                     reason_code="DEPARTMENT_ACCESS_RESTRICTED",
@@ -479,4 +618,29 @@ class StudentService:
         db.add(audit)
         db.commit()
         db.refresh(correction)
+
+        dept_id = reviewer.department_id
+        event_payload = {
+            "correction_id": correction.id,
+            "student_id": correction.student_id,
+            "status": correction.status,
+            "approved": approved,
+            "review_notes": review_notes,
+        }
+        broadcaster.publish_sync(
+            EventMessage(
+                event_type=RealtimeEventType.CORRECTION_REVIEWED,
+                channel=f"user:{correction.student_id}",
+                payload=event_payload,
+            )
+        )
+        if dept_id:
+            broadcaster.publish_sync(
+                EventMessage(
+                    event_type=RealtimeEventType.CORRECTION_REVIEWED,
+                    channel=f"department:{dept_id}",
+                    payload=event_payload,
+                )
+            )
+
         return correction

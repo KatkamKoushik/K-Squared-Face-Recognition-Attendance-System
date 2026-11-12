@@ -1,6 +1,6 @@
 # Computer Vision Pipeline & Model Specifications
 
-The FRS V7.1 K² vision pipeline extracts probabilistic candidate proposals from high-resolution classroom photographs while rejecting out-of-distribution faces, presentation attacks, and ambiguous sightings using real deep learning neural network inference.
+The K² FRS vision pipeline extracts probabilistic candidate proposals from high-resolution classroom photographs while rejecting out-of-distribution faces, presentation attacks, and ambiguous sightings using real deep learning neural network inference.
 
 ---
 

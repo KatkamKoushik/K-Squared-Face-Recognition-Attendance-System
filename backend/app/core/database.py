@@ -1,5 +1,5 @@
 """
-FRS V7.1 K² — Authoritative Persistence Engine & Database Session Management.
+K² FRS — Authoritative Persistence Engine & Database Session Management.
 Supports PostgreSQL (Production) and SQLite (Development & Deterministic Testing).
 """
 

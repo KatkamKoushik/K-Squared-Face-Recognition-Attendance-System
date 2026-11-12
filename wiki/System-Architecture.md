@@ -1,6 +1,6 @@
 # System Architecture & Component Topology
 
-FRS V7.1 K² implements a decoupled, asynchronous, four-tier architecture designed to run on institutional on-premise hardware without external cloud dependencies.
+K² FRS implements a decoupled, asynchronous, four-tier architecture designed to run on institutional on-premise hardware without external cloud dependencies.
 
 ---
 

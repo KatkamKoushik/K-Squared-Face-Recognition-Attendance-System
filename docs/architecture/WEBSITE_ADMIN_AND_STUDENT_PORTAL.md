@@ -1,5 +1,5 @@
 # Website Architecture: Student Enrollment Portal & Admin Console
-**FRS V7.1 K² Architecture Documentation**  
+**K² FRS Architecture Documentation**  
 *Status: IMPLEMENTED & VERIFIED*
 
 ---

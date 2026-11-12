@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-FRS V7.1 K² — Vision Model Weight Downloader & Integrity Verifier.
+K² FRS — Vision Model Weight Downloader & Integrity Verifier.
 Downloads official OpenCV Zoo YuNet and SFace ONNX model artifacts and verifies SHA-256 checksums.
 """
 
@@ -86,7 +86,7 @@ def main():
     target_dir = repo_root / "backend" / "models"
     target_dir.mkdir(parents=True, exist_ok=True)
 
-    print(f"=== FRS V7.1 OpenCV Zoo ONNX Model Downloader ===")
+    print(f"=== K² FRS OpenCV Zoo ONNX Model Downloader ===")
     print(f"Target directory: {target_dir}")
 
     all_ok = True

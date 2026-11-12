@@ -1,5 +1,5 @@
 /**
- * FRS V7.1 K² — Canonical Shared Domain Contracts & Enums.
+ * K² FRS — Canonical Shared Domain Contracts & Enums.
  * Generated from OpenAPI / FastAPI source-of-truth.
  */
 

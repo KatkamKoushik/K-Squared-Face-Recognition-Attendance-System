@@ -1,5 +1,5 @@
 """
-FRS V7.1 K² — Phase B Test Suite: Academic Administration, Cohort Rollover,
+K² FRS — Phase B Test Suite: Academic Administration, Cohort Rollover,
 Student Lifecycle Management, Data Correction Workflows, and XLSX Attendance Export.
 """
 

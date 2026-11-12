@@ -1,5 +1,5 @@
 """
-FRS V7.1 K² — Audit Trail Schemas.
+K² FRS — Audit Trail Schemas.
 """
 
 from datetime import datetime

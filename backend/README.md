@@ -1,6 +1,6 @@
-# FRS V7.1 K² — Control Plane & Vision Worker
+# K² FRS — Control Plane & Vision Worker
 
-This package provides the FastAPI control plane API and asynchronous ONNX vision worker for the FRS V7.1 K² classroom attendance proposal system.
+This package provides the FastAPI control plane API and asynchronous ONNX vision worker for the K² FRS classroom attendance proposal system.
 
 ---
 

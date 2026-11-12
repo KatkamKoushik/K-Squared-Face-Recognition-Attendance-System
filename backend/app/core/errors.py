@@ -1,5 +1,5 @@
 """
-FRS V7.1 K² — Error Taxonomy & Custom Exceptions.
+K² FRS — Error Taxonomy & Custom Exceptions.
 Provides uniform reason codes and deterministic HTTP exception mappings.
 """
 

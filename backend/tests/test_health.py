@@ -1,5 +1,5 @@
 """
-FRS V7.1 K² — Liveness & Readiness Route Handler Tests.
+K² FRS — Liveness & Readiness Route Handler Tests.
 """
 
 from sqlalchemy.orm import Session

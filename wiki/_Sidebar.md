@@ -1,4 +1,4 @@
-### FRS V7.1 K² Wiki
+### K² FRS Wiki
 
 * **[Wiki Home](Home)**
 * **[System Architecture](System-Architecture)**
@@ -12,7 +12,7 @@
 ---
 
 **Documentation Standards**
-* Version: V7.1 Canonical
+* Version: Canonical Release
 * Target: KUCET Engineering
 * License: Apache 2.0
 

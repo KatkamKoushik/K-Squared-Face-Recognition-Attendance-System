@@ -1,4 +1,4 @@
-# FRS V7.1 K² — Exhaustive CI/CD Workflow Testing Audit
+# K² FRS — Exhaustive CI/CD Workflow Testing Audit
 *Comprehensive Verification against the Exhaustive CI Workflow Testing Checklist for GitHub Actions*
 *Authoritative CI/CD Pipeline for Kakatiya University College of Engineering and Technology (KUCET)*
 
@@ -6,7 +6,7 @@
 
 ## Executive Pipeline Topography
 
-The FRS V7.1 K² automation architecture organizes automated checks across three structured tiers:
+The K² FRS automation architecture organizes automated checks across three structured tiers:
 
 ```mermaid
 flowchart TD
@@ -54,7 +54,7 @@ flowchart TD
 ### 3. Repository Hygiene and Change Validation
 - [x] **Merge Conflict Marker Sweep:** Step in `contracts-and-hygiene` checks for unresolved `<<<<<<< ` markers.
 - [x] **JSON/YAML Validation:** Validates `packages/contracts/openapi.json` syntax in CI.
-- [x] **Exclusion Compliance:** `docs/FRS_V7_1_K2_Master_Project_Handbook_85_Prompt_Shot_Plan.md` and `.env` excluded via `.gitignore`.
+- [x] **Exclusion Compliance:** `docs/FRS_K2_K2_Master_Project_Handbook_85_Prompt_Shot_Plan.md` and `.env` excluded via `.gitignore`.
 
 ### 4. Formatting, Linting, and Static Quality
 - [x] **Dart / Flutter Linter:** `flutter analyze` runs against `apps/teacher_mobile/analysis_options.yaml` (0 issues).

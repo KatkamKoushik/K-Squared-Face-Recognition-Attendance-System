@@ -1,5 +1,5 @@
 """
-FRS V7.1 K² — Session & Roster Snapshot DTO Schemas.
+K² FRS — Session & Roster Snapshot DTO Schemas.
 """
 
 from datetime import date, datetime

@@ -1,4 +1,4 @@
-# Accessibility Statement for FRS V7.1 K²
+# Accessibility Statement for K² FRS
 
 **Kakatiya University College of Engineering & Technology (KUCET)**  
 *Classroom Photo Attendance Proposal System*
@@ -9,7 +9,7 @@
 
 Kakatiya University College of Engineering & Technology (KUCET) is committed to ensuring digital accessibility for all students, faculty members, and administrative staff, including individuals with disabilities. We continually improve the user experience for everyone and apply the relevant accessibility standards to our institutional applications.
 
-This accessibility statement applies to the complete **FRS V7.1 K²** platform:
+This accessibility statement applies to the complete **K² FRS** platform:
 - **Teacher Mobile Application** (Flutter 3.27 / Dart 3.6+ for Android)
 - **Admin Web Console** (Next.js 15.5 / React 19)
 - **Technical Documentation & Public Interfaces**
@@ -18,7 +18,7 @@ This accessibility statement applies to the complete **FRS V7.1 K²** platform:
 
 ## 2. Conformance Status & Standards
 
-The **FRS V7.1 K²** platform is designed and tested to conform to the **Web Content Accessibility Guidelines (WCAG) 2.1 Level AA** standards.
+The **K² FRS** platform is designed and tested to conform to the **Web Content Accessibility Guidelines (WCAG) 2.1 Level AA** standards.
 
 ### Core Architectural Accessibility Measures
 
@@ -46,7 +46,7 @@ The **FRS V7.1 K²** platform is designed and tested to conform to the **Web Con
 
 ## 3. Supported Assistive Technologies & Environments
 
-The FRS V7.1 K² platform is engineered and verified for compatibility with:
+The K² FRS platform is engineered and verified for compatibility with:
 
 | Client Tier | Supported Environments | Compatible Assistive Technologies |
 | :--- | :--- | :--- |
@@ -73,7 +73,7 @@ While we strive for comprehensive accessibility, certain features present inhere
 
 ## 6. Feedback & Reporting Barriers
 
-We welcome feedback on the accessibility of the FRS V7.1 K² platform. If you encounter accessibility barriers or have suggestions for improvement, please contact our engineering team:
+We welcome feedback on the accessibility of the K² FRS platform. If you encounter accessibility barriers or have suggestions for improvement, please contact our engineering team:
 
 - **Institutional Contact:** KUCET Academic Accessibility Office
 - **Technical Maintainer:** Katkam Koushik

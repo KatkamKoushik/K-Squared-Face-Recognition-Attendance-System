@@ -1,15 +1,15 @@
-# FRS V7.1 K² — Forensic Repository Audit & Baseline Freeze (CLI-01 / Shot 41)
+# K² FRS — Forensic Repository Audit & Baseline Freeze (CLI-01 / Shot 41)
 
 **Audit Date:** 2026-11-01  
 **Target Environment:** Backend Developer Baseline  
-**Canonical Blueprint:** `FRS_V7_1_K2_Master_Project_Handbook_85_Prompt_Shot_Plan.md` (Prepared 27 October 2026)  
+**Canonical Blueprint:** `FRS_K2_K2_Master_Project_Handbook_85_Prompt_Shot_Plan.md` (Prepared 27 October 2026)  
 **Status:** BASELINE AUDIT COMPLETE — IMPLEMENTATION COMMENCING  
 
 ---
 
 ## 1. Executive Summary
 
-A comprehensive forensic audit of workspace `D:\k^2` was conducted on 2026-11-01. The workspace contains the canonical 210 KB master blueprint document (`FRS_V7_1_K2_Master_Project_Handbook_85_Prompt_Shot_Plan.md`). No pre-existing legacy backend implementation, database schemas, or broken code exist in the workspace.
+A comprehensive forensic audit of workspace `D:\k^2` was conducted on 2026-11-01. The workspace contains the canonical 210 KB master blueprint document (`FRS_K2_K2_Master_Project_Handbook_85_Prompt_Shot_Plan.md`). No pre-existing legacy backend implementation, database schemas, or broken code exist in the workspace.
 
 As specified by the project owner:
 1. **Role:** Dedicated Backend Developer.
@@ -33,7 +33,7 @@ As specified by the project owner:
 
 ## 3. Gap Register & Architectural Baseline Comparison
 
-| Area | V7.1 Blueprint Invariant | Current Repository State | Resolution Plan (CLI Shots) |
+| Area | Master Specification Invariant | Current Repository State | Resolution Plan (CLI Shots) |
 | :--- | :--- | :--- | :--- |
 | **Repository Layout** | Modular backend control plane + worker boundary | Fresh workspace | CLI-02: Establish clean multi-folder structure (`backend/`, `docs/`) |
 | **Control Plane** | FastAPI async application with health probes | Not yet created | CLI-03: Bootstrap FastAPI application factory |

@@ -1,5 +1,5 @@
 """
-FRS V7.1 K² — Academic Schema & Resource Authorization Tests.
+K² FRS — Academic Schema & Resource Authorization Tests.
 """
 
 from datetime import date, timedelta

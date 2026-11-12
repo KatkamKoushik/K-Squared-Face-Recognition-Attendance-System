@@ -1,5 +1,5 @@
 """
-FRS V7.1 K² — Vision Evidence State Machine & Fail-Safe Invariant Tests.
+K² FRS — Vision Evidence State Machine & Fail-Safe Invariant Tests.
 Proves that pipeline uncertainty, low quality, and unknown faces NEVER become absences.
 """
 

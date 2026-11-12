@@ -1,6 +1,6 @@
 # Data Model & State Machine Specifications
 
-The FRS V7.1 K² persistence tier is built on PostgreSQL 16 using strict relational normalization, immutable historical tables, and transactional locking to preserve academic integrity.
+The K² FRS persistence tier is built on PostgreSQL 16 using strict relational normalization, immutable historical tables, and transactional locking to preserve academic integrity.
 
 ---
 
