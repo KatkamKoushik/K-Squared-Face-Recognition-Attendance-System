@@ -187,7 +187,7 @@ def seed_kucet_institutional_data(db: Session) -> Dict[str, Any]:
             "email": "principal.kucet@gmail.com",
             "dept": "CSE",
             "role": UserRole.SUPER_ADMIN,
-            "pw": "KucetAdmin@2026",
+            "pw": "KucetFaculty@2026",
         },
         {
             "emp_id": "KUCET-FAC-CSE-001",
