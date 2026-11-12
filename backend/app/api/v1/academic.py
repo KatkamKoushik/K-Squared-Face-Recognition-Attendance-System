@@ -12,16 +12,22 @@ from app.domain.enums import UserRole
 from app.domain.models.academic import User
 from app.schemas.academic import (
     DepartmentCreate,
+    DepartmentUpdate,
     DepartmentResponse,
     CohortCreate,
+    CohortUpdate,
     CohortResponse,
     AcademicYearCreate,
+    AcademicYearUpdate,
     AcademicYearResponse,
     TermCreate,
+    TermUpdate,
     TermResponse,
     SubjectCreate,
+    SubjectUpdate,
     SubjectResponse,
     SubjectOfferingCreate,
+    SubjectOfferingUpdate,
     SubjectOfferingResponse,
     AuthorizedClassGroupCreate,
     AuthorizedClassGroupResponse,
@@ -29,6 +35,9 @@ from app.schemas.academic import (
     FacultyAssignmentResponse,
     StudentCreate,
     StudentResponse,
+    StudentLifecycleUpdate,
+    CohortRolloverRequest,
+    CohortRolloverResponse,
     EnrollmentCreate,
     EnrollmentResponse,
 )
@@ -384,5 +393,114 @@ async def import_students_csv(
         data={"imported_count": imported, "skipped_count": skipped, "errors": errors},
         correlation_id=correlation_id,
     )
+
+
+@router.put("/departments/{department_id}", response_model=ResponseEnvelope[DepartmentResponse])
+def update_department(
+    department_id: str,
+    data: DepartmentUpdate,
+    db: Session = Depends(get_db),
+    admin_user=Depends(require_roles([UserRole.SUPER_ADMIN])),
+    correlation_id: str = Depends(get_correlation_id),
+):
+    dept = AcademicService.update_department(db, department_id, data)
+    return ResponseEnvelope(data=DepartmentResponse.model_validate(dept), correlation_id=correlation_id)
+
+
+@router.put("/cohorts/{cohort_id}", response_model=ResponseEnvelope[CohortResponse])
+def update_cohort(
+    cohort_id: str,
+    data: CohortUpdate,
+    db: Session = Depends(get_db),
+    admin_user=Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
+    correlation_id: str = Depends(get_correlation_id),
+):
+    cohort = AcademicService.update_cohort(db, cohort_id, data, user=admin_user)
+    return ResponseEnvelope(data=CohortResponse.model_validate(cohort), correlation_id=correlation_id)
+
+
+@router.put("/academic-years/{academic_year_id}", response_model=ResponseEnvelope[AcademicYearResponse])
+def update_academic_year(
+    academic_year_id: str,
+    data: AcademicYearUpdate,
+    db: Session = Depends(get_db),
+    admin_user=Depends(require_roles([UserRole.SUPER_ADMIN])),
+    correlation_id: str = Depends(get_correlation_id),
+):
+    ay = AcademicService.update_academic_year(db, academic_year_id, data)
+    return ResponseEnvelope(data=AcademicYearResponse.model_validate(ay), correlation_id=correlation_id)
+
+
+@router.put("/terms/{term_id}", response_model=ResponseEnvelope[TermResponse])
+def update_term(
+    term_id: str,
+    data: TermUpdate,
+    db: Session = Depends(get_db),
+    admin_user=Depends(require_roles([UserRole.SUPER_ADMIN])),
+    correlation_id: str = Depends(get_correlation_id),
+):
+    term = AcademicService.update_term(db, term_id, data)
+    return ResponseEnvelope(data=TermResponse.model_validate(term), correlation_id=correlation_id)
+
+
+@router.put("/subjects/{subject_id}", response_model=ResponseEnvelope[SubjectResponse])
+def update_subject(
+    subject_id: str,
+    data: SubjectUpdate,
+    db: Session = Depends(get_db),
+    admin_user=Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
+    correlation_id: str = Depends(get_correlation_id),
+):
+    subject = AcademicService.update_subject(db, subject_id, data, user=admin_user)
+    return ResponseEnvelope(data=SubjectResponse.model_validate(subject), correlation_id=correlation_id)
+
+
+@router.put("/offerings/{offering_id}", response_model=ResponseEnvelope[SubjectOfferingResponse])
+def update_offering(
+    offering_id: str,
+    data: SubjectOfferingUpdate,
+    db: Session = Depends(get_db),
+    admin_user=Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
+    correlation_id: str = Depends(get_correlation_id),
+):
+    offering = AcademicService.update_offering(db, offering_id, data, user=admin_user)
+    return ResponseEnvelope(data=SubjectOfferingResponse.model_validate(offering), correlation_id=correlation_id)
+
+
+@router.patch("/students/{student_id}/lifecycle", response_model=ResponseEnvelope[StudentResponse])
+def update_student_lifecycle(
+    student_id: str,
+    data: StudentLifecycleUpdate,
+    db: Session = Depends(get_db),
+    admin_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
+    correlation_id: str = Depends(get_correlation_id),
+):
+    student = AcademicService.update_student_lifecycle(
+        db=db,
+        student_id=student_id,
+        status=data.status,
+        reason=data.reason,
+        user=admin_user,
+        correlation_id=correlation_id,
+    )
+    return ResponseEnvelope(data=StudentResponse.model_validate(student), correlation_id=correlation_id)
+
+
+@router.post("/cohorts/rollover", response_model=ResponseEnvelope[CohortRolloverResponse], status_code=status.HTTP_200_OK)
+def rollover_cohort(
+    data: CohortRolloverRequest,
+    db: Session = Depends(get_db),
+    admin_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
+    correlation_id: str = Depends(get_correlation_id),
+):
+    result = AcademicService.rollover_cohort(
+        db=db,
+        from_cohort_id=data.from_cohort_id,
+        to_cohort_id=data.to_cohort_id,
+        reason=data.reason,
+        user=admin_user,
+        correlation_id=correlation_id,
+    )
+    return ResponseEnvelope(data=CohortRolloverResponse(**result), correlation_id=correlation_id)
 
 

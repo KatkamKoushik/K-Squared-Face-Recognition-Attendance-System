@@ -2,12 +2,12 @@
 FRS V7.1 K² — Academic Administration & Eligibility Service.
 """
 
-from datetime import date
+from datetime import date, datetime, timezone
 from typing import List, Optional
 from sqlalchemy import select, and_
 from sqlalchemy.orm import Session
 from app.core.errors import PermissionDeniedError, ResourceNotFoundError
-from app.domain.enums import EnrollmentStatus, UserRole
+from app.domain.enums import EnrollmentStatus, UserRole, StudentLifecycleStatus, AuditAction
 from app.domain.models.academic import (
     User,
     Department,
@@ -22,16 +22,26 @@ from app.domain.models.academic import (
     FacultyAssignment,
 )
 from app.domain.models.student import Student, Enrollment
+from app.domain.models.audit import AuditEvent
 from app.schemas.academic import (
     DepartmentCreate,
+    DepartmentUpdate,
     CohortCreate,
+    CohortUpdate,
     AcademicYearCreate,
+    AcademicYearUpdate,
     TermCreate,
+    TermUpdate,
     SubjectCreate,
+    SubjectUpdate,
     SubjectOfferingCreate,
+    SubjectOfferingUpdate,
     AuthorizedClassGroupCreate,
     FacultyAssignmentCreate,
     StudentCreate,
+    StudentLifecycleUpdate,
+    CohortRolloverRequest,
+    CohortRolloverResponse,
     EnrollmentCreate,
 )
 
@@ -412,3 +422,202 @@ class AcademicService:
         db.add(enrollment)
         db.flush()
         return enrollment
+
+    @staticmethod
+    def update_department(db: Session, dept_id: str, data: DepartmentUpdate) -> Department:
+        dept = db.get(Department, dept_id)
+        if not dept:
+            raise ResourceNotFoundError(resource="Department", identifier=dept_id)
+        if data.name is not None:
+            dept.name = data.name
+        if data.is_active is not None:
+            dept.is_active = data.is_active
+        db.flush()
+        return dept
+
+    @staticmethod
+    def update_cohort(db: Session, cohort_id: str, data: CohortUpdate, user: Optional[User] = None) -> Cohort:
+        cohort = db.get(Cohort, cohort_id)
+        if not cohort:
+            raise ResourceNotFoundError(resource="Cohort", identifier=cohort_id)
+        if user and user.role == UserRole.ADMIN:
+            if not user.department_id or cohort.department_id != user.department_id:
+                raise PermissionDeniedError(
+                    message="Access denied: Department administrator cannot update cohorts in another department.",
+                    reason_code="DEPARTMENT_ACCESS_RESTRICTED",
+                )
+        if data.name is not None:
+            cohort.name = data.name
+        if data.admission_year is not None:
+            cohort.admission_year = data.admission_year
+        if data.graduation_year is not None:
+            cohort.graduation_year = data.graduation_year
+        if data.is_active is not None:
+            cohort.is_active = data.is_active
+        db.flush()
+        return cohort
+
+    @staticmethod
+    def update_academic_year(db: Session, year_id: str, data: AcademicYearUpdate) -> AcademicYear:
+        ay = db.get(AcademicYear, year_id)
+        if not ay:
+            raise ResourceNotFoundError(resource="AcademicYear", identifier=year_id)
+        if data.year_code is not None:
+            ay.year_code = data.year_code
+        if data.start_date is not None:
+            ay.start_date = data.start_date
+        if data.end_date is not None:
+            ay.end_date = data.end_date
+        if data.is_current is not None:
+            ay.is_current = data.is_current
+        db.flush()
+        return ay
+
+    @staticmethod
+    def update_term(db: Session, term_id: str, data: TermUpdate) -> Term:
+        term = db.get(Term, term_id)
+        if not term:
+            raise ResourceNotFoundError(resource="Term", identifier=term_id)
+        if data.term_type is not None:
+            term.term_type = data.term_type
+        if data.start_date is not None:
+            term.start_date = data.start_date
+        if data.end_date is not None:
+            term.end_date = data.end_date
+        if data.is_active is not None:
+            term.is_active = data.is_active
+        db.flush()
+        return term
+
+    @staticmethod
+    def update_subject(db: Session, subject_id: str, data: SubjectUpdate, user: Optional[User] = None) -> Subject:
+        subject = db.get(Subject, subject_id)
+        if not subject:
+            raise ResourceNotFoundError(resource="Subject", identifier=subject_id)
+        if user and user.role == UserRole.ADMIN:
+            if not user.department_id or subject.department_id != user.department_id:
+                raise PermissionDeniedError(
+                    message="Access denied: Department administrator cannot update subjects in another department.",
+                    reason_code="DEPARTMENT_ACCESS_RESTRICTED",
+                )
+        if data.code is not None:
+            subject.code = data.code.upper()
+        if data.name is not None:
+            subject.name = data.name
+        if data.credits is not None:
+            subject.credits = data.credits
+        db.flush()
+        return subject
+
+    @staticmethod
+    def update_offering(db: Session, offering_id: str, data: SubjectOfferingUpdate, user: Optional[User] = None) -> SubjectOffering:
+        offering = db.get(SubjectOffering, offering_id)
+        if not offering:
+            raise ResourceNotFoundError(resource="SubjectOffering", identifier=offering_id)
+        if user and user.role == UserRole.ADMIN:
+            subject = db.get(Subject, offering.subject_id)
+            if not subject or not user.department_id or subject.department_id != user.department_id:
+                raise PermissionDeniedError(
+                    message="Access denied: Department administrator cannot update offerings in another department.",
+                    reason_code="DEPARTMENT_ACCESS_RESTRICTED",
+                )
+        if data.section is not None:
+            offering.section = data.section
+        if data.is_active is not None:
+            offering.is_active = data.is_active
+        db.flush()
+        return offering
+
+    @staticmethod
+    def update_student_lifecycle(
+        db: Session,
+        student_id: str,
+        status: StudentLifecycleStatus,
+        reason: str,
+        user: User,
+        correlation_id: str,
+    ) -> Student:
+        student = db.get(Student, student_id)
+        if not student:
+            raise ResourceNotFoundError(resource="Student", identifier=student_id)
+        cohort = db.get(Cohort, student.cohort_id)
+        if user.role == UserRole.ADMIN:
+            if not user.department_id or not cohort or cohort.department_id != user.department_id:
+                raise PermissionDeniedError(
+                    message="Access denied: Department administrator cannot update student lifecycle in another department.",
+                    reason_code="DEPARTMENT_ACCESS_RESTRICTED",
+                )
+        prev_status = student.lifecycle_status.value if hasattr(student.lifecycle_status, "value") else str(student.lifecycle_status)
+        new_status = status.value if hasattr(status, "value") else str(status)
+
+        student.lifecycle_status = status
+        student.is_active = (status == StudentLifecycleStatus.ACTIVE)
+
+        audit = AuditEvent(
+            session_id=None,
+            actor_id=user.id,
+            action=AuditAction.STUDENT_LIFECYCLE_UPDATED,
+            reason=reason,
+            before_state={"student_id": student.id, "roll_number": student.roll_number, "lifecycle_status": prev_status},
+            after_state={"student_id": student.id, "roll_number": student.roll_number, "lifecycle_status": new_status},
+            correlation_id=correlation_id,
+        )
+        db.add(audit)
+        db.flush()
+        return student
+
+    @staticmethod
+    def rollover_cohort(
+        db: Session,
+        from_cohort_id: str,
+        to_cohort_id: str,
+        reason: str,
+        user: User,
+        correlation_id: str,
+    ) -> dict:
+        from_cohort = db.get(Cohort, from_cohort_id)
+        if not from_cohort:
+            raise ResourceNotFoundError(resource="Cohort", identifier=from_cohort_id)
+        to_cohort = db.get(Cohort, to_cohort_id)
+        if not to_cohort:
+            raise ResourceNotFoundError(resource="Cohort", identifier=to_cohort_id)
+
+        if user.role == UserRole.ADMIN:
+            if (
+                not user.department_id
+                or from_cohort.department_id != user.department_id
+                or to_cohort.department_id != user.department_id
+            ):
+                raise PermissionDeniedError(
+                    message="Access denied: Department administrator cannot perform rollover across department boundaries.",
+                    reason_code="DEPARTMENT_ACCESS_RESTRICTED",
+                )
+
+        students_stmt = select(Student).where(
+            and_(
+                Student.cohort_id == from_cohort_id,
+                Student.lifecycle_status == StudentLifecycleStatus.ACTIVE,
+            )
+        )
+        students = list(db.execute(students_stmt).scalars().all())
+
+        for s in students:
+            s.cohort_id = to_cohort_id
+
+        audit = AuditEvent(
+            session_id=None,
+            actor_id=user.id,
+            action=AuditAction.COHORT_ROLLOVER_EXECUTED,
+            reason=reason,
+            before_state={"from_cohort_id": from_cohort_id, "student_count": len(students)},
+            after_state={"to_cohort_id": to_cohort_id, "promoted_count": len(students)},
+            correlation_id=correlation_id,
+        )
+        db.add(audit)
+        db.flush()
+        return {
+            "from_cohort_id": from_cohort_id,
+            "to_cohort_id": to_cohort_id,
+            "promoted_count": len(students),
+            "timestamp": datetime.now(timezone.utc),
+        }

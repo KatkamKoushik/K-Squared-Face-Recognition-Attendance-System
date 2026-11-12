@@ -244,6 +244,7 @@ def test_all_domain_models_registered_in_base_metadata():
         "policy_versions",
         "roster_snapshots",
         "snapshot_student_items",
+        "student_data_corrections",
         "students",
         "subject_offerings",
         "subjects",

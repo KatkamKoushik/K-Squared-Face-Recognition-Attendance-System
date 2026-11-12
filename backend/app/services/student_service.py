@@ -12,10 +12,10 @@ from sqlalchemy.orm import Session, selectinload
 from app.core.errors import ResourceNotFoundError, PermissionDeniedError, BusinessRuleViolationError
 from app.domain.enums import UserRole, AttendanceStatus, AppealStatus, SessionState, AuditAction
 from app.domain.models.academic import User, SubjectOffering, Subject, Cohort, Faculty
-from app.domain.models.student import Student, Enrollment
+from app.domain.models.student import Student, Enrollment, StudentDataCorrection
 from app.domain.models.session import AttendanceSession, AttendanceUnit
 from app.domain.models.attendance import AttendanceRecord, AttendanceAppeal
-from app.domain.models.audit import AuditEvent
+from app.domain.models.audit import AuditEvent, CommitReceipt
 from app.schemas.attendance import AttendanceAppealCreate
 
 
@@ -165,6 +165,15 @@ class StudentService:
             .order_by(AttendanceSession.session_date.desc())
         ).scalars().all()
 
+        session_ids = [s.id for s in sessions]
+        receipts_map = {}
+        if session_ids:
+            receipts = db.execute(
+                select(CommitReceipt).where(CommitReceipt.session_id.in_(session_ids))
+            ).scalars().all()
+            for r in receipts:
+                receipts_map[r.session_id] = r.receipt_hash
+
         ledger_sessions = []
         for s in sessions:
             student_records = {
@@ -186,6 +195,7 @@ class StudentService:
             ledger_sessions.append({
                 "session_id": s.id,
                 "session_date": s.session_date.isoformat(),
+                "receipt_hash": receipts_map.get(s.id),
                 "units": units_data,
             })
 
@@ -354,3 +364,119 @@ class StudentService:
         db.commit()
         db.refresh(appeal)
         return appeal
+
+    @staticmethod
+    def submit_data_correction(
+        db: Session,
+        student: Student,
+        field_name: str,
+        requested_value: str,
+        reason: str,
+        correlation_id: str,
+    ) -> StudentDataCorrection:
+        """Submits a formal student profile correction request."""
+        current_val = None
+        if hasattr(student, field_name):
+            val = getattr(student, field_name)
+            current_val = str(val) if val is not None else None
+
+        correction = StudentDataCorrection(
+            student_id=student.id,
+            field_name=field_name,
+            requested_value=requested_value,
+            current_value=current_val,
+            reason=reason,
+            status="PENDING",
+        )
+        db.add(correction)
+        db.flush()
+
+        audit = AuditEvent(
+            session_id=None,
+            actor_id=student.id,
+            action=AuditAction.CORRECTION_REQUESTED,
+            reason=f"Student requested data correction for {field_name}: {reason[:100]}",
+            before_state={"field_name": field_name, "current_value": current_val},
+            after_state={"correction_id": correction.id, "requested_value": requested_value, "status": "PENDING"},
+            correlation_id=correlation_id,
+        )
+        db.add(audit)
+        db.commit()
+        db.refresh(correction)
+        return correction
+
+    @staticmethod
+    def list_student_corrections(db: Session, student: Student) -> List[StudentDataCorrection]:
+        """Lists all data correction requests submitted by the student."""
+        result = db.execute(
+            select(StudentDataCorrection)
+            .where(StudentDataCorrection.student_id == student.id)
+            .order_by(StudentDataCorrection.created_at.desc())
+        )
+        return list(result.scalars().all())
+
+    @staticmethod
+    def list_all_corrections(
+        db: Session,
+        status: Optional[str] = None,
+        limit: int = 100,
+        user: Optional[User] = None,
+    ) -> List[StudentDataCorrection]:
+        """Administrative method: lists student data correction requests, department-scoped for department admins."""
+        stmt = select(StudentDataCorrection).order_by(StudentDataCorrection.created_at.desc()).limit(limit)
+        if status:
+            stmt = stmt.where(StudentDataCorrection.status == status)
+        if user and user.role == UserRole.ADMIN and user.department_id:
+            stmt = (
+                stmt.join(Student, StudentDataCorrection.student_id == Student.id)
+                .join(Cohort, Student.cohort_id == Cohort.id)
+                .where(Cohort.department_id == user.department_id)
+            )
+        result = db.execute(stmt)
+        return list(result.scalars().all())
+
+    @staticmethod
+    def review_data_correction(
+        db: Session,
+        request_id: str,
+        reviewer: User,
+        approved: bool,
+        review_notes: str,
+        correlation_id: str,
+    ) -> StudentDataCorrection:
+        """Administrative method: reviews and decides a student data correction request."""
+        correction = db.get(StudentDataCorrection, request_id)
+        if not correction:
+            raise ResourceNotFoundError(resource="StudentDataCorrection", identifier=request_id)
+
+        student = db.get(Student, correction.student_id)
+        if reviewer.role == UserRole.ADMIN and reviewer.department_id:
+            if student and student.cohort and student.cohort.department_id != reviewer.department_id:
+                raise PermissionDeniedError(
+                    message="Access denied: Department administrator cannot review data corrections for another department.",
+                    reason_code="DEPARTMENT_ACCESS_RESTRICTED",
+                )
+
+        prev_status = correction.status
+        correction.status = "APPROVED" if approved else "REJECTED"
+        correction.review_notes = review_notes
+        correction.reviewed_by_user_id = reviewer.id
+        correction.reviewed_at = utc_now()
+
+        if approved and student:
+            if correction.field_name in ("full_name", "institutional_email") and hasattr(student, correction.field_name):
+                setattr(student, correction.field_name, correction.requested_value)
+
+        audit = AuditEvent(
+            session_id=None,
+            actor_id=reviewer.id,
+            action=AuditAction.CORRECTION_PROCESSED,
+            reason=f"Data correction {request_id} decision: {correction.status}",
+            before_state={"correction_status": prev_status},
+            after_state={"correction_status": correction.status, "approved": approved, "review_notes": review_notes},
+            correlation_id=correlation_id,
+        )
+        db.add(audit)
+        db.commit()
+        db.refresh(correction)
+        return correction
