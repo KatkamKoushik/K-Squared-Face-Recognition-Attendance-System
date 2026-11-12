@@ -85,16 +85,12 @@ class VisionWorker:
         pad_mandatory = policy.pad_mandatory if policy else True
         pad_thresh = policy.pad_threshold if policy else 0.85
 
-        # Fetch enrolled profile vectors for eligible students (BIO-01: matching dimension & approved namespace/model)
-        allowed_namespaces = {self.recognizer.namespace, "sface_128d_v1", "kucet_sface_128d_v7_1"}
+        # Fetch enrolled profile vectors for eligible students (BIO-01: strict namespace & dimension invariant)
         profiles_stmt = select(EnrollmentProfile).where(
             EnrollmentProfile.student_id.in_(eligible_student_ids),
             EnrollmentProfile.is_active == True,
-            EnrollmentProfile.embedding_dimension == 128,
-            (
-                EnrollmentProfile.embedding_namespace.in_(allowed_namespaces)
-                | (EnrollmentProfile.model_artifact_id == self.recognizer.model_hash)
-            ),
+            EnrollmentProfile.embedding_dimension == self.recognizer.embedding_dim,
+            EnrollmentProfile.embedding_namespace == self.recognizer.namespace,
         )
         profiles = list(db.execute(profiles_stmt).scalars().all())
         roster_gallery: Dict[str, List[float]] = {p.student_id: p.vector_data for p in profiles}

@@ -217,8 +217,8 @@ def test_offering_analytics_authorization(db_session: Session, seed_data):
     token_b = create_access_token(subject=str(user_b.id), role="FACULTY")
     headers_b = {"Authorization": f"Bearer {token_b}"}
 
-    # Admin
-    admin_user = User(email="admin_analytics@kucet.ac.in", hashed_password="pw", role="ADMIN")
+    # Admin (scoped to offering's department)
+    admin_user = User(email="admin_analytics@kucet.ac.in", hashed_password="pw", role="ADMIN", department_id=seed_data["department"].id)
     db_session.add(admin_user)
     db_session.flush()
     token_admin = create_access_token(subject=str(admin_user.id), role="ADMIN")

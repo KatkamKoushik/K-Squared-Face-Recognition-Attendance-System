@@ -34,6 +34,7 @@ class User(Base):
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
     role: Mapped[UserRole] = mapped_column(String(20), default=UserRole.FACULTY, nullable=False)
     department_id: Mapped[Optional[str]] = mapped_column(String(36), ForeignKey("departments.id"), nullable=True)
+    student_id: Mapped[Optional[str]] = mapped_column(String(36), ForeignKey("students.id", ondelete="SET NULL"), nullable=True, index=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     token_version: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
@@ -41,6 +42,7 @@ class User(Base):
 
     department: Mapped[Optional["Department"]] = relationship("Department")
     faculty_profile: Mapped[Optional["Faculty"]] = relationship("Faculty", back_populates="user", uselist=False)
+    student_profile = relationship("Student", foreign_keys=[student_id])
 
 
 class Department(Base):

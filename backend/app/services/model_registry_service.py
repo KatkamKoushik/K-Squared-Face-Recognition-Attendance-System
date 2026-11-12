@@ -215,7 +215,7 @@ class ModelRegistryService:
                 match_cosine_threshold=0.363,
                 margin_threshold=0.10,
                 min_face_size_pixels=32,
-                pad_mandatory=False,
+                pad_mandatory=True,
                 pad_threshold=0.85,
                 is_active=True,
             )

@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_correlation_id, get_optional_current_user
 from app.core.database import get_db
+from app.core.errors import PermissionDeniedError
 from app.domain.enums import UserRole
 from app.domain.models.academic import User
 from app.schemas.common import ResponseEnvelope
@@ -44,6 +45,15 @@ def list_demo_students(
             UserRole.FACULTY,
         )
     )
+    if current_user and current_user.role in (UserRole.ADMIN, UserRole.SUB_ADMIN, UserRole.FACULTY):
+        if current_user.department:
+            if department_code and department_code.strip().upper() not in (current_user.department.code.upper(), "ALL", ""):
+                raise PermissionDeniedError(
+                    message=f"Access denied: Department user is isolated to department '{current_user.department.code}'.",
+                    reason_code="DEPARTMENT_ACCESS_RESTRICTED",
+                )
+            department_code = current_user.department.code
+
     students = DemoService.list_enrolled_demo_students(
         db, department_code=department_code, is_authorized=is_authorized
     )
@@ -89,6 +99,15 @@ async def analyze_demo_image(
                 UserRole.FACULTY,
             )
         )
+        if current_user and current_user.role in (UserRole.ADMIN, UserRole.SUB_ADMIN, UserRole.FACULTY):
+            if current_user.department:
+                if department_code and department_code.strip().upper() not in (current_user.department.code.upper(), "ALL", ""):
+                    raise PermissionDeniedError(
+                        message=f"Access denied: Department user is isolated to department '{current_user.department.code}'.",
+                        reason_code="DEPARTMENT_ACCESS_RESTRICTED",
+                    )
+                department_code = current_user.department.code
+
         result = DemoService.analyze_demo_photo(
             db=db,
             image_bytes=file_bytes,

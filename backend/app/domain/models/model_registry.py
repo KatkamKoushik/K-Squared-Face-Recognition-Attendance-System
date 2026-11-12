@@ -67,7 +67,7 @@ class PolicyVersion(Base):
     min_face_size_pixels: Mapped[int] = mapped_column(Integer, default=32, nullable=False)
 
     # Conditional independent PAD gate
-    pad_mandatory: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    pad_mandatory: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     pad_threshold: Mapped[float] = mapped_column(Float, default=0.85, nullable=False)
 
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)

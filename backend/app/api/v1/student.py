@@ -80,7 +80,7 @@ class DataCorrectionReviewRequest(BaseModel):
 @router.get("/me", response_model=ResponseEnvelope[StudentProfileResponse])
 def get_my_profile(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_roles([UserRole.STUDENT])),
     correlation_id: str = Depends(get_correlation_id),
 ):
     """Retrieves authoritative student profile for currently logged in student."""
@@ -101,7 +101,7 @@ def get_my_profile(
 @router.get("/me/attendance", response_model=ResponseEnvelope[List[StudentAttendanceSummaryItem]])
 def get_my_attendance_summary(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_roles([UserRole.STUDENT])),
     correlation_id: str = Depends(get_correlation_id),
 ):
     """Calculates official attendance summary across all enrolled subjects for current student."""
@@ -115,7 +115,7 @@ def get_my_attendance_summary(
 def get_my_offering_ledger(
     offering_id: str,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_roles([UserRole.STUDENT])),
     correlation_id: str = Depends(get_correlation_id),
 ):
     """Granular unit-level attendance history for a single enrolled subject."""
@@ -128,7 +128,7 @@ def get_my_offering_ledger(
 def submit_my_appeal(
     data: AttendanceAppealCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_roles([UserRole.STUDENT])),
     correlation_id: str = Depends(get_correlation_id),
 ):
     """Submits a formal student attendance appeal for an absent session unit."""
@@ -140,7 +140,7 @@ def submit_my_appeal(
 @router.get("/me/appeals", response_model=ResponseEnvelope[List[AttendanceAppealResponse]])
 def list_my_appeals(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_roles([UserRole.STUDENT])),
     correlation_id: str = Depends(get_correlation_id),
 ):
     """Lists all appeals and review outcomes for the logged-in student."""
@@ -188,7 +188,7 @@ def review_appeal_admin(
 def submit_my_data_correction(
     data: StudentDataCorrectionCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_roles([UserRole.STUDENT])),
     correlation_id: str = Depends(get_correlation_id),
 ):
     """Submits a formal student profile correction request."""
@@ -207,7 +207,7 @@ def submit_my_data_correction(
 @router.get("/me/data-correction-requests", response_model=ResponseEnvelope[List[StudentDataCorrectionResponse]])
 def list_my_data_corrections(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_roles([UserRole.STUDENT])),
     correlation_id: str = Depends(get_correlation_id),
 ):
     """Lists all profile correction requests submitted by the current student."""

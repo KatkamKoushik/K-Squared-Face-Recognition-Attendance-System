@@ -113,7 +113,9 @@ def verify_firebase_id_token(token: str) -> Dict[str, Any]:
             "sub": decoded.get("uid"),
             "user_id": decoded.get("uid"),
             "email": decoded.get("email"),
+            "email_verified": decoded.get("email_verified", False),
             "role": decoded.get("role"),
+            "token_type": "firebase_id_token",
             "firebase": decoded,
         }
     except Exception as e:
