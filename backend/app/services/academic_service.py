@@ -52,7 +52,7 @@ class AcademicService:
 
     @staticmethod
     def create_cohort(db: Session, data: CohortCreate, user: Optional[User] = None) -> Cohort:
-        if user and user.role in (UserRole.ADMIN, UserRole.SUB_ADMIN):
+        if user and user.role == UserRole.ADMIN:
             if not user.department_id:
                 raise PermissionDeniedError(
                     message="Access denied: Department administrator has no assigned department.",
@@ -71,7 +71,7 @@ class AcademicService:
     @staticmethod
     def get_cohorts(db: Session, department_id: Optional[str] = None, user: Optional[User] = None) -> List[Cohort]:
         stmt = select(Cohort).order_by(Cohort.name)
-        if user and user.role in (UserRole.ADMIN, UserRole.SUB_ADMIN):
+        if user and user.role == UserRole.ADMIN:
             if not user.department_id:
                 raise PermissionDeniedError(
                     message="Access denied: Department administrator has no assigned department.",
@@ -114,7 +114,7 @@ class AcademicService:
 
     @staticmethod
     def create_subject(db: Session, data: SubjectCreate, user: Optional[User] = None) -> Subject:
-        if user and user.role in (UserRole.ADMIN, UserRole.SUB_ADMIN):
+        if user and user.role == UserRole.ADMIN:
             if not user.department_id:
                 raise PermissionDeniedError(
                     message="Access denied: Department administrator has no assigned department.",
@@ -138,7 +138,7 @@ class AcademicService:
     @staticmethod
     def get_subjects(db: Session, department_id: Optional[str] = None, user: Optional[User] = None) -> List[Subject]:
         stmt = select(Subject).order_by(Subject.code)
-        if user and user.role in (UserRole.ADMIN, UserRole.SUB_ADMIN):
+        if user and user.role == UserRole.ADMIN:
             if not user.department_id:
                 raise PermissionDeniedError(
                     message="Access denied: Department administrator has no assigned department.",
@@ -157,7 +157,7 @@ class AcademicService:
 
     @staticmethod
     def create_offering(db: Session, data: SubjectOfferingCreate, user: Optional[User] = None) -> SubjectOffering:
-        if user and user.role in (UserRole.ADMIN, UserRole.SUB_ADMIN):
+        if user and user.role == UserRole.ADMIN:
             if not user.department_id:
                 raise PermissionDeniedError(
                     message="Access denied: Department administrator has no assigned department.",
@@ -177,7 +177,7 @@ class AcademicService:
     @staticmethod
     def get_offerings(db: Session, user: Optional[User] = None) -> List[SubjectOffering]:
         stmt = select(SubjectOffering).order_by(SubjectOffering.id.desc())
-        if user and user.role in (UserRole.ADMIN, UserRole.SUB_ADMIN):
+        if user and user.role == UserRole.ADMIN:
             if not user.department_id:
                 raise PermissionDeniedError(
                     message="Access denied: Department administrator has no assigned department.",
@@ -255,7 +255,7 @@ class AcademicService:
 
     @staticmethod
     def create_student(db: Session, data: StudentCreate, user: Optional[User] = None) -> Student:
-        if user and user.role in (UserRole.ADMIN, UserRole.SUB_ADMIN):
+        if user and user.role == UserRole.ADMIN:
             if not user.department_id:
                 raise PermissionDeniedError(
                     message="Access denied: Department administrator has no assigned department.",
