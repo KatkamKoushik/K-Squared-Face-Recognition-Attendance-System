@@ -4,6 +4,8 @@
  * Handles client-side bearer token injection for authenticated endpoints.
  */
 
+import { fallbackFromSupabase } from "./supabaseFallback";
+
 const DEFAULT_REMOTE_API = "https://straddle-deflate-footwear.ngrok-free.dev/api/v1";
 
 export function getApiBase(): string {
@@ -200,6 +202,10 @@ export async function fetchFromApi<T>(endpoint: string, options?: RequestInit): 
     });
 
     if (!res.ok) {
+      const fallback = await fallbackFromSupabase<T>(endpoint);
+      if (fallback !== null) {
+        return fallback;
+      }
       return null;
     }
 
@@ -210,6 +216,10 @@ export async function fetchFromApi<T>(endpoint: string, options?: RequestInit): 
     return json as T;
   } catch (error: any) {
     const msg = error?.cause?.code || error?.message || String(error);
+    const fallback = await fallbackFromSupabase<T>(endpoint);
+    if (fallback !== null) {
+      return fallback;
+    }
     if (process.env.NODE_ENV === "development") {
       console.info(`[API Fallback] ${endpoint} unreachable (${msg}); using static snapshot.`);
     }
