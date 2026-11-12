@@ -252,3 +252,4 @@ def test_developer_role_has_root_authority(db_session: Session, rbac_fixture: di
     assert students_res.status_code == 200
     rolls = [s["roll_number"] for s in students_res.json()["data"]]
     assert "CSE001" in rolls and "ECE001" in rolls
+
