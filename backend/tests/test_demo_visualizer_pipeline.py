@@ -159,15 +159,17 @@ def test_demo_privacy_sanitization_for_unauthenticated_callers(client: TestClien
     from app.domain.models.academic import User
     from app.domain.enums import UserRole
 
-    # 1. Unauthenticated request -> masked roll and no photo_url
+    # 1. Unauthenticated request -> masked roll, masked name, redacted ID, and no photo_url
     res_anon = client.get("/api/v1/demo/enrolled-students")
     assert res_anon.status_code == 200
     anon_students = res_anon.json()["data"]
     assert len(anon_students) > 0
     assert anon_students[0]["photo_url"] is None
     assert anon_students[0]["roll_number"].endswith("***")
+    assert anon_students[0]["full_name"].endswith("***")
+    assert anon_students[0]["student_id"].startswith("anon_")
 
-    # 2. Authenticated Admin request -> full roll and photo_url preserved
+    # 2. Authenticated Admin request -> full roll, unmasked name, real ID, and photo_url preserved
     admin = db_session.query(User).filter(User.role == UserRole.ADMIN).first()
     token = create_access_token(subject=str(admin.id), role=admin.role.value)
     res_admin = client.get(
@@ -178,4 +180,6 @@ def test_demo_privacy_sanitization_for_unauthenticated_callers(client: TestClien
     admin_students = res_admin.json()["data"]
     assert len(admin_students) > 0
     assert not admin_students[0]["roll_number"].endswith("***")
+    assert not admin_students[0]["full_name"].endswith("***")
+    assert not admin_students[0]["student_id"].startswith("anon_")
 

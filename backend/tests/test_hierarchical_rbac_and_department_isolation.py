@@ -253,3 +253,76 @@ def test_developer_role_has_root_authority(db_session: Session, rbac_fixture: di
     rolls = [s["roll_number"] for s in students_res.json()["data"]]
     assert "CSE001" in rolls and "ECE001" in rolls
 
+
+def test_unassigned_admin_fails_closed(db_session: Session, rbac_fixture: dict):
+    """An ADMIN user with no assigned department_id must fail closed on all department operations."""
+    unassigned_admin = User(
+        id=str(uuid.uuid4()),
+        email="unassigned.admin@kucet.ac.in",
+        hashed_password="hash",
+        role=UserRole.ADMIN,
+        department_id=None,
+        is_active=True,
+    )
+    db_session.add(unassigned_admin)
+    db_session.commit()
+
+    client = make_client(db_session, unassigned_admin)
+
+    # 1. Querying cohorts must fail closed
+    res = client.get("/api/v1/academic/cohorts")
+    assert res.status_code == 403
+    assert res.json()["error"]["reason_code"] == "DEPARTMENT_ACCESS_RESTRICTED"
+
+    # 2. Querying students must fail closed
+    res_students = client.get("/api/v1/academic/students")
+    assert res_students.status_code == 403
+    assert res_students.json()["error"]["reason_code"] == "DEPARTMENT_ACCESS_RESTRICTED"
+
+    # 3. Creating cohort must fail closed
+    res_create = client.post(
+        "/api/v1/academic/cohorts",
+        json={
+            "name": "TEST-2024-2028",
+            "department_id": rbac_fixture["cse_dept"].id,
+            "admission_year": 2024,
+            "graduation_year": 2028,
+        },
+    )
+    assert res_create.status_code == 403
+    assert res_create.json()["error"]["reason_code"] == "DEPARTMENT_ACCESS_RESTRICTED"
+
+
+def test_firebase_token_exchange_flow(db_session: Session, rbac_fixture: dict, monkeypatch):
+    """Verifies exchanging a Firebase ID token for an institutional scoped JWT."""
+    from unittest.mock import MagicMock
+    import app.services.auth_service as auth_svc_mod
+
+    mock_verify = MagicMock(return_value={
+        "uid": "fb_uid_12345",
+        "email": "hod.cse@kucet.ac.in",
+    })
+    monkeypatch.setattr(auth_svc_mod, "verify_firebase_id_token", mock_verify)
+
+    app = create_application()
+    app.dependency_overrides[get_db] = lambda: db_session
+    client = TestClient(app)
+
+    # Valid token exchange
+    res = client.post("/api/v1/auth/firebase", json={"id_token": "valid_mock_firebase_token"})
+    assert res.status_code == 200
+    data = res.json()["data"]
+    assert data["email"] == "hod.cse@kucet.ac.in"
+    assert data["role"] == "ADMIN"
+    assert data["access_token"] is not None
+
+    # Unknown user identity fails closed with 401
+    mock_unknown = MagicMock(return_value={
+        "uid": "fb_unknown_999",
+        "email": "intruder@external.com",
+    })
+    monkeypatch.setattr(auth_svc_mod, "verify_firebase_id_token", mock_unknown)
+    bad_res = client.post("/api/v1/auth/firebase", json={"id_token": "unknown_firebase_token"})
+    assert bad_res.status_code == 401
+    assert bad_res.json()["error"]["reason_code"] == "USER_NOT_REGISTERED"
+

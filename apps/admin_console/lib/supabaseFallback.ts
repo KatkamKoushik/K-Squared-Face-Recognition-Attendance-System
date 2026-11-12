@@ -1,5 +1,6 @@
 import { supabaseFetch } from "./supabase";
-import type {
+import {
+  getAuthToken,
   AdminDashboardMetrics,
   DashboardRecentSessionItem,
   DemoEnrolledStudentSummary,
@@ -127,18 +128,28 @@ export async function fallbackFromSupabase<T>(endpoint: string): Promise<T | nul
       const params = new URLSearchParams(queryString);
       const deptFilter = params.get("department_code")?.toUpperCase();
 
+      const isAuth = Boolean(getAuthToken());
+
       let gallery: DemoEnrolledStudentSummary[] = students.map((s: any) => {
         const sub = submissions.find((subm: any) => subm.roll_number === s.roll_number);
         const cohort = cohorts.find((c: any) => c.id === s.cohort_id);
         const dept = departments.find((d: any) => d.id === cohort?.department_id);
 
+        const displayRoll = isAuth
+          ? s.roll_number
+          : (s.roll_number && s.roll_number.length > 4 ? s.roll_number.slice(0, 4) + "***" : "***");
+        const displayName = isAuth
+          ? s.full_name
+          : (s.full_name ? s.full_name.split(" ")[0] + " " + (s.full_name.split(" ")[1]?.[0] || "*") + "***" : "Enrolled Student");
+        const studentId = isAuth ? s.id : `anon_${s.id.slice(0, 8)}`;
+
         return {
-          student_id: s.id,
-          roll_number: s.roll_number,
-          full_name: s.full_name,
+          student_id: studentId,
+          roll_number: displayRoll,
+          full_name: displayName,
           is_active: s.is_active,
           has_reference_photo: Boolean(sub?.photo_storage_path),
-          photo_url: sub?.photo_storage_path || undefined,
+          photo_url: isAuth ? (sub?.photo_storage_path || undefined) : undefined,
           department_code: dept?.code || "CSE",
         };
       });
@@ -245,14 +256,21 @@ export async function fallbackFromSupabase<T>(endpoint: string): Promise<T | nul
 
     // 9. Governance Status
     if (cleanEndpoint === "/governance/status") {
-      const studentsRes = await supabaseFetch("/rest/v1/students?select=id");
+      const [studentsRes, consentsRes] = await Promise.all([
+        supabaseFetch("/rest/v1/students?select=id"),
+        supabaseFetch("/rest/v1/student_consents?select=student_id,consent_given"),
+      ]);
       const students = (await studentsRes.json().catch(() => [])) || [];
+      const consents = (await consentsRes.json().catch(() => [])) || [];
+      const consentedCount = consents.filter((c: any) => c.consent_given).length;
+      const withheldCount = consents.filter((c: any) => !c.consent_given).length;
+      const pct = students.length > 0 ? (consentedCount / students.length) * 100 : 0.0;
 
       const summary: GovernanceSummary = {
         total_students: students.length,
-        students_with_biometric_consent: students.length,
-        students_withheld_consent: 0,
-        consent_compliance_percentage: 100.0,
+        students_with_biometric_consent: consentedCount,
+        students_withheld_consent: withheldCount,
+        consent_compliance_percentage: Number(pct.toFixed(1)),
         total_captured_frames: 0,
         active_unpurged_frames: 0,
         purged_frames: 0,
@@ -267,10 +285,10 @@ export async function fallbackFromSupabase<T>(endpoint: string): Promise<T | nul
     // 10. System Health Readiness
     if (cleanEndpoint === "/health/readiness") {
       const readiness: ReadinessTelemetry = {
-        status: "UP",
-        api_status: "HEALTHY",
+        status: "DEGRADED",
+        api_status: "STANDBY_SUPABASE_DIRECT",
         database: "POSTGRES_CONNECTED",
-        worker_queue: "READY",
+        worker_queue: "STANDBY_BRIDGE_OFFLINE",
         model_registry: {
           detector_approved: true,
           recognizer_approved: true,

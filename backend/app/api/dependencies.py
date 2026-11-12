@@ -105,18 +105,19 @@ def check_department_access(current_user: User, department_id: Optional[str]) ->
     """
     Enforces strict department scoping:
     - DEVELOPER and SUPER_ADMIN have campus-wide access across all departments.
-    - ADMIN is strictly restricted to current_user.department_id.
-    - SUB_ADMIN and FACULTY are strictly restricted to current_user.department_id.
+    - ADMIN, SUB_ADMIN, and FACULTY are strictly restricted to their assigned department.
+      If their department_id is missing/None, they fail closed and cannot access any department.
     """
     if not department_id:
         return
     if current_user.role in (UserRole.DEVELOPER, UserRole.SUPER_ADMIN):
         return
-    if current_user.department_id and current_user.department_id != department_id:
-        raise PermissionDeniedError(
-            message="Access denied: Department administrator cannot access or modify records of another department.",
-            reason_code="DEPARTMENT_ACCESS_RESTRICTED",
-        )
+    if current_user.role in (UserRole.ADMIN, UserRole.SUB_ADMIN, UserRole.FACULTY):
+        if not current_user.department_id or current_user.department_id != department_id:
+            raise PermissionDeniedError(
+                message="Access denied: Department administrator cannot access or modify records without an assigned department or across another department.",
+                reason_code="DEPARTMENT_ACCESS_RESTRICTED",
+            )
 
 
 def get_current_faculty(

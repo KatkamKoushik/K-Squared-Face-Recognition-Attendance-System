@@ -34,7 +34,15 @@ def list_demo_students(
     Sanitizes private biometric portraits and roll numbers for unauthenticated callers (SEC-02).
     """
     is_authorized = bool(
-        current_user and current_user.role in (UserRole.ADMIN, UserRole.FACULTY)
+        current_user
+        and current_user.role
+        in (
+            UserRole.DEVELOPER,
+            UserRole.SUPER_ADMIN,
+            UserRole.ADMIN,
+            UserRole.SUB_ADMIN,
+            UserRole.FACULTY,
+        )
     )
     students = DemoService.list_enrolled_demo_students(
         db, department_code=department_code, is_authorized=is_authorized
@@ -71,7 +79,15 @@ async def analyze_demo_image(
 
     try:
         is_authorized = bool(
-            current_user and current_user.role in (UserRole.ADMIN, UserRole.FACULTY)
+            current_user
+            and current_user.role
+            in (
+                UserRole.DEVELOPER,
+                UserRole.SUPER_ADMIN,
+                UserRole.ADMIN,
+                UserRole.SUB_ADMIN,
+                UserRole.FACULTY,
+            )
         )
         result = DemoService.analyze_demo_photo(
             db=db,

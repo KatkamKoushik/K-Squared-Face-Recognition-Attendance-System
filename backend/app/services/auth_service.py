@@ -6,13 +6,60 @@ from typing import Optional
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from app.core.errors import AuthenticationError
-from app.core.security import verify_password, create_access_token, hash_password
+from app.core.security import verify_password, create_access_token, hash_password, verify_firebase_id_token
 from app.domain.enums import UserRole
 from app.domain.models.academic import User, Faculty
-from app.schemas.auth import LoginRequest, TokenResponse, UserCreate
+from app.schemas.auth import LoginRequest, TokenResponse, UserCreate, FirebaseLoginRequest
 
 
 class AuthService:
+
+    @staticmethod
+    def authenticate_firebase_token(db: Session, creds: FirebaseLoginRequest) -> TokenResponse:
+        decoded = verify_firebase_id_token(creds.id_token)
+        email = decoded.get("email")
+        if not email:
+            raise AuthenticationError("Firebase token contains no verified email", reason_code="FIREBASE_EMAIL_MISSING")
+
+        result = db.execute(select(User).where(User.email == email))
+        user = result.scalar_one_or_none()
+        if not user:
+            raise AuthenticationError(
+                f"Firebase identity '{email}' is not registered in institutional directory.",
+                reason_code="USER_NOT_REGISTERED",
+            )
+
+        if not user.is_active:
+            raise AuthenticationError("User account is inactive", reason_code="USER_INACTIVE")
+
+        faculty_id = None
+        if user.role == UserRole.FACULTY:
+            fac_result = db.execute(select(Faculty).where(Faculty.user_id == user.id))
+            fac = fac_result.scalar_one_or_none()
+            if fac:
+                faculty_id = fac.id
+
+        claims = {"user_id": user.id}
+        if user.department_id:
+            claims["department_id"] = user.department_id
+        if faculty_id:
+            claims["faculty_id"] = faculty_id
+
+        role_str = user.role.value if hasattr(user.role, "value") else str(user.role)
+        role_enum = user.role if isinstance(user.role, UserRole) else UserRole(role_str)
+        token = create_access_token(
+            subject=user.email,
+            role=role_str,
+            additional_claims=claims,
+        )
+        return TokenResponse(
+            access_token=token,
+            expires_in_minutes=60,
+            user_id=user.id,
+            role=role_enum,
+            email=user.email,
+            department_id=user.department_id,
+        )
 
     @staticmethod
     def authenticate_user(db: Session, creds: LoginRequest) -> TokenResponse:

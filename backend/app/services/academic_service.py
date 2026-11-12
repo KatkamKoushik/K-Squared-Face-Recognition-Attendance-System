@@ -52,7 +52,12 @@ class AcademicService:
 
     @staticmethod
     def create_cohort(db: Session, data: CohortCreate, user: Optional[User] = None) -> Cohort:
-        if user and user.role == UserRole.ADMIN and user.department_id:
+        if user and user.role in (UserRole.ADMIN, UserRole.SUB_ADMIN):
+            if not user.department_id:
+                raise PermissionDeniedError(
+                    message="Access denied: Department administrator has no assigned department.",
+                    reason_code="DEPARTMENT_ACCESS_RESTRICTED",
+                )
             if data.department_id != user.department_id:
                 raise PermissionDeniedError(
                     message="Access denied: Department administrator cannot create cohorts in another department.",
@@ -66,7 +71,12 @@ class AcademicService:
     @staticmethod
     def get_cohorts(db: Session, department_id: Optional[str] = None, user: Optional[User] = None) -> List[Cohort]:
         stmt = select(Cohort).order_by(Cohort.name)
-        if user and user.role == UserRole.ADMIN and user.department_id:
+        if user and user.role in (UserRole.ADMIN, UserRole.SUB_ADMIN):
+            if not user.department_id:
+                raise PermissionDeniedError(
+                    message="Access denied: Department administrator has no assigned department.",
+                    reason_code="DEPARTMENT_ACCESS_RESTRICTED",
+                )
             if department_id and department_id != user.department_id:
                 raise PermissionDeniedError(
                     message="Access denied: Department administrator cannot access cohorts of another department.",
@@ -104,7 +114,12 @@ class AcademicService:
 
     @staticmethod
     def create_subject(db: Session, data: SubjectCreate, user: Optional[User] = None) -> Subject:
-        if user and user.role == UserRole.ADMIN and user.department_id:
+        if user and user.role in (UserRole.ADMIN, UserRole.SUB_ADMIN):
+            if not user.department_id:
+                raise PermissionDeniedError(
+                    message="Access denied: Department administrator has no assigned department.",
+                    reason_code="DEPARTMENT_ACCESS_RESTRICTED",
+                )
             if data.department_id != user.department_id:
                 raise PermissionDeniedError(
                     message="Access denied: Department administrator cannot create subjects in another department.",
@@ -123,7 +138,12 @@ class AcademicService:
     @staticmethod
     def get_subjects(db: Session, department_id: Optional[str] = None, user: Optional[User] = None) -> List[Subject]:
         stmt = select(Subject).order_by(Subject.code)
-        if user and user.role == UserRole.ADMIN and user.department_id:
+        if user and user.role in (UserRole.ADMIN, UserRole.SUB_ADMIN):
+            if not user.department_id:
+                raise PermissionDeniedError(
+                    message="Access denied: Department administrator has no assigned department.",
+                    reason_code="DEPARTMENT_ACCESS_RESTRICTED",
+                )
             if department_id and department_id != user.department_id:
                 raise PermissionDeniedError(
                     message="Access denied: Department administrator cannot access subjects of another department.",
@@ -137,7 +157,12 @@ class AcademicService:
 
     @staticmethod
     def create_offering(db: Session, data: SubjectOfferingCreate, user: Optional[User] = None) -> SubjectOffering:
-        if user and user.role == UserRole.ADMIN and user.department_id:
+        if user and user.role in (UserRole.ADMIN, UserRole.SUB_ADMIN):
+            if not user.department_id:
+                raise PermissionDeniedError(
+                    message="Access denied: Department administrator has no assigned department.",
+                    reason_code="DEPARTMENT_ACCESS_RESTRICTED",
+                )
             subject = db.get(Subject, data.subject_id)
             if not subject or subject.department_id != user.department_id:
                 raise PermissionDeniedError(
@@ -152,7 +177,12 @@ class AcademicService:
     @staticmethod
     def get_offerings(db: Session, user: Optional[User] = None) -> List[SubjectOffering]:
         stmt = select(SubjectOffering).order_by(SubjectOffering.id.desc())
-        if user and user.role == UserRole.ADMIN and user.department_id:
+        if user and user.role in (UserRole.ADMIN, UserRole.SUB_ADMIN):
+            if not user.department_id:
+                raise PermissionDeniedError(
+                    message="Access denied: Department administrator has no assigned department.",
+                    reason_code="DEPARTMENT_ACCESS_RESTRICTED",
+                )
             stmt = stmt.join(Subject, SubjectOffering.subject_id == Subject.id).where(Subject.department_id == user.department_id)
         result = db.execute(stmt)
         return list(result.scalars().all())
@@ -225,7 +255,12 @@ class AcademicService:
 
     @staticmethod
     def create_student(db: Session, data: StudentCreate, user: Optional[User] = None) -> Student:
-        if user and user.role == UserRole.ADMIN and user.department_id:
+        if user and user.role in (UserRole.ADMIN, UserRole.SUB_ADMIN):
+            if not user.department_id:
+                raise PermissionDeniedError(
+                    message="Access denied: Department administrator has no assigned department.",
+                    reason_code="DEPARTMENT_ACCESS_RESTRICTED",
+                )
             cohort = db.get(Cohort, data.cohort_id)
             if not cohort or cohort.department_id != user.department_id:
                 raise PermissionDeniedError(
@@ -264,20 +299,22 @@ class AcademicService:
             return list(result.scalars().all())
 
         if user.role == UserRole.ADMIN:
+            if not user.department_id:
+                raise PermissionDeniedError(
+                    message="Access denied: Department administrator has no assigned department.",
+                    reason_code="DEPARTMENT_ACCESS_RESTRICTED",
+                )
             stmt = select(Student).join(Cohort, Student.cohort_id == Cohort.id)
-            if user.department_id:
-                if cohort_id:
-                    cohort = db.get(Cohort, cohort_id)
-                    if not cohort or cohort.department_id != user.department_id:
-                        raise PermissionDeniedError(
-                            message="Access denied: Department administrator cannot access students in another department's cohort.",
-                            reason_code="DEPARTMENT_ACCESS_RESTRICTED",
-                        )
-                    stmt = stmt.where(Student.cohort_id == cohort_id)
-                else:
-                    stmt = stmt.where(Cohort.department_id == user.department_id)
-            elif cohort_id:
+            if cohort_id:
+                cohort = db.get(Cohort, cohort_id)
+                if not cohort or cohort.department_id != user.department_id:
+                    raise PermissionDeniedError(
+                        message="Access denied: Department administrator cannot access students in another department's cohort.",
+                        reason_code="DEPARTMENT_ACCESS_RESTRICTED",
+                    )
                 stmt = stmt.where(Student.cohort_id == cohort_id)
+            else:
+                stmt = stmt.where(Cohort.department_id == user.department_id)
             result = db.execute(stmt.order_by(Student.roll_number).limit(limit))
             return list(result.scalars().all())
 
