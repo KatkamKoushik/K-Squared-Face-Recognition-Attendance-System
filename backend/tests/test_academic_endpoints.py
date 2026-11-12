@@ -1,5 +1,5 @@
 """
-FRS V7.1 K² — Academic Core Hierarchy Endpoints Test Suite.
+K² FRS — Academic Core Hierarchy Endpoints Test Suite.
 Verifies GET endpoints for departments, cohorts, terms, offerings, groups, and students.
 Validates both unauthenticated rejection (401) and authorized ingestion (200).
 """

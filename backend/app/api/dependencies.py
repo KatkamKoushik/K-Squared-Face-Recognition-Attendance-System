@@ -1,5 +1,5 @@
 """
-FRS V7.1 K² — FastAPI Security & Route Dependencies.
+K² FRS — FastAPI Security & Route Dependencies.
 Enforces scoped authentication, server-side RBAC, and request correlation tracing.
 """
 

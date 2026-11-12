@@ -1,5 +1,5 @@
 """
-FRS V7.1 K² — Deterministic Vision Orchestration State Machine & Worker Processor.
+K² FRS — Deterministic Vision Orchestration State Machine & Worker Processor.
 Processes queued frames, enforces per-face evidence routing, and prepares candidate proposals.
 """
 

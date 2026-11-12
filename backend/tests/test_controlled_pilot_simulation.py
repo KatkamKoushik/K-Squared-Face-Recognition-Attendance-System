@@ -1,5 +1,5 @@
 """
-FRS V7.1 K² — Phase P7 Controlled Pilot Simulation & Dual-Ledger Invariant Suite.
+K² FRS — Phase P7 Controlled Pilot Simulation & Dual-Ledger Invariant Suite.
 Simulates the complete 14-day classroom pilot for Kakatiya University College of Engineering & Technology (KUCET).
 Verifies:
 1. Multi-day session lifecycle with 2 conducted units per day (28 total conducted units).

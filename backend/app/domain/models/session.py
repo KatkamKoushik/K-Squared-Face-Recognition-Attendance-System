@@ -1,5 +1,5 @@
 """
-FRS V7.1 K² — Attendance Session, Conducted Units, and Immutable Roster Snapshot Models.
+K² FRS — Attendance Session, Conducted Units, and Immutable Roster Snapshot Models.
 """
 
 from datetime import date, datetime, timezone
@@ -38,7 +38,7 @@ class AttendanceSession(Base):
     faculty_id: Mapped[str] = mapped_column(String(36), ForeignKey("faculty.id"), nullable=False)
     session_date: Mapped[date] = mapped_column(Date, default=date.today, nullable=False)
     state: Mapped[SessionState] = mapped_column(String(20), default=SessionState.DRAFT, nullable=False)
-    policy_version_id: Mapped[str] = mapped_column(String(50), default="policy_kucet_v7_1_default", nullable=False)
+    policy_version_id: Mapped[str] = mapped_column(String(50), default="policy_kucet_k2_default", nullable=False)
     planned_units: Mapped[int] = mapped_column(Integer, default=1, nullable=False)  # 1 to 4 units
     model_version: Mapped[Optional[str]] = mapped_column(String(100), default="yunet_2023mar_sface_2021dec", nullable=True)
     calibration_threshold: Mapped[Optional[float]] = mapped_column(Float, default=0.363, nullable=True)

@@ -1,4 +1,4 @@
-# FRS V7.1 K² — Live Demonstration Runbook
+# K² FRS — Live Demonstration Runbook
 
 **Document ID:** `K2-DEMO-RUNBOOK-2026-11-10`  
 **Target Date:** 10 November 2026  

@@ -1,5 +1,5 @@
 """
-FRS V7.1 K² — Image Ingress Validation, Metadata Stripping & Storage Service.
+K² FRS — Image Ingress Validation, Metadata Stripping & Storage Service.
 Rejects malformed uploads, decompression hazards, and enforces EXIF/GPS privacy stripping.
 """
 

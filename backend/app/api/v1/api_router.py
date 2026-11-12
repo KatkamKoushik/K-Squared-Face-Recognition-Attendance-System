@@ -1,5 +1,5 @@
 """
-FRS V7.1 K² — Central API v1 Router.
+K² FRS — Central API v1 Router.
 """
 
 from fastapi import APIRouter

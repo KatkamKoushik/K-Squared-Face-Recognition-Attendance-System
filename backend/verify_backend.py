@@ -1,5 +1,5 @@
 """
-FRS V7.1 K² — Complete Backend Verification & Invariant Proof Script.
+K² FRS — Complete Backend Verification & Invariant Proof Script.
 """
 
 from datetime import date, timedelta
@@ -63,7 +63,7 @@ from app.worker.adapters.pad_adapter import PadAdapter
 
 def main():
     print("=" * 75)
-    print("FRS V7.1 K2 - BACKEND ACCEPTANCE AND INVARIANT VERIFICATION SUITE")
+    print("K² FRS - BACKEND ACCEPTANCE AND INVARIANT VERIFICATION SUITE")
     print("=" * 75)
 
     test_db_file = Path(tempfile.gettempdir()) / f"verify_frs_{uuid.uuid4().hex[:6]}.db"
@@ -255,7 +255,7 @@ def main():
             StudentUnitDecision(student_id=s3.id, unit_index=2, status=AttendanceStatus.ABSENT_CONFIRMED),
         ]
         commit_request = AttendanceCommitRequest(
-            idempotency_key="idemp_kucet_v7_1_verify_commit_1001",
+            idempotency_key="idemp_kucet_k2_verify_commit_1001",
             conducted_unit_indices=[1, 2],
             decisions=decisions,
         )

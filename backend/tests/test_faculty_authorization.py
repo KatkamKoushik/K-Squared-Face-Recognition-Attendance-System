@@ -1,5 +1,5 @@
 """
-FRS V7.1 K² — Cross-Faculty Object-Level Authorization (IDOR) & Commit Invariant Tests.
+K² FRS — Cross-Faculty Object-Level Authorization (IDOR) & Commit Invariant Tests.
 Verifies that faculty members cannot view, upload to, confirm, or commit another faculty's sessions.
 """
 

@@ -1,5 +1,5 @@
 """
-FRS V7.1 K² — Session Lifecycle & Conducted Unit Management Service.
+K² FRS — Session Lifecycle & Conducted Unit Management Service.
 """
 
 from datetime import date

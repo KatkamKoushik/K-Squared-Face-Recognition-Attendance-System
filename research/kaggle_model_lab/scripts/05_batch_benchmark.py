@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-FRS V7.1 K² Kaggle Model Lab — Stage 05: Batch Benchmark (Latency, Throughput, Memory).
+K² FRS Kaggle Model Lab — Stage 05: Batch Benchmark (Latency, Throughput, Memory).
 Evaluates inference performance across batch sizes on CPU / CUDA execution providers.
 """
 

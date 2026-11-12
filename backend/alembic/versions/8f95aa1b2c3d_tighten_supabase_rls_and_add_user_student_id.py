@@ -90,15 +90,17 @@ def upgrade() -> None:
         op.execute("""
             DO $$
             BEGIN
-                IF NOT EXISTS (
-                    SELECT 1 FROM pg_policies WHERE tablename = 'student_data_corrections' AND policyname = 'service_role_all'
-                ) THEN
-                    CREATE POLICY service_role_all ON public.student_data_corrections FOR ALL TO service_role USING (true) WITH CHECK (true);
-                END IF;
-                IF NOT EXISTS (
-                    SELECT 1 FROM pg_policies WHERE tablename = 'alembic_version' AND policyname = 'service_role_all'
-                ) THEN
-                    CREATE POLICY service_role_all ON public.alembic_version FOR ALL TO service_role USING (true) WITH CHECK (true);
+                IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN
+                    IF NOT EXISTS (
+                        SELECT 1 FROM pg_policies WHERE tablename = 'student_data_corrections' AND policyname = 'service_role_all'
+                    ) THEN
+                        CREATE POLICY service_role_all ON public.student_data_corrections FOR ALL TO service_role USING (true) WITH CHECK (true);
+                    END IF;
+                    IF NOT EXISTS (
+                        SELECT 1 FROM pg_policies WHERE tablename = 'alembic_version' AND policyname = 'service_role_all'
+                    ) THEN
+                        CREATE POLICY service_role_all ON public.alembic_version FOR ALL TO service_role USING (true) WITH CHECK (true);
+                    END IF;
                 END IF;
             END $$;
         """)
@@ -109,16 +111,22 @@ def downgrade() -> None:
     inspector = sa.inspect(bind)
 
     if bind.dialect.name == "postgresql":
-        # Restore policies if needed
-        for table in SENSITIVE_ANON_TABLES:
-            op.execute(f"""
-                CREATE POLICY anon_select ON public.{table}
-                FOR SELECT TO anon USING (true);
-            """)
-
-        op.execute("""
-            CREATE POLICY authenticated_select ON public.student_data_corrections
-            FOR SELECT TO authenticated USING (true);
+        # Restore policies only if target roles exist in PostgreSQL catalog
+        anon_table_sqls = "\n                    ".join([
+            f"CREATE POLICY anon_select ON public.{table} FOR SELECT TO anon USING (true);"
+            for table in SENSITIVE_ANON_TABLES
+        ])
+        op.execute(f"""
+            DO $$
+            BEGIN
+                IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon') THEN
+                    {anon_table_sqls}
+                END IF;
+                IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
+                    CREATE POLICY authenticated_select ON public.student_data_corrections
+                    FOR SELECT TO authenticated USING (true);
+                END IF;
+            END $$;
         """)
 
     user_indexes = [idx["name"] for idx in inspector.get_indexes("users")]

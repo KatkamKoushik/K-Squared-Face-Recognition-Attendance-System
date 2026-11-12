@@ -1,4 +1,4 @@
-name: FRS V7.1 K² CI Pipeline
+name: K² FRS CI Pipeline
 
 on:
   push:

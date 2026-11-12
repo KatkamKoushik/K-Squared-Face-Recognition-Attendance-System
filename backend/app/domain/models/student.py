@@ -1,5 +1,5 @@
 """
-FRS V7.1 K² — Student Identity, Enrollment, and Template Profile Models.
+K² FRS — Student Identity, Enrollment, and Template Profile Models.
 Enforces institutional student identity and effective-dated enrollment truth.
 """
 

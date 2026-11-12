@@ -1,5 +1,5 @@
 """
-FRS V7.1 K² — Universal Demo Testing & Ground-Truth Visualizer API Router.
+K² FRS — Universal Demo Testing & Ground-Truth Visualizer API Router.
 Provides open-access verification of YuNet face detection and SFace roster matching
 with optional department filtering and resolution-adaptive thresholding.
 """

@@ -1,4 +1,4 @@
-# FRS V7.1 K² — Teacher Mobile Application
+# K² FRS — Teacher Mobile Application
 
 The faculty classroom-sweep attendance application built with **Flutter 3.27**, **Dart 3.13**, and **Riverpod 3.0**.
 

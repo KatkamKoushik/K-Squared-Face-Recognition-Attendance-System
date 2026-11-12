@@ -1,5 +1,5 @@
 """
-FRS V7.1 K² — Data Governance, Biometric Privacy, Retention Purge & Cryptographic Receipt Verification Tests.
+K² FRS — Data Governance, Biometric Privacy, Retention Purge & Cryptographic Receipt Verification Tests.
 Verifies:
 1. Server-side HMAC-SHA256 receipt signing and cryptographic tamper verification.
 2. Ephemeral raw frame retention purging with physical file wiping and audit event emission.
@@ -335,7 +335,7 @@ def test_kucet_institutional_seeder_and_consent_invariants(db_session: Session):
     assert koushik_profile.is_active is True
 
     # Verify models and policy seeded
-    policy = db_session.get(PolicyVersion, "policy_kucet_v7_1_default")
+    policy = db_session.get(PolicyVersion, "policy_kucet_k2_default")
     assert policy is not None
     assert policy.is_active is True
 

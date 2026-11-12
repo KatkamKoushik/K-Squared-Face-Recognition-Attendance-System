@@ -1,5 +1,5 @@
 """
-FRS V7.1 K² — Atomic Attendance Commit & Institutional Analytics Endpoints.
+K² FRS — Atomic Attendance Commit & Institutional Analytics Endpoints.
 """
 
 from fastapi import APIRouter, Depends, status, Response

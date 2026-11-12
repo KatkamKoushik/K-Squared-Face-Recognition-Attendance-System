@@ -1,5 +1,5 @@
 """
-FRS V7.1 K² — Student Biometric Enrollment Service.
+K² FRS — Student Biometric Enrollment Service.
 Enforces strict lifecycle (PENDING_REVIEW -> APPROVED / REJECTED / RECAPTURE_REQUIRED),
 private photo storage, and real YuNet detection & SFace 5-landmark embedding generation upon admin approval.
 """

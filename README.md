@@ -1,10 +1,10 @@
-# FRS V7.1 K² — Classroom Attendance Proposal System
+# K² FRS — Classroom Attendance Proposal System
 
 [![CI Pipeline](https://github.com/KatkamKoushik/K-Squared-Face-Recognition-Attendance-System/actions/workflows/ci.yml/badge.svg)](https://github.com/KatkamKoushik/K-Squared-Face-Recognition-Attendance-System/actions/workflows/ci.yml)
 [![CD Pipeline](https://img.shields.io/badge/CD%20Deployment-GHCR%20%2B%20APK-3b82f6.svg?logo=github-actions&logoColor=white)](.github/workflows/deploy.yml)
 [![Security Audit](https://img.shields.io/badge/Security%20Audit-Automated%20Weekly-8b5cf6.svg?logo=github&logoColor=white)](.github/workflows/security.yml)
 [![Official Wiki](https://img.shields.io/badge/Official%20Wiki-Live%20on%20GitHub-blueviolet.svg?logo=github&logoColor=white)](https://github.com/KatkamKoushik/K-Squared-Face-Recognition-Attendance-System/wiki)
-[![Architecture Version](https://img.shields.io/badge/Architecture-V7.1%20Canonical-0f172a.svg)](docs/CONTRACT_ARCHITECTURE.md)
+[![Architecture Version](https://img.shields.io/badge/Architecture-K² FRS%20Canonical-0f172a.svg)](docs/CONTRACT_ARCHITECTURE.md)
 [![ADRs](https://img.shields.io/badge/ADRs-5%20Accepted-0284c7.svg)](docs/adr/)
 [![Python](https://img.shields.io/badge/Python-3.12+-3776AB?logo=python&logoColor=white)](backend/)
 [![Flutter](https://img.shields.io/badge/Flutter-3.27+-02569B?logo=flutter&logoColor=white)](apps/teacher_mobile/)
@@ -13,7 +13,7 @@
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16%20Alpine-4169E1?logo=postgresql&logoColor=white)](docker-compose.yml)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
-**FRS V7.1 K²** is an institutional classroom-photo attendance proposal system engineered for **Kakatiya University College of Engineering & Technology (KUCET)**. 
+**K² FRS** is an institutional classroom-photo attendance proposal system engineered for **Kakatiya University College of Engineering & Technology (KUCET)**. 
 
 The platform replaces single-face biometric punch kiosks and paper attendance ledgers with an asynchronous, multi-face classroom sweep workflow. Under this architecture, the computer vision subsystem operates strictly as an **evidence producer**, not an authoritative decision maker. A faculty member captures multi-photo sweep bursts, reviews model-generated candidate proposals against an immutable roster snapshot, resolves lookalike or unassigned sightings, and executes an atomic ledger commit anchored by cryptographic verification.
 

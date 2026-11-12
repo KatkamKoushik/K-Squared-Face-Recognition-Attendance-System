@@ -1,5 +1,5 @@
 """
-FRS V7.1 K² — Ingress Rate Limiting & Abuse Prevention Middleware.
+K² FRS — Ingress Rate Limiting & Abuse Prevention Middleware.
 Implements bounded sliding-window rate limiting per client IP to safeguard
 against brute force, credential stuffing, and photo-batch ingestion floods.
 Conforms to Checklist Section 6, 11, and 31.

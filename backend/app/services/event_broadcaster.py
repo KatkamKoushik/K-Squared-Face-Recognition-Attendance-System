@@ -1,5 +1,5 @@
 """
-FRS V7.1 K² — Real-Time Event Broadcaster Service.
+K² FRS — Real-Time Event Broadcaster Service.
 Manages subscription queues, replay buffer for reconnection, and authenticated fan-out.
 """
 

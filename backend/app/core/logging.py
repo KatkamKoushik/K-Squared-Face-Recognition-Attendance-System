@@ -1,5 +1,5 @@
 """
-FRS V7.1 K² — Safe Structured Telemetry & Logging.
+K² FRS — Safe Structured Telemetry & Logging.
 Enforces biometric privacy: raw frames, crops, embeddings, and secrets are strictly redacted.
 """
 

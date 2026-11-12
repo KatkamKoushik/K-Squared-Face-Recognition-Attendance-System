@@ -1,5 +1,5 @@
 """
-FRS V7.1 K² — Preprocessing, Crop Extraction & Golden Parity Contract.
+K² FRS — Preprocessing, Crop Extraction & Golden Parity Contract.
 Centralizes image transforms: resize, orientation normalization, and face crop extraction.
 """
 

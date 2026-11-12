@@ -1,6 +1,6 @@
 {
   "manifest_version": "1.0.0",
-  "project": "FRS V7.1 K² — Face Recognition Attendance System",
+  "project": "K² FRS — Face Recognition Attendance System",
   "institution": "Kakatiya University College of Engineering & Technology",
   "models": {
     "detector": {

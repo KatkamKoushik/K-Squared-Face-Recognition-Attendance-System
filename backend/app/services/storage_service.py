@@ -1,5 +1,5 @@
 """
-FRS V7.1 K² — Cloudinary Object Storage and Image Management Service.
+K² FRS — Cloudinary Object Storage and Image Management Service.
 Handles Cloudinary uploads for student enrollment portraits and classroom frames,
 storing HTTPS CDN URLs in PostgreSQL and providing seamless remote-or-local byte retrieval.
 """

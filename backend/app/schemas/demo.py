@@ -1,5 +1,5 @@
 """
-FRS V7.1 K² — Demo Ground-Truth Visualizer DTO Schemas.
+K² FRS — Demo Ground-Truth Visualizer DTO Schemas.
 """
 
 from typing import List, Optional, Tuple

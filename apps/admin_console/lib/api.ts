@@ -254,6 +254,16 @@ export async function fetchFromApi<T>(endpoint: string, options?: RequestInit): 
         // Backend actively denied authorization; fail closed
         return null;
       }
+      if (typeof window !== "undefined") {
+        try {
+          const fbRes = await fetch(`/api/fallback?endpoint=${encodeURIComponent(endpoint)}`);
+          if (fbRes.ok) {
+            return await fbRes.json() as T;
+          }
+        } catch {
+          // Fall through to isomorphic fallback
+        }
+      }
       const fallback = await fallbackFromSupabase<T>(endpoint);
       if (fallback !== null) {
         return fallback;
@@ -268,6 +278,16 @@ export async function fetchFromApi<T>(endpoint: string, options?: RequestInit): 
     return json as T;
   } catch (error: any) {
     const msg = error?.cause?.code || error?.message || String(error);
+    if (typeof window !== "undefined") {
+      try {
+        const fbRes = await fetch(`/api/fallback?endpoint=${encodeURIComponent(endpoint)}`);
+        if (fbRes.ok) {
+          return await fbRes.json() as T;
+        }
+      } catch {
+        // Fall through to isomorphic fallback
+      }
+    }
     const fallback = await fallbackFromSupabase<T>(endpoint);
     if (fallback !== null) {
       return fallback;

@@ -1,4 +1,4 @@
-# FRS V7.1 K² — Mono-Repo Engineering Upgrade Final Report
+# K² FRS — Mono-Repo Engineering Upgrade Final Report
 
 **Repository:** `https://github.com/KatkamKoushik/K-Squared-Face-Recognition-Attendance-System`  
 **Date:** 10 November 2026  
@@ -186,7 +186,7 @@ Full test suite executed in dedicated Python 3.12 virtual environment:
 Executed via `/tmp/frs-venv/bin/python backend/verify_backend.py`:
 ```
 ===========================================================================
-FRS V7.1 K2 - BACKEND ACCEPTANCE AND INVARIANT VERIFICATION SUITE
+K² FRS - BACKEND ACCEPTANCE AND INVARIANT VERIFICATION SUITE
 ===========================================================================
 
 [TEST 1] Academic Core & Server-Side Authorization Invariants...

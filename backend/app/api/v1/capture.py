@@ -1,5 +1,5 @@
 """
-FRS V7.1 K² — Classroom Image Frame Capture Ingress Endpoints.
+K² FRS — Classroom Image Frame Capture Ingress Endpoints.
 """
 
 from fastapi import APIRouter, Depends, UploadFile, File, Form, status

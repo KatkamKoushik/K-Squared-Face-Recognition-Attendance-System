@@ -1,5 +1,5 @@
 """
-FRS V7.1 K² — Commit Receipts and Append-Only Audit Trail Models.
+K² FRS — Commit Receipts and Append-Only Audit Trail Models.
 Provides durable transaction receipts and verifiable accountability.
 """
 

@@ -6,7 +6,7 @@ param(
 
 function Show-Help {
     Write-Host '==========================================================' -ForegroundColor Cyan
-    Write-Host ' FRS V7.1 K2 Production Monorepo Management (PowerShell)' -ForegroundColor Cyan
+    Write-Host ' K² FRS Production Monorepo Management (PowerShell)' -ForegroundColor Cyan
     Write-Host '==========================================================' -ForegroundColor Cyan
     Write-Host ''
     Write-Host 'Commands:'
@@ -53,7 +53,7 @@ switch ($Command) {
     }
 
     'verify' {
-        Write-Host 'Executing FRS V7.1 acceptance and mathematical invariant suite...' -ForegroundColor Green
+        Write-Host 'Executing K² FRS acceptance and mathematical invariant suite...' -ForegroundColor Green
         python backend/verify_backend.py
     }
 

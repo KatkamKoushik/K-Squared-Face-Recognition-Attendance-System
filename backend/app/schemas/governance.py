@@ -1,5 +1,5 @@
 """
-FRS V7.1 K² — Data Governance, Biometric Privacy & Retention Schemas.
+K² FRS — Data Governance, Biometric Privacy & Retention Schemas.
 Enforces institutional consent, non-biometric alternatives, and ephemeral storage purging.
 """
 

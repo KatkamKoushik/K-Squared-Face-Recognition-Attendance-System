@@ -1,5 +1,5 @@
 """
-FRS V7.1 K² — Attendance Session & Conducted Unit Endpoints.
+K² FRS — Attendance Session & Conducted Unit Endpoints.
 """
 
 from typing import List, Optional

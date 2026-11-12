@@ -1,5 +1,5 @@
 """
-FRS V7.1 K² — Student Enrollment & Admin Lifecycle Endpoints.
+K² FRS — Student Enrollment & Admin Lifecycle Endpoints.
 Public route for student selfie registration + protected admin routes for verification & approval.
 """
 

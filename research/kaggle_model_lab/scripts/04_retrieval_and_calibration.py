@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-FRS V7.1 K² Kaggle Model Lab — Stage 04: Exact Roster-Scoped Retrieval & Threshold Calibration.
+K² FRS Kaggle Model Lab — Stage 04: Exact Roster-Scoped Retrieval & Threshold Calibration.
 Tests 1:N linear search, margin evaluation, and open-set unknown rejection.
 """
 

@@ -1,5 +1,5 @@
 """
-FRS V7.1 K2 -- Recognizer & Exact Roster Search Adapter.
+K² FRS -- Recognizer & Exact Roster Search Adapter.
 Enforces exact cosine retrieval, margin evaluation, and open-set unknown classification.
 Executes rights-cleared OpenCV Zoo SFace ONNX model with strict SHA-256 integrity verification
 and fail-closed mathematical inference.

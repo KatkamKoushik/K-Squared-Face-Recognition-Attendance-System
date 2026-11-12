@@ -1,8 +1,8 @@
-# FRS V7.1 K² System Documentation
+# K² FRS System Documentation
 
-Welcome to the official technical documentation and architecture wiki for the **Facial Recognition System (FRS) V7.1 K²**, designed for institutional deployment at **Kakatiya University College of Engineering & Technology (KUCET)**.
+Welcome to the official technical documentation and architecture wiki for the **Facial Recognition System (FRS) K² FRS K²**, designed for institutional deployment at **Kakatiya University College of Engineering & Technology (KUCET)**.
 
-FRS V7.1 K² is an enterprise-grade classroom attendance proposal system. It replaces single-face biometric punch kiosks and legacy attendance registers with a multi-face classroom sweep workflow that preserves strict academic governance and faculty autonomy.
+K² FRS is an enterprise-grade classroom attendance proposal system. It replaces single-face biometric punch kiosks and legacy attendance registers with a multi-face classroom sweep workflow that preserves strict academic governance and faculty autonomy.
 
 ---
 
@@ -26,7 +26,7 @@ flowchart LR
     style E fill:#dcfce7,stroke:#16a34a,color:#15803d
 ```
 
-Unlike commercial black-box attendance software that automatically modifies attendance databases based on opaque recognition scores, FRS V7.1 enforces the **Human-in-the-Loop Proposal Principle**:
+Unlike commercial black-box attendance software that automatically modifies attendance databases based on opaque recognition scores, K² FRS enforces the **Human-in-the-Loop Proposal Principle**:
 
 1. **Evidence Producer, Not Decision Maker:** The computer vision pipeline acts strictly as an evidence generator. It aggregates sightings, computes cosine similarity metrics, and highlights ambiguities. It cannot unilaterally commit attendance.
 2. **Faculty-Governed Commit:** Only the assigned instructor who conducted the academic session can review the proposal, override candidate statuses, resolve unassigned sightings, and execute the final atomic ledger commit.
@@ -53,7 +53,7 @@ The wiki is organized into seven specialized reference manuals:
 
 ## Project Status At A Glance
 
-* **Current Architecture Version:** V7.1 Canonical (Real-time Cloud & On-Premises)
+* **Current Architecture Version:** Canonical Release (Real-time Cloud & On-Premises)
 * **FastAPI Control Plane:** Operational (118 automated unit, security, and persistence tests passing: 117 passed, 1 PG socket probe skip)
 * **Playwright Browser E2E:** Operational (15/15 Admin Console browser automation tests passing on Chromium)
 * **Database & Vector Search:** Supabase PostgreSQL with `pgvector` extension and SSL encryption active across 28 normalized tables.

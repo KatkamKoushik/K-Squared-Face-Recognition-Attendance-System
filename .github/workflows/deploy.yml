@@ -1,4 +1,4 @@
-name: FRS V7.1 K² CD Deployment Pipeline
+name: K² FRS CD Deployment Pipeline
 
 on:
   push:
@@ -164,9 +164,9 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          if gh release view v7.1.0 >/dev/null 2>&1; then
-            echo "Publishing APK to GitHub Release v7.1.0..."
-            gh release upload v7.1.0 build/app/outputs/flutter-apk/app-release.apk#frs-teacher-app-v7.1.0.apk --clobber
+          if gh release view 1.0.0 >/dev/null 2>&1; then
+            echo "Publishing APK to GitHub Release 1.0.0..."
+            gh release upload 1.0.0 build/app/outputs/flutter-apk/app-release.apk#frs-teacher-app-1.0.0.apk --clobber
           fi
 
   # ============================================================================
@@ -214,7 +214,7 @@ jobs:
 
       - name: Log Deployment Pipeline Summary
         run: |
-          echo "=== FRS V7.1 K² CD Pipeline Execution Complete ==="
+          echo "=== K² FRS CD Pipeline Execution Complete ==="
           echo "1. Container images pushed to ghcr.io/${{ github.repository_owner }}"
           echo "2. Android APK compiled and archived in GitHub Artifacts"
           echo "3. Target deployment verification finished"

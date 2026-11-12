@@ -1,4 +1,4 @@
-# FRS V7.1 K² — Definition of Done (DoD) & Acceptance Quality Gate
+# K² FRS — Definition of Done (DoD) & Acceptance Quality Gate
 *Standard Engineering Quality Gate for Features, Bug Fixes, and Architectural Changes*
 *Conforms to Checklist Section 55 (Definition of done for each feature) and Section 52 (Quality gates)*
 
@@ -36,5 +36,5 @@ Every pull request, architectural change, or feature increment must satisfy the 
 ### Security, Privacy & Git Hygiene (Priority: P0)
 - [ ] **PII Redaction:** Facial bounding boxes, crops, and embedding arrays are never written to operational logs or audit tables.
 - [ ] **Cryptographic Signing:** Commit is cryptographically signed using the authorized SSH ED25519 key.
-- [ ] **Exclusion Policy:** `docs/FRS_V7_1_K2_Master_Project_Handbook_85_Prompt_Shot_Plan.md` and local `.env` files are strictly excluded from git tracking.
+- [ ] **Exclusion Policy:** `docs/FRS_K2_K2_Master_Project_Handbook_85_Prompt_Shot_Plan.md` and local `.env` files are strictly excluded from git tracking.
 

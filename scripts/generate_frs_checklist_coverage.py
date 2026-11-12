@@ -1,5 +1,5 @@
 """
-FRS V7.1 K² — Cross-Checklist Traceability Register Generator.
+K² FRS — Cross-Checklist Traceability Register Generator.
 Parses the 3 source checklists in docs/references/checklists/ and generates docs/engineering/FRS-checklist-coverage.md.
 """
 
@@ -64,7 +64,7 @@ def classify_control(text, section, source_type):
         return (
             'Core', 'P0', 'FRS-INV-CORE',
             'VERIFIED_PRESENT',
-            'Governed by FRS V7.1 non-negotiable domain invariants; verified in test_arithmetic.py, test_commit_acid.py, test_roster_snapshot.py, test_state_machine.py.'
+            'Governed by K² FRS non-negotiable domain invariants; verified in test_arithmetic.py, test_commit_acid.py, test_roster_snapshot.py, test_state_machine.py.'
         )
 
     # Core Security & Access Control
@@ -222,8 +222,8 @@ def main():
     os.makedirs(os.path.dirname(out_path), exist_ok=True)
 
     with open(out_path, 'w', encoding='utf-8') as out:
-        out.write("# FRS V7.1 K² — Cross-Checklist Traceability & Engineering Coverage Register\n\n")
-        out.write("> **System Identifier:** FRS V7.1 K² Monorepo (KUCET Institutional Attendance Proposal System)\n")
+        out.write("# K² FRS — Cross-Checklist Traceability & Engineering Coverage Register\n\n")
+        out.write("> **System Identifier:** K² FRS Monorepo (KUCET Institutional Attendance Proposal System)\n")
         out.write("> **Audit Execution Date:** November 2026\n")
         out.write("> **Execution Mode:** Antigravity CLI (`agy`) Evidence-Gated Engineering Audit\n")
         out.write("> **Target Scope:** 100% item-by-item reconciliation across all three authoritative engineering checklists\n\n")

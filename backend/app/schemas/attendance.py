@@ -1,5 +1,5 @@
 """
-FRS V7.1 K² — Atomic Attendance Commit & Analytics Schemas.
+K² FRS — Atomic Attendance Commit & Analytics Schemas.
 """
 
 from datetime import datetime

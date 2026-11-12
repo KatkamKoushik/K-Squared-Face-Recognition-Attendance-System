@@ -1,5 +1,5 @@
 """
-FRS V7.1 K² — Academic Core Domain Models.
+K² FRS — Academic Core Domain Models.
 Implements Departments, Cohorts, Terms, Subjects, Offerings, Groups, and Assignments.
 """
 

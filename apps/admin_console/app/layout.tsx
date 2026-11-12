@@ -4,7 +4,7 @@ import "./globals.css";
 import { AppShell } from "@/components/app-shell";
 
 export const metadata: Metadata = {
-  title: "FRS V7.1 K² — Attendance Portal & Admin Console",
+  title: "K² FRS — Attendance Portal & Admin Console",
   description: "Academic Biometric Enrollment and Attendance Ledger for KUCE&T",
 };
 

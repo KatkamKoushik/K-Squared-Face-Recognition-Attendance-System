@@ -1,5 +1,5 @@
 """
-FRS V7.1 K² — Universal Demo Testing & Ground-Truth Analysis Service.
+K² FRS — Universal Demo Testing & Ground-Truth Analysis Service.
 Executes real YuNet detection, 5-landmark alignment, and SFace 128-D embedding matching
 against registered students in the database with optional department filtering and
 resolution-adaptive open-set thresholding.

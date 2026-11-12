@@ -1,5 +1,5 @@
 """
-FRS V7.1 K² — Audit Trail Query Endpoints.
+K² FRS — Audit Trail Query Endpoints.
 Guarded by ADMIN and OPERATOR roles.
 """
 

@@ -1,5 +1,5 @@
 """
-FRS V7.1 K² — Complete 12-Step Live Workflow & Integration Verification.
+K² FRS — Complete 12-Step Live Workflow & Integration Verification.
 Executes the authoritative 12-step sequence against the live Supabase PostgreSQL database:
 1. PostgreSQL starts and migrations complete.
 2. Admin can log in securely.
@@ -199,7 +199,7 @@ def test_complete_12_step_real_workflow():
         profile = EnrollmentProfile(
             student_id=approved_student.id,
             model_artifact_id="0ba9fbfa01b5270c96627c4ef784da859931e02f04419c829e83484087c34e79",
-            embedding_namespace="kucet_sface_128d_v7_1",
+            embedding_namespace="kucet_sface_128d_k2",
             embedding_dimension=128,
             vector_data=test_vector,
             profile_version=1,

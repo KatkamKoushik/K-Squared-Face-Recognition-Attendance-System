@@ -1,5 +1,5 @@
 """
-FRS V7.1 K² — Phase P2 Multi-Photo Session Reconciliation Tests.
+K² FRS — Phase P2 Multi-Photo Session Reconciliation Tests.
 Verifies cross-frame evidence aggregation, duplicate resolution,
 same-frame conflict detection, and classroom coverage gap analysis.
 """

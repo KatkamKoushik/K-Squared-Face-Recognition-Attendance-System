@@ -1,5 +1,5 @@
 """
-FRS V7.1 K2 -- Evaluation, Acceptance & Institutional Pilot Benchmark Suite.
+K² FRS -- Evaluation, Acceptance & Institutional Pilot Benchmark Suite.
 Validates model calibration, open-set impostor rejection, ambiguity margin routing,
 non-biometric fallback guarantees, and supervised presentation attack detection.
 """

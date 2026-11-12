@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-FRS V7.1 K² — Real Student Face Enrollment CLI Tool (P0-C, P0-E).
+K² FRS — Real Student Face Enrollment CLI Tool (P0-C, P0-E).
 Enrolls real volunteer reference photographs into PostgreSQL using verified
 YuNet face detection, 5-landmark SFace alignment, and L2-normalized 128-D embeddings.
 """
@@ -29,7 +29,7 @@ def enroll_face(roll_number: str, image_path: Path):
         print(f"[ERROR] Reference image file does not exist: {image_path}", file=sys.stderr)
         sys.exit(1)
 
-    print(f"=== FRS V7.1 Biometric Volunteer Face Enrollment ===")
+    print(f"=== K² FRS Biometric Volunteer Face Enrollment ===")
     print(f"Target Roll Number : {roll_number}")
     print(f"Reference Image    : {image_path}")
 
@@ -117,7 +117,7 @@ def enroll_face(roll_number: str, image_path: Path):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="FRS V7.1 Real Volunteer Face Enrollment Tool")
+    parser = argparse.ArgumentParser(description="K² FRS Real Volunteer Face Enrollment Tool")
     parser.add_argument("--roll", required=True, help="Student roll number (e.g. 00622501)")
     parser.add_argument("--image", required=True, type=Path, help="Path to reference face image (JPG/PNG)")
     args = parser.parse_args()

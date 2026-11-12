@@ -1,6 +1,6 @@
-# FRS V7.1 K² — Canonical Domain Contracts
+# K² FRS — Canonical Domain Contracts
 
-`@frs/contracts` is the central source of truth for all domain entities, state enums, request envelopes, and API DTOs across the FRS V7.1 K² monorepo.
+`@frs/contracts` is the central source of truth for all domain entities, state enums, request envelopes, and API DTOs across the K² FRS monorepo.
 
 ---
 

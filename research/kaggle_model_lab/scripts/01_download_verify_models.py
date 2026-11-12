@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-FRS V7.1 K² Kaggle Model Lab — Stage 01: Model Download & SHA-256 Integrity Verification.
+K² FRS Kaggle Model Lab — Stage 01: Model Download & SHA-256 Integrity Verification.
 """
 
 import hashlib
@@ -24,7 +24,7 @@ def download_and_verify(models_dir: Path, manifest_path: Path) -> dict:
 
     results = {}
     print("=" * 60)
-    print("FRS V7.1 K² — MODEL DOWNLOAD & INTEGRITY VERIFICATION")
+    print("K² FRS — MODEL DOWNLOAD & INTEGRITY VERIFICATION")
     print("=" * 60)
 
     for key, spec in manifest.get("models", {}).items():

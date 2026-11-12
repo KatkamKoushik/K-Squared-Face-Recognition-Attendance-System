@@ -1,5 +1,5 @@
 """
-FRS V7.1 K² — 5-Tier Hierarchical RBAC & Department Isolation Test Suite.
+K² FRS — 5-Tier Hierarchical RBAC & Department Isolation Test Suite.
 Validates the institutional access control hierarchy:
 DEVELOPER > SUPER_ADMIN > ADMIN > SUB_ADMIN (FACULTY) > STUDENT
 
@@ -759,7 +759,7 @@ def test_duplicate_appeal_and_correction_reviews(db_session: Session, rbac_fixtu
         faculty_id=faculty.id,
         session_date=date.today(),
         state=SessionState.FINALIZED,
-        policy_version_id="policy_kucet_v7_1_default",
+        policy_version_id="policy_kucet_k2_default",
         planned_units=1,
     )
     db_session.add(session)

@@ -1,6 +1,6 @@
 ---
 name: Feature Request
-about: Suggest an idea or enhancement for FRS V7.1
+about: Suggest an idea or enhancement for K² FRS
 title: '[FEAT] '
 labels: enhancement
 assignees: ''

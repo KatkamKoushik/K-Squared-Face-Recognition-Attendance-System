@@ -1,5 +1,5 @@
 """
-FRS V7.1 K² — PostgreSQL Persistence Foundation & Alembic Migration Test Suite.
+K² FRS — PostgreSQL Persistence Foundation & Alembic Migration Test Suite.
 Verifies configuration validation, credential protection, connection pooling,
 session lifecycle, migration parity, and PostgreSQL/SQLite boundaries.
 """

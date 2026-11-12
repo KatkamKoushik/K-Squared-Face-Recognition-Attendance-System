@@ -1,5 +1,5 @@
 """
-FRS V7.1 K² — Presentation Attack Detection (PAD) Gate & Threat Model Policy.
+K² FRS — Presentation Attack Detection (PAD) Gate & Threat Model Policy.
 Enforces that PAD is an independent fail-closed gate; identity score CANNOT bypass PAD.
 
 Institutional Threat Model Disclosure:
@@ -27,7 +27,7 @@ from app.worker.contracts import SecurityResult
 
 class PadAdapter:
 
-    MODEL_HASH = "kucet_passive_pad_v7_1_supervised"
+    MODEL_HASH = "kucet_passive_pad_k2_supervised"
 
     def verify_liveness(
         self,

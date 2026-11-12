@@ -1,5 +1,5 @@
 """
-FRS V7.1 K² — Authoritative Attendance Ledger Model.
+K² FRS — Authoritative Attendance Ledger Model.
 Enforces the ACID attendance denominator: per student per conducted instructional unit.
 """
 

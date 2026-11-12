@@ -1,5 +1,5 @@
 """
-FRS V7.1 K² — Data Governance, Biometric Privacy & Retention Endpoints.
+K² FRS — Data Governance, Biometric Privacy & Retention Endpoints.
 Provides institutional compliance telemetry, raw frame purging, and consent controls.
 """
 

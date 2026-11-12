@@ -1,5 +1,5 @@
 """
-FRS V7.1 K² — Real-Time Event Broadcaster & SSE Test Suite.
+K² FRS — Real-Time Event Broadcaster & SSE Test Suite.
 Verifies channel authorization, event serialization, replay buffers, and live streams.
 """
 

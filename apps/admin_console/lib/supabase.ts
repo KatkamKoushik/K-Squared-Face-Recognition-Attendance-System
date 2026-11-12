@@ -1,5 +1,5 @@
 /**
- * Supabase Cloud Infrastructure Integration for FRS V7.1 K2 Admin Console
+ * Supabase Cloud Infrastructure Integration for K² FRS Admin Console
  * Provides configuration and REST/Auth request wrappers.
  */
 
@@ -22,6 +22,9 @@ function getServerServiceRoleKey(): string | null {
     return (
       process.env.SUPABASE_SERVICE_ROLE_KEY ||
       process.env.SUPABASE_SECRET_KEY ||
+      process.env.SUPABASE_SERVICE_KEY ||
+      process.env.SUPABASE_SECRET ||
+      process.env.NEXT_PUBLIC_SUPABASE_SECRET_KEY ||
       null
     );
   }

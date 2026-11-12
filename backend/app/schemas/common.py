@@ -1,5 +1,5 @@
 """
-FRS V7.1 K² — Common Schema Envelopes & Pagination Contracts.
+K² FRS — Common Schema Envelopes & Pagination Contracts.
 """
 
 from datetime import datetime, timezone

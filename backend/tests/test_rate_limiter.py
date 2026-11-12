@@ -1,5 +1,5 @@
 """
-FRS V7.1 K² — Rate Limiter & Abuse Prevention Test Suite.
+K² FRS — Rate Limiter & Abuse Prevention Test Suite.
 Verifies sliding-window throttling, burst protection, retry-after calculations,
 route exemptions, and timestamp window purging.
 """

@@ -1,5 +1,5 @@
 """
-FRS V7.1 K² — Authentication & User Contracts.
+K² FRS — Authentication & User Contracts.
 """
 
 from typing import Optional

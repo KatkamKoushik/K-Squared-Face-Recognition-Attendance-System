@@ -1,5 +1,5 @@
 """
-FRS V7.1 K² — Frame Upload & Face Evidence Schemas.
+K² FRS — Frame Upload & Face Evidence Schemas.
 """
 
 from datetime import datetime

@@ -1,6 +1,6 @@
 # Security, Privacy & Biometric Governance
 
-FRS V7.1 K² is designed around strict privacy protections, regulatory compliance with educational data standards, and zero reliance on commercial third-party cloud APIs.
+K² FRS is designed around strict privacy protections, regulatory compliance with educational data standards, and zero reliance on commercial third-party cloud APIs.
 
 ---
 

@@ -1,6 +1,6 @@
 """
-FRS V7.1 K² — Canonical Domain Enums.
-Strictly frozen state machine values matching the V7.1 Master Blueprint.
+K² FRS — Canonical Domain Enums.
+Strictly frozen state machine values matching the institutional specification.
 """
 
 from enum import Enum

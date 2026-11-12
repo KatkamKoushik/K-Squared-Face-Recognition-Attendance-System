@@ -1,10 +1,10 @@
-# FRS V7.1 K² — Universal Monorepo Automation & Engineering Operations
+# K² FRS — Universal Monorepo Automation & Engineering Operations
 # Conforms to Checklist Section 24, 25, and 61.
 
 .PHONY: help test verify lint build clean up down db-migrate contracts e2e
 
 help:
-	@echo "FRS V7.1 K² Production Monorepo Management"
+	@echo "K² FRS Production Monorepo Management"
 	@echo ""
 	@echo "Available commands:"
 	@echo "  make test        Run all test suites (Backend, Mobile, Admin, Contracts)"

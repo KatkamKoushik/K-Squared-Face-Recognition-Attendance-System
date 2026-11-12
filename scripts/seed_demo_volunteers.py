@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-FRS V7.1 K² — Dedicated Demo Volunteer Offering Seeder.
+K² FRS — Dedicated Demo Volunteer Offering Seeder.
 Creates an isolated, controlled demo classroom offering and cohort for live presentation
 with consented test identities and explicit non-biometric manual review cases.
 """
@@ -32,7 +32,7 @@ from app.domain.models.student import Student, Enrollment, EnrollmentProfile
 
 
 def seed_demo_environment():
-    print("=== Seeding FRS V7.1 Controlled Live Demo Environment ===")
+    print("=== Seeding K² FRS Controlled Live Demo Environment ===")
     with SessionLocal() as db:
         # 1. Fetch or create CSE department
         dept = db.execute(select(Department).where(Department.code == "CSE")).scalar_one_or_none()

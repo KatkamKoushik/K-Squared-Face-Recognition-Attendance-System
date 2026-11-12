@@ -1,5 +1,5 @@
 """
-FRS V7.1 K² — Academic Administration DTO Schemas.
+K² FRS — Academic Administration DTO Schemas.
 """
 
 from datetime import date, datetime

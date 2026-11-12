@@ -1,5 +1,5 @@
 """
-FRS V7.1 K² — Student Portal Service.
+K² FRS — Student Portal Service.
 Provides authoritative, isolated data access for student identity, enrolled attendance,
 and formal academic appeals without cross-student data leakage.
 """

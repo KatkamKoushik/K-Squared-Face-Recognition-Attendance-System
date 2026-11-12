@@ -1,4 +1,4 @@
-# FRS V7.1 K² — Kaggle Environment Guide
+# K² FRS — Kaggle Environment Guide
 
 **Institution**: Kakatiya University College of Engineering & Technology (KUCET), Warangal  
 **Target Environment**: Kaggle Notebooks (`Ubuntu 22.04 LTS`, Python 3.10+, Dual Tesla T4 GPUs — `GPU T4 x 2` or P100)  
@@ -21,7 +21,7 @@ Before running or fine-tuning models in Kaggle:
 
 ## 2. Blueprint Model Candidates (Master Handbook Section 5 & 10)
 
-The V7.1 Master Blueprint specifies 4 candidate models plus the YuNet face detector:
+The Master Institutional Blueprint specifies 4 candidate models plus the YuNet face detector:
 
 | Model Architecture | Task | Resolution | Loss / Head | Output Latent Space | Target ONNX Artifact | Calibrated Threshold ($\tau$) |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |

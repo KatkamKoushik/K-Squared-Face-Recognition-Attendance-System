@@ -1,5 +1,5 @@
 """
-FRS V7.1 K² — Immutable Roster Snapshot & Joint-Class Union Tests.
+K² FRS — Immutable Roster Snapshot & Joint-Class Union Tests.
 """
 
 from datetime import date

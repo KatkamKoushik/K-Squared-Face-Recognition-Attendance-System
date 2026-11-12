@@ -1,5 +1,5 @@
 """
-FRS V7.1 K² — Attendance Denominator Arithmetic & Reporting Service.
+K² FRS — Attendance Denominator Arithmetic & Reporting Service.
 Enforces that attendance percentage is calculated per student per conducted instructional unit.
 Zero denominator yields None (N/A) rather than misleading 0% or 100%.
 """
@@ -126,7 +126,7 @@ class AnalyticsService:
             else:
                 student_eligible_units = total_conducted
 
-            # V7.1 Denominator rule:
+            # K² FRS Denominator rule:
             # If eligible conducted units = 0 -> N/A (None)
             if student_eligible_units == 0:
                 pct = None

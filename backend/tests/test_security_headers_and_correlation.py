@@ -1,5 +1,5 @@
 """
-FRS V7.1 K² — Security Headers & Correlation ID Middleware Test Suite.
+K² FRS — Security Headers & Correlation ID Middleware Test Suite.
 Verifies compliance with OWASP Secure Headers and RFC 7807 correlation tracking.
 """
 

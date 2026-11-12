@@ -15,7 +15,7 @@ import {
 } from "./api";
 
 /**
- * Universal direct Supabase PostgREST fallback for FRS V7.1 K2 Admin Console.
+ * Universal direct Supabase PostgREST fallback for K² FRS Admin Console.
  * Enables live executive overview, roster preview, and student gallery views
  * directly from cloud Postgres when the local FastAPI bridge is offline.
  */
@@ -181,6 +181,11 @@ export async function fallbackFromSupabase<T>(endpoint: string): Promise<T | nul
           id: s.id,
           roll_number: s.roll_number,
           full_name: s.full_name,
+          department_id: cohort?.department_id || "",
+          current_term: "VII",
+          status: s.is_active ? "ACTIVE" : "INACTIVE",
+          consent_signed: true,
+          enrollment_date: "2023-08-01",
           is_active: s.is_active,
           cohort_id: s.cohort_id,
           cohort_name: cohort?.name || "B.Tech CSE - 4th Year",

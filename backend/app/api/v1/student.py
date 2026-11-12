@@ -1,5 +1,5 @@
 """
-FRS V7.1 K² — Student Portal API Endpoints.
+K² FRS — Student Portal API Endpoints.
 Guarantees strict tenant isolation: students can only query their own attendance
 and submit appeals against their own records.
 """

@@ -1,5 +1,5 @@
 """
-FRS V7.1 K² — Test Suite Configuration & Fixtures.
+K² FRS — Test Suite Configuration & Fixtures.
 Runs SQLite in-process in the system temp directory for 100% deterministic testing.
 """
 

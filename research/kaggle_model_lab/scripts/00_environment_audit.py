@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-FRS V7.1 K² Kaggle Model Lab — Stage 00: Environment & Hardware Audit.
+K² FRS Kaggle Model Lab — Stage 00: Environment & Hardware Audit.
 Reports comprehensive runtime capabilities on Kaggle Linux (T4x2).
 """
 
@@ -29,7 +29,7 @@ def run_audit() -> dict:
     }
 
     print("=" * 60)
-    print("FRS V7.1 K² KAGGLE MODEL LAB — ENVIRONMENT AUDIT")
+    print("K² FRS KAGGLE MODEL LAB — ENVIRONMENT AUDIT")
     print("=" * 60)
     print(f"Python Version    : {audit_data['python_version']}")
     print(f"OS & Architecture : {audit_data['os']} ({audit_data['architecture']})")

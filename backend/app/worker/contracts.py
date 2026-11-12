@@ -1,5 +1,5 @@
 """
-FRS V7.1 K² — Model-Neutral Typed Vision Contracts.
+K² FRS — Model-Neutral Typed Vision Contracts.
 Decouples inference implementations from database models and business logic.
 """
 

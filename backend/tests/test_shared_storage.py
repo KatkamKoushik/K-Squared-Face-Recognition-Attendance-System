@@ -1,5 +1,5 @@
 """
-FRS V7.1 K2 -- Shared Storage Architecture & Worker Access Tests.
+K² FRS -- Shared Storage Architecture & Worker Access Tests.
 Verifies that ingress API persists frames to configured STORAGE_DIR and
 that vision worker resolves and processes frames from that shared path.
 """

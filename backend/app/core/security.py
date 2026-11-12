@@ -1,5 +1,5 @@
 """
-FRS V7.1 K² — Cryptographic Security, Password Hashing & JWT Management.
+K² FRS — Cryptographic Security, Password Hashing & JWT Management.
 Uses NIST-approved PBKDF2-HMAC-SHA256 (standard library) and PyJWT for fail-safe operation.
 """
 

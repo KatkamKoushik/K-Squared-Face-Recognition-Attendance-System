@@ -1,5 +1,5 @@
 """
-FRS V7.1 K² — Real-Time Event Synchronization Schemas.
+K² FRS — Real-Time Event Synchronization Schemas.
 Enforces typed real-time event payloads across SSE and WebSocket streams.
 """
 

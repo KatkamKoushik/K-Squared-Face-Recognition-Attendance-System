@@ -84,7 +84,7 @@ export default async function SystemReadinessPage() {
             </div>
             <div className="flex justify-between">
               <span>Schema Revision:</span>
-              <span className="font-mono">3a42e90c6daf (V7_1)</span>
+              <span className="font-mono">3a42e90c6daf (K2)</span>
             </div>
           </div>
         </div>
@@ -160,7 +160,7 @@ export default async function SystemReadinessPage() {
               </tr>
               <tr>
                 <td className="px-6 py-3 font-sans font-medium text-slate-900">Presentation Attack</td>
-                <td className="px-6 py-3 text-slate-600">kucet_passive_pad_v7_1_supervised</td>
+                <td className="px-6 py-3 text-slate-600">kucet_passive_pad_k2_supervised</td>
                 <td className="px-6 py-3 text-slate-500">Institutional Policy • Faculty-in-the-Loop Supervision</td>
                 <td className="px-6 py-3">
                   <span className="font-sans font-semibold text-emerald-700">POLICY ACTIVE</span>

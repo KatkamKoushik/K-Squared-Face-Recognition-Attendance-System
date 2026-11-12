@@ -1,6 +1,6 @@
 # Operations, Infrastructure & Deployment
 
-FRS V7.1 K² provides containerized configurations for both single-node on-premise servers and multi-node clustered institutional environments.
+K² FRS provides containerized configurations for both single-node on-premise servers and multi-node clustered institutional environments.
 
 ---
 

@@ -1,12 +1,12 @@
 # Android Release Signing Configuration & Runbook
-**FRS V7.1 K² Operations Documentation**  
+**K² FRS Operations Documentation**  
 *Status: IMPLEMENTED & VERIFIED*
 
 ---
 
 ## 1. Overview & Security Mandate
 
-FRS V7.1 K² mandates that all production and staging Android APK / AAB artifacts for the Teacher Mobile application (`apps/teacher_mobile`) must be signed exclusively using approved institutional release keystores. 
+K² FRS mandates that all production and staging Android APK / AAB artifacts for the Teacher Mobile application (`apps/teacher_mobile`) must be signed exclusively using approved institutional release keystores. 
 
 ### Critical Invariants
 1. **Production Keystore Priority:** Production APKs are signed with the official institutional keystore when repository secrets (`KEYSTORE_BASE64`, etc.) are configured.

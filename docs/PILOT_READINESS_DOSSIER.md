@@ -1,9 +1,9 @@
-# FRS V7.1 K² — Institutional Pilot Readiness & Go/No-Go Dossier (Gate G7)
+# K² FRS — Institutional Pilot Readiness & Go/No-Go Dossier (Gate G7)
 
 ## Kakatiya University College of Engineering & Technology (KUCET)
 **Department of Computer Science & Engineering**  
 **Campus Baseline:** Warangal, Telangana, India  
-**Document Reference:** `KUCET/CSE/2026/FRS-V7.1-G7-DOSSIER`  
+**Document Reference:** `KUCET/CSE/2026/FRS-K² FRS-G7-DOSSIER`  
 **Classification:** Institutional Controlled Document  
 **Date:** September 18, 2026  
 **Status:** UNANIMOUS GO RECOMMENDATION SIGNED  
@@ -14,7 +14,7 @@
 
 This dossier presents the authoritative empirical results, algorithmic benchmarks, statutory compliance audits, and architectural validations from the 14-day controlled classroom pilot conducted at Kakatiya University College of Engineering & Technology (KUCET).
 
-The pilot evaluated the **FRS V7.1 K²** Facial Recognition Attendance System across 14 instructional days (28 conducted units) for **CS401: Distributed Systems & Cloud Computing** (B.Tech CSE Class of 2026, Section A). The pilot operated under a strict dual-ledger protocol where automated facial recognition proposals were cross-examined against manual faculty paper roll-calls, cryptographic receipts, and Digital Personal Data Protection (DPDP) Act non-biometric alternatives.
+The pilot evaluated the **K² FRS** Facial Recognition Attendance System across 14 instructional days (28 conducted units) for **CS401: Distributed Systems & Cloud Computing** (B.Tech CSE Class of 2026, Section A). The pilot operated under a strict dual-ledger protocol where automated facial recognition proposals were cross-examined against manual faculty paper roll-calls, cryptographic receipts, and Digital Personal Data Protection (DPDP) Act non-biometric alternatives.
 
 All predeclared institutional criteria—including True Accept Rate (TAR), False Accept Rate (FAR), faculty review latency, mathematical Cartesian completeness, and ephemeral storage retention—were met or exceeded. The Academic Evaluation Committee and Faculty Council unanimously recommend a **GO** decision for campus-wide Phase P8 rollout.
 
@@ -145,7 +145,7 @@ The pilot implemented the governance requirements mandated by India's *Digital P
 
 ## 8. Final Institutional Recommendation
 
-The Institutional Pilot Evaluation Committee, having examined the quantitative metrics, cryptographic verification proofs, privacy audits, and faculty feedback, finds that the **FRS V7.1 K²** platform fully satisfies all technical, pedagogical, and statutory standards.
+The Institutional Pilot Evaluation Committee, having examined the quantitative metrics, cryptographic verification proofs, privacy audits, and faculty feedback, finds that the **K² FRS** platform fully satisfies all technical, pedagogical, and statutory standards.
 
 ### Unanimous Go Decision:
 - **Phase P7:** **OFFICIALLY COMPLETED AND CLOSED**

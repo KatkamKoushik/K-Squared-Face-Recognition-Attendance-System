@@ -1,5 +1,5 @@
 """
-FRS V7.1 K² — Authentication & User Management Service.
+K² FRS — Authentication & User Management Service.
 """
 
 from typing import Optional

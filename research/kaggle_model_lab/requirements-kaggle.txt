@@ -1,4 +1,4 @@
-# FRS V7.1 K² Kaggle Model Lab Dependencies
+# K² FRS Kaggle Model Lab Dependencies
 # Pinned for reproducibility on Kaggle Linux (Ubuntu 22.04 LTS / GPU T4x2)
 
 opencv-python-headless>=4.8.1.78

@@ -1,6 +1,6 @@
 """
-FRS V7.1 K² — Attendance Denominator Arithmetic Tests.
-Verifies Section 4.2 of V7.1 Blueprint:
+K² FRS — Attendance Denominator Arithmetic Tests.
+Verifies Section 4.2 of Master Specification:
 attended_units(student, period) = COUNT(finalized unit records with status PRESENT)
 conducted_units(period)          = COUNT(authorized unit records confirmed as conducted)
 attendance_percent              = 100 * attended_units / eligible_conducted_units

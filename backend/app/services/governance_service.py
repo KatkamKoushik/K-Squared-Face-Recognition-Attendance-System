@@ -1,5 +1,5 @@
 """
-FRS V7.1 K² — Data Governance, Biometric Privacy & Ephemeral Retention Service.
+K² FRS — Data Governance, Biometric Privacy & Ephemeral Retention Service.
 Implements institutional notice tracking, non-biometric alternatives,
 and cryptographic/physical purging of raw classroom photo frames.
 """

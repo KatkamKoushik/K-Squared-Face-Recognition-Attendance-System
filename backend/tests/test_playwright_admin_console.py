@@ -1,5 +1,5 @@
 """
-FRS V7.1 K² — Playwright End-to-End Suite for Next.js Admin Console.
+K² FRS — Playwright End-to-End Suite for Next.js Admin Console.
 Executes browser automation against the standalone/production Next.js build.
 Validates DOM structure, navigation, accessibility, responsive viewports,
 and the non-negotiable domain invariant displays (denominator N/A, biometric redaction).

@@ -1,5 +1,5 @@
 """
-FRS V7.1 K² — Ingress Payload Size & Media Type Guardrail Tests.
+K² FRS — Ingress Payload Size & Media Type Guardrail Tests.
 Verifies pre-parsing bounds, 413 rejection, 415 media type enforcement,
 and correlation ID propagation (Checklist Controls 28-N006, 28-B031, 28-B035).
 """

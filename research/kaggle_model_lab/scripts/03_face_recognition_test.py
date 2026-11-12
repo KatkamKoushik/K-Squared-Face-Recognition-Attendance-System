@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-FRS V7.1 K² Kaggle Model Lab — Stage 03: SFace 5-Landmark Alignment & 128-D Embedding Test.
+K² FRS Kaggle Model Lab — Stage 03: SFace 5-Landmark Alignment & 128-D Embedding Test.
 """
 
 import sys

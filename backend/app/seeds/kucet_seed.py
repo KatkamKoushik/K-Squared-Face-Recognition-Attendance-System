@@ -1,5 +1,5 @@
 """
-FRS V7.1 K² — Authentic Institutional Database Seeder for KUCET.
+K² FRS — Authentic Institutional Database Seeder for KUCET.
 Extracted from official institutional registers (http://kucet.ac.in/).
 Kakatiya University College of Engineering & Technology, Warangal.
 """

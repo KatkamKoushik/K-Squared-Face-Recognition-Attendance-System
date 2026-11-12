@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// FRS V7.1 K2 Design System: Swiss Modernism 2.0 (Academic Precision)
+/// K² FRS Design System: Swiss Modernism 2.0 (Academic Precision)
 /// Follows Material 3, strict contrast (>= 4.5:1), and zero AI-slop gradients.
 /// Fully offline-first without dynamic network font downloads.
 class AppTheme {

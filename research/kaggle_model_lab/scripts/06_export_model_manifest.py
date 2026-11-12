@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-FRS V7.1 K² Kaggle Model Lab — Stage 06: Export Model Manifest & Run Summary.
+K² FRS Kaggle Model Lab — Stage 06: Export Model Manifest & Run Summary.
 Aggregates environment, verified models, and benchmark telemetry into an immutable audit JSON.
 """
 
@@ -18,7 +18,7 @@ def export_summary(
     summary = {
         "lab_run_id": f"KAG-T4X2-{datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%dT%H%M%SZ')}",
         "timestamp_utc": datetime.datetime.now(datetime.timezone.utc).isoformat(),
-        "project": "FRS V7.1 K² Face Recognition Attendance System",
+        "project": "K² FRS Face Recognition Attendance System",
         "institution": "KU College of Engineering & Technology (KUCET)",
         "environment": env_audit,
         "models_verified": model_results,

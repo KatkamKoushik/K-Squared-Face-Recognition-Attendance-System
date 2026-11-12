@@ -1,5 +1,5 @@
 """
-FRS V7.1 K² — Atomic Attendance Commit & Idempotency Receipt Service.
+K² FRS — Atomic Attendance Commit & Idempotency Receipt Service.
 Executes an ACID transaction binding student-unit attendance records,
 durable receipts, and append-only audit events.
 """

@@ -1,5 +1,5 @@
 """
-FRS V7.1 K² — Real-Time Server-Sent Events (SSE) Route.
+K² FRS — Real-Time Server-Sent Events (SSE) Route.
 Provides authenticated, department-isolated live event streams with reconnect replay.
 """
 

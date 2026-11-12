@@ -1,5 +1,5 @@
 """
-FRS V7.1 K² — Cross-Photo Reconciliation & Faculty Proposal Review Service.
+K² FRS — Cross-Photo Reconciliation & Faculty Proposal Review Service.
 Consolidates sightings across multi-photo batches, enforces open-set uncertainty separation.
 """
 
