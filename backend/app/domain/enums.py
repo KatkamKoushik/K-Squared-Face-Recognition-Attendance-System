@@ -7,8 +7,11 @@ from enum import Enum
 
 
 class UserRole(str, Enum):
+    DEVELOPER = "DEVELOPER"
+    SUPER_ADMIN = "SUPER_ADMIN"
     ADMIN = "ADMIN"
-    FACULTY = "FACULTY"
+    SUB_ADMIN = "SUB_ADMIN"
+    FACULTY = "FACULTY"  # Faculty / teaching teachers (sub-admin level)
     STUDENT = "STUDENT"
     OPERATOR = "OPERATOR"
     WORKER = "WORKER"

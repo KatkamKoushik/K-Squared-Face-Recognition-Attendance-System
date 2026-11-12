@@ -4,7 +4,10 @@ library;
 /// Generated from OpenAPI / FastAPI source-of-truth.
 
 enum UserRole {
+  developer,
+  superAdmin,
   admin,
+  subAdmin,
   faculty,
   student,
   operator,

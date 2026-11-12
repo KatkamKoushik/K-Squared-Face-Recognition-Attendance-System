@@ -72,3 +72,70 @@ def decode_access_token(token: str) -> Dict[str, Any]:
         raise AuthenticationError("Access token has expired", reason_code="TOKEN_EXPIRED")
     except jwt.InvalidTokenError:
         raise AuthenticationError("Invalid access token signature", reason_code="TOKEN_INVALID")
+
+
+def init_firebase_admin() -> bool:
+    """Initializes Firebase Admin SDK if not already initialized."""
+    try:
+        import firebase_admin
+        from firebase_admin import credentials
+
+        if firebase_admin._apps:
+            return True
+
+        cred_path = settings.FIREBASE_CREDENTIALS_PATH or os.environ.get("FIREBASE_CREDENTIALS_PATH")
+        if cred_path and os.path.exists(cred_path):
+            cred = credentials.Certificate(cred_path)
+            firebase_admin.initialize_app(cred, {"projectId": settings.FIREBASE_PROJECT_ID})
+            return True
+        elif os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"):
+            firebase_admin.initialize_app()
+            return True
+        elif settings.FIREBASE_PROJECT_ID:
+            firebase_admin.initialize_app(options={"projectId": settings.FIREBASE_PROJECT_ID})
+            return True
+    except Exception:
+        pass
+    return False
+
+
+def verify_firebase_id_token(token: str) -> Dict[str, Any]:
+    """
+    Verifies a Firebase ID token.
+    Returns decoded token dictionary with user identifier and email.
+    """
+    try:
+        from firebase_admin import auth as fb_auth
+
+        init_firebase_admin()
+        decoded = fb_auth.verify_id_token(token)
+        return {
+            "sub": decoded.get("uid"),
+            "user_id": decoded.get("uid"),
+            "email": decoded.get("email"),
+            "role": decoded.get("role"),
+            "firebase": decoded,
+        }
+    except Exception as e:
+        raise AuthenticationError(f"Firebase token verification failed: {str(e)}", reason_code="FIREBASE_TOKEN_INVALID")
+
+
+def verify_token(token: str) -> Dict[str, Any]:
+    """
+    Unified token validator supporting both internal HMAC JWTs and Firebase ID tokens.
+    Tries internal JWT decoding first; falls back to Firebase ID token verification.
+    """
+    # 1. Try decoding as local signed JWT
+    try:
+        return decode_access_token(token)
+    except AuthenticationError as e:
+        if e.reason_code == "TOKEN_EXPIRED":
+            raise
+
+    # 2. Try Firebase ID token verification
+    try:
+        return verify_firebase_id_token(token)
+    except Exception:
+        pass
+
+    raise AuthenticationError("Invalid or expired authentication credentials", reason_code="TOKEN_INVALID")

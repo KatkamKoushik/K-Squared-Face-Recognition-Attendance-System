@@ -124,11 +124,11 @@ def list_all_appeals_admin(
     status_filter: Optional[AppealStatus] = None,
     limit: int = 100,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.FACULTY])),
+    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.FACULTY, UserRole.SUB_ADMIN])),
     correlation_id: str = Depends(get_correlation_id),
 ):
-    """Administrative endpoint: lists all student appeals across departments."""
-    appeals = StudentService.list_all_appeals(db, status=status_filter, limit=limit)
+    """Administrative endpoint: lists student appeals, scoped by department for department admins."""
+    appeals = StudentService.list_all_appeals(db, status=status_filter, limit=limit, user=current_user)
     items = [AttendanceAppealResponse.model_validate(a) for a in appeals]
     return ResponseEnvelope(data=items, correlation_id=correlation_id)
 
@@ -138,7 +138,7 @@ def review_appeal_admin(
     appeal_id: str,
     req: AppealReviewRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.FACULTY])),
+    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.FACULTY, UserRole.SUB_ADMIN])),
     correlation_id: str = Depends(get_correlation_id),
 ):
     """Administrative endpoint: approves or rejects a student attendance appeal."""
