@@ -39,6 +39,23 @@ def test_atomic_commit_and_idempotency_receipt(db_session: Session, seed_data):
     db_session.add_all([u1, u2])
     db_session.flush()
 
+    # Freeze Roster Snapshot
+    from app.domain.models.session import RosterSnapshot, SnapshotStudentItem
+    snapshot = RosterSnapshot(session_id=session.id, snapshot_version=1, total_eligible_students=len(students))
+    db_session.add(snapshot)
+    db_session.flush()
+    for s in students:
+        db_session.add(
+            SnapshotStudentItem(
+                snapshot_id=snapshot.id,
+                student_id=s.id,
+                roll_number=s.roll_number,
+                full_name=s.full_name,
+                cohort_id=s.cohort_id,
+            )
+        )
+    db_session.flush()
+
     # 2. Build decisions: 3 students across 2 units = 6 unit decisions
     decisions = [
         StudentUnitDecision(student_id=students[0].id, unit_index=1, status=AttendanceStatus.PRESENT_CONFIRMED),
@@ -129,3 +146,60 @@ def test_idempotency_conflict_on_mismatched_session(db_session: Session, seed_da
             request=commit_req,
             correlation_id="corr-99",
         )
+
+
+def test_commit_rejected_without_roster_snapshot(db_session: Session, seed_data):
+    """LED-01: Sessions without a frozen roster snapshot must reject commit immediately."""
+    session = AttendanceSession(
+        offering_id=seed_data["offering"].id,
+        faculty_id=seed_data["faculty"].id,
+        state=SessionState.IN_REVIEW,
+        planned_units=1,
+    )
+    db_session.add(session)
+    db_session.flush()
+
+    u1 = AttendanceUnit(session_id=session.id, unit_index=1, is_conducted=True, status=UnitStatus.PENDING)
+    db_session.add(u1)
+    db_session.flush()
+
+    commit_req = AttendanceCommitRequest(
+        idempotency_key="idemp_no_snapshot_fail",
+        conducted_unit_indices=[1],
+        decisions=[
+            StudentUnitDecision(
+                student_id=seed_data["students"][0].id,
+                unit_index=1,
+                status=AttendanceStatus.PRESENT_CONFIRMED,
+            )
+        ],
+    )
+
+    with pytest.raises(ValueError, match="cannot be committed without a frozen roster snapshot"):
+        CommitService.commit_session_attendance(
+            db=db_session,
+            session_id=session.id,
+            user_id=seed_data["faculty_user"].id,
+            faculty_id=seed_data["faculty"].id,
+            request=commit_req,
+            correlation_id="corr-no-snap",
+        )
+
+
+def test_commit_schema_rejects_duplicate_conducted_units(seed_data):
+    """LED-02: AttendanceCommitRequest rejects duplicate conducted unit indices."""
+    from pydantic import ValidationError
+
+    with pytest.raises(ValidationError, match="must not contain duplicate values"):
+        AttendanceCommitRequest(
+            idempotency_key="idemp_key_dup_units_123",
+            conducted_unit_indices=[1, 1],
+            decisions=[
+                StudentUnitDecision(
+                    student_id=seed_data["students"][0].id,
+                    unit_index=1,
+                    status=AttendanceStatus.PRESENT_CONFIRMED,
+                )
+            ],
+        )
+

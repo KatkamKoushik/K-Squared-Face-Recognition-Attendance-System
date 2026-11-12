@@ -261,3 +261,55 @@ def test_enrollment_resubmission_updates_pending(db_session: Session, seed_data)
             mime_type="image/jpeg",
         )
     assert "already been approved" in str(exc_info.value.message)
+
+
+def test_enrollment_photo_access_control(client: TestClient, db_session: Session, seed_data, admin_headers):
+    """SEC-01: Anonymous and unauthorized users must not be permitted to fetch enrollment photographs."""
+    import uuid
+    sub = EnrollmentSubmission(
+        id=str(uuid.uuid4()),
+        roll_number="SEC-TEST-001",
+        full_name="Security Test Student",
+        institutional_email="sec.test@kucet.ac.in",
+        department="CSE",
+        academic_year="2026-2030",
+        consent_acknowledged=True,
+        photo_storage_path="https://res.cloudinary.com/test/sec_test.jpg",
+        photo_sha256="a" * 64,
+        photo_mime="image/jpeg",
+        status=EnrollmentSubmissionStatus.PENDING_REVIEW,
+    )
+    db_session.add(sub)
+    db_session.commit()
+
+    # 1. Anonymous request -> 401
+    anon_resp = client.get(f"/api/v1/enrollment/submissions/{sub.id}/photo", follow_redirects=False)
+    assert anon_resp.status_code == 401
+
+    # 2. Student role -> 403
+    from app.core.security import hash_password
+    student_user = User(
+        id=str(uuid.uuid4()),
+        email="student.test@kucet.ac.in",
+        hashed_password=hash_password("student_pass_123"),
+        role=UserRole.STUDENT,
+        is_active=True,
+    )
+    db_session.add(student_user)
+    db_session.commit()
+    student_token = create_access_token(subject=str(student_user.id), role=student_user.role.value)
+    stud_resp = client.get(
+        f"/api/v1/enrollment/submissions/{sub.id}/photo",
+        headers={"Authorization": f"Bearer {student_token}"},
+        follow_redirects=False,
+    )
+    assert stud_resp.status_code == 403
+
+    # 3. Admin role -> 307 redirect
+    admin_resp = client.get(
+        f"/api/v1/enrollment/submissions/{sub.id}/photo",
+        headers=admin_headers,
+        follow_redirects=False,
+    )
+    assert admin_resp.status_code == 307
+

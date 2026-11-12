@@ -24,10 +24,13 @@ class _DemoVisualizerScreenState extends ConsumerState<DemoVisualizerScreen> wit
   int? _selectedFaceIndex;
   late TabController _tabController;
 
-  double _matchThreshold = 0.363;
+  double _matchThreshold = 0.460;
   double _marginThreshold = 0.10;
   double _blurThreshold = 50.0;
   int _totalEnrolledStudents = 0;
+  Size? _imagePixelSize;
+  String _selectedDepartment = 'ALL';
+  final List<String> _departmentOptions = const ['ALL', 'CSD', 'CSE', 'ECE', 'MECH', 'EEE', 'CIVIL', 'IT'];
 
   @override
   void initState() {
@@ -44,7 +47,9 @@ class _DemoVisualizerScreenState extends ConsumerState<DemoVisualizerScreen> wit
 
   Future<void> _loadEnrolledGalleryCount() async {
     try {
-      final students = await ref.read(apiProvider).getDemoEnrolledStudents();
+      final students = await ref.read(apiProvider).getDemoEnrolledStudents(
+        departmentCode: _selectedDepartment,
+      );
       if (mounted) {
         setState(() {
           _totalEnrolledStudents = students.length;
@@ -64,6 +69,13 @@ class _DemoVisualizerScreenState extends ConsumerState<DemoVisualizerScreen> wit
       if (file == null) return;
 
       final bytes = await file.readAsBytes();
+      final decoded = await decodeImageFromList(bytes);
+      if (mounted) {
+        setState(() {
+          _imagePixelSize = Size(decoded.width.toDouble(), decoded.height.toDouble());
+        });
+      }
+
       setState(() {
         _selectedImageBytes = bytes;
         _selectedImageName = file.name;
@@ -95,6 +107,7 @@ class _DemoVisualizerScreenState extends ConsumerState<DemoVisualizerScreen> wit
         matchThreshold: _matchThreshold,
         marginThreshold: _marginThreshold,
         blurThreshold: _blurThreshold,
+        departmentCode: _selectedDepartment,
       );
 
       if (mounted) {
@@ -102,6 +115,9 @@ class _DemoVisualizerScreenState extends ConsumerState<DemoVisualizerScreen> wit
           _analysisResult = result;
           _isAnalyzing = false;
           _totalEnrolledStudents = result.totalEnrolledStudents;
+          if (result.imageWidth != null && result.imageHeight != null && result.imageWidth! > 0) {
+            _imagePixelSize = Size(result.imageWidth!.toDouble(), result.imageHeight!.toDouble());
+          }
         });
       }
     } catch (e) {
@@ -185,13 +201,44 @@ class _DemoVisualizerScreenState extends ConsumerState<DemoVisualizerScreen> wit
                     'Calibration & Inference Parameters',
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.primaryNavy),
                   ),
-                  const SizedBox(height: 16),
-                  Text('Cosine Match Threshold (\u03c4): ${_matchThreshold.toStringAsFixed(3)}'),
+                  const SizedBox(height: 14),
+                  const Text('Roster Department Scope:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 6),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: _departmentOptions.map((dept) {
+                        final isSelected = _selectedDepartment == dept;
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 6),
+                          child: ChoiceChip(
+                            label: Text(dept == 'ALL' ? 'All (Universal)' : dept),
+                            selected: isSelected,
+                            selectedColor: AppTheme.primaryNavy.withValues(alpha: 0.15),
+                            labelStyle: TextStyle(
+                              fontSize: 11,
+                              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                              color: isSelected ? AppTheme.primaryNavy : Colors.black87,
+                            ),
+                            onSelected: (selected) {
+                              if (selected) {
+                                setModalState(() => _selectedDepartment = dept);
+                                setState(() => _selectedDepartment = dept);
+                                _loadEnrolledGalleryCount();
+                              }
+                            },
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text('Cosine Match Threshold (\u03c4): ${_matchThreshold.toStringAsFixed(3)} (Resolution-Adaptive)'),
                   Slider(
                     value: _matchThreshold,
                     min: 0.25,
-                    max: 0.60,
-                    divisions: 35,
+                    max: 0.65,
+                    divisions: 40,
                     label: _matchThreshold.toStringAsFixed(3),
                     onChanged: (v) {
                       setModalState(() => _matchThreshold = v);
@@ -249,16 +296,7 @@ class _DemoVisualizerScreenState extends ConsumerState<DemoVisualizerScreen> wit
     return Scaffold(
       backgroundColor: Colors.grey.shade50,
       appBar: AppBar(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Ground-Truth Visualizer', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-            Text(
-              'Universal Test Sandbox (${_totalEnrolledStudents > 0 ? "$_totalEnrolledStudents Enrolled" : "All Branches"})',
-              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.normal),
-            ),
-          ],
-        ),
+        title: const Text('Face Visualizer', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -274,16 +312,6 @@ class _DemoVisualizerScreenState extends ConsumerState<DemoVisualizerScreen> wit
             icon: const Icon(Icons.tune),
             tooltip: 'Calibration Settings',
             onPressed: _showSettingsModal,
-          ),
-          IconButton(
-            icon: const Icon(Icons.photo_library_outlined),
-            tooltip: 'Pick from Gallery',
-            onPressed: _isAnalyzing ? null : () => _pickImage(ImageSource.gallery),
-          ),
-          IconButton(
-            icon: const Icon(Icons.camera_alt),
-            tooltip: 'Take Photo',
-            onPressed: _isAnalyzing ? null : () => _pickImage(ImageSource.camera),
           ),
         ],
       ),
@@ -303,63 +331,98 @@ class _DemoVisualizerScreenState extends ConsumerState<DemoVisualizerScreen> wit
           flex: 5,
           child: Container(
             color: Colors.black,
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                Center(
-                  child: Image.memory(
-                    _selectedImageBytes!,
-                    fit: BoxFit.contain,
-                  ),
-                ),
-                if (_analysisResult != null)
-                  LayoutBuilder(
-                    builder: (context, constraints) {
-                      return CustomPaint(
-                        size: Size(constraints.maxWidth, constraints.maxHeight),
-                        painter: _FaceBoxesPainter(
-                          detectedFaces: _analysisResult!.detectedFaces,
-                          selectedFaceIndex: _selectedFaceIndex,
-                          onFaceTap: (idx) {
-                            setState(() {
-                              _selectedFaceIndex = idx;
-                            });
-                          },
-                        ),
-                      );
-                    },
-                  ),
-                if (_isAnalyzing)
-                  Container(
-                    color: Colors.black54,
-                    child: Center(
-                      child: Card(
-                        color: Colors.white,
-                        margin: const EdgeInsets.all(24),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: const [
-                              CircularProgressIndicator(),
-                              SizedBox(height: 16),
-                              Text(
-                                'YuNet & SFace Inference in Progress...',
-                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                              ),
-                              SizedBox(height: 4),
-                              Text(
-                                'Extracting 128-D embeddings and matching against PostgreSQL',
-                                style: TextStyle(fontSize: 11, color: Colors.grey),
-                                textAlign: TextAlign.center,
-                              ),
-                            ],
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final Rect imageRect;
+                if (_imagePixelSize != null && _imagePixelSize!.width > 0 && _imagePixelSize!.height > 0) {
+                  final fitted = applyBoxFit(
+                    BoxFit.contain,
+                    _imagePixelSize!,
+                    Size(constraints.maxWidth, constraints.maxHeight),
+                  );
+                  final dx = (constraints.maxWidth - fitted.destination.width) / 2.0;
+                  final dy = (constraints.maxHeight - fitted.destination.height) / 2.0;
+                  imageRect = Rect.fromLTWH(dx, dy, fitted.destination.width, fitted.destination.height);
+                } else {
+                  imageRect = Rect.fromLTWH(0, 0, constraints.maxWidth, constraints.maxHeight);
+                }
+
+                return Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    Center(
+                      child: Image.memory(
+                        _selectedImageBytes!,
+                        fit: BoxFit.contain,
+                      ),
+                    ),
+                    if (_analysisResult != null)
+                      GestureDetector(
+                        behavior: HitTestBehavior.translucent,
+                        onTapUp: (details) {
+                          final pos = details.localPosition;
+                          for (final face in _analysisResult!.detectedFaces) {
+                            final box = face.box;
+                            final x1 = imageRect.left + box[0] * imageRect.width;
+                            final y1 = imageRect.top + box[1] * imageRect.height;
+                            final x2 = imageRect.left + box[2] * imageRect.width;
+                            final y2 = imageRect.top + box[3] * imageRect.height;
+                            final hitRect = Rect.fromLTRB(x1 - 10, y1 - 20, x2 + 10, y2 + 10);
+                            if (hitRect.contains(pos)) {
+                              setState(() {
+                                _selectedFaceIndex = face.faceIndex;
+                              });
+                              break;
+                            }
+                          }
+                        },
+                        child: CustomPaint(
+                          size: Size(constraints.maxWidth, constraints.maxHeight),
+                          painter: _FaceBoxesPainter(
+                            detectedFaces: _analysisResult!.detectedFaces,
+                            selectedFaceIndex: _selectedFaceIndex,
+                            imageRect: imageRect,
+                            onFaceTap: (idx) {
+                              setState(() {
+                                _selectedFaceIndex = idx;
+                              });
+                            },
                           ),
                         ),
                       ),
-                    ),
-                  ),
-              ],
+                    if (_isAnalyzing)
+                      Container(
+                        color: Colors.black54,
+                        child: Center(
+                          child: Card(
+                            color: Colors.white,
+                            margin: const EdgeInsets.all(24),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: const [
+                                  CircularProgressIndicator(),
+                                  SizedBox(height: 16),
+                                  Text(
+                                    'YuNet & SFace Inference in Progress...',
+                                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                  ),
+                                  SizedBox(height: 4),
+                                  Text(
+                                    'Extracting 128-D embeddings and matching against PostgreSQL',
+                                    style: TextStyle(fontSize: 11, color: Colors.grey),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                );
+              },
             ),
           ),
         ),
@@ -461,24 +524,25 @@ class _DemoVisualizerScreenState extends ConsumerState<DemoVisualizerScreen> wit
               ),
             ),
             const SizedBox(height: 32),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+            Wrap(
+              alignment: WrapAlignment.center,
+              spacing: 12,
+              runSpacing: 12,
               children: [
                 ElevatedButton.icon(
                   onPressed: () => _pickImage(ImageSource.camera),
                   icon: const Icon(Icons.camera_alt),
-                  label: const Text('Take Camera Photo'),
+                  label: const Text('Take Photo'),
                   style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
                   ),
                 ),
-                const SizedBox(width: 12),
                 OutlinedButton.icon(
                   onPressed: () => _pickImage(ImageSource.gallery),
                   icon: const Icon(Icons.photo_library_outlined),
-                  label: const Text('Pick from Gallery'),
+                  label: const Text('Pick Gallery'),
                   style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
                   ),
                 ),
               ],
@@ -745,11 +809,13 @@ class _MetricPill extends StatelessWidget {
 class _FaceBoxesPainter extends CustomPainter {
   final List<DemoFaceBox> detectedFaces;
   final int? selectedFaceIndex;
+  final Rect imageRect;
   final void Function(int) onFaceTap;
 
   _FaceBoxesPainter({
     required this.detectedFaces,
     required this.selectedFaceIndex,
+    required this.imageRect,
     required this.onFaceTap,
   });
 
@@ -766,15 +832,15 @@ class _FaceBoxesPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     for (final face in detectedFaces) {
       final box = face.box;
-      final x1 = box[0] * size.width;
-      final y1 = box[1] * size.height;
-      final x2 = box[2] * size.width;
-      final y2 = box[3] * size.height;
+      final x1 = imageRect.left + box[0] * imageRect.width;
+      final y1 = imageRect.top + box[1] * imageRect.height;
+      final x2 = imageRect.left + box[2] * imageRect.width;
+      final y2 = imageRect.top + box[3] * imageRect.height;
 
       final color = _parseHex(face.colorHex);
       final isSelected = selectedFaceIndex == face.faceIndex;
 
-      // Draw bounding box / circle
+      // Draw bounding box / rounded rectangle
       final paint = Paint()
         ..color = color
         ..style = PaintingStyle.stroke
@@ -798,20 +864,24 @@ class _FaceBoxesPainter extends CustomPainter {
       );
       textPainter.layout();
 
+      final badgeY = (y1 - 18).clamp(imageRect.top, (imageRect.bottom - 16).clamp(imageRect.top, size.height));
+      final badgeX = x1.clamp(imageRect.left, (imageRect.right - textPainter.width - 8).clamp(imageRect.left, size.width));
       final badgeBgRect = Rect.fromLTWH(
-        x1,
-        (y1 - 18).clamp(0, size.height),
+        badgeX,
+        badgeY,
         textPainter.width + 8,
         16,
       );
       final bgPaint = Paint()..color = color.withValues(alpha: 0.9);
       canvas.drawRRect(RRect.fromRectAndRadius(badgeBgRect, const Radius.circular(4)), bgPaint);
-      textPainter.paint(canvas, Offset(x1 + 4, (y1 - 17).clamp(0, size.height)));
+      textPainter.paint(canvas, Offset(badgeX + 4, badgeY + 1));
     }
   }
 
   @override
   bool shouldRepaint(covariant _FaceBoxesPainter oldDelegate) {
-    return oldDelegate.detectedFaces != detectedFaces || oldDelegate.selectedFaceIndex != selectedFaceIndex;
+    return oldDelegate.detectedFaces != detectedFaces ||
+        oldDelegate.selectedFaceIndex != selectedFaceIndex ||
+        oldDelegate.imageRect != imageRect;
   }
 }

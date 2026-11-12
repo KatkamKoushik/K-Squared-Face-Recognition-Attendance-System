@@ -34,10 +34,10 @@ const DEPARTMENTS = [
 ];
 
 const ACADEMIC_YEARS = [
-  "2024-2028 (I Year)",
-  "2023-2027 (II Year)",
-  "2022-2026 (III Year)",
-  "2021-2025 (IV Year)",
+  "2026-2030 (First Year)",
+  "2025-2029 (Second Year)",
+  "2024-2028 (3rd Year)",
+  "2023-2027 (Fourth Year)",
 ];
 
 export default function StudentEnrollmentPage() {
@@ -45,7 +45,7 @@ export default function StudentEnrollmentPage() {
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [department, setDepartment] = useState("CSE");
-  const [academicYear, setAcademicYear] = useState(ACADEMIC_YEARS[2]);
+  const [academicYear, setAcademicYear] = useState(ACADEMIC_YEARS[0]);
   const [sectionCohort, setSectionCohort] = useState("");
   const [consentAcknowledged, setConsentAcknowledged] = useState(false);
 

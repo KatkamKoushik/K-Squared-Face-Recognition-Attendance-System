@@ -94,7 +94,7 @@
 - [x] **Poison Message Guard:** Jobs exceeding 3 retries marked as `TERMINAL_FAILURE` and surfaced to faculty.
 
 ### 15. External Services and Integrations (Tier: Conditional)
-- [N/A] **No Third-Party Cloud AI APIs:** All vision inference executes locally on-premise using ONNX models (SCRFD + ArcFace) to guarantee student privacy and zero data leakage.
+- [N/A] **No Third-Party Cloud AI APIs:** All vision inference executes locally on-premise using ONNX models (YuNet + SFace) to guarantee student privacy and zero data leakage.
 
 ### 16. Payments and Financial Workflows (Tier: Conditional)
 - [N/A] **Non-Financial Institutional System:** Attendance and academic course governance only; no currency or payment workflows.
@@ -149,7 +149,7 @@
 - [x] **Zero Secret Leakage:** Master project handbook, production keystores, and credentials excluded via `.gitignore`.
 
 ### 30. Performance Engineering (Tier: Core)
-- [x] **ONNX Model Optimization:** Quantized SCRFD (2.5M params) and ArcFace ResNet-50 executing in $\le 85\text{ms}$ per face.
+- [x] **ONNX Model Optimization:** OpenCV YuNet (320x320) and SFace 128-D executing in $\le 45\text{ms}$ per face.
 - [x] **Static Admin Generation:** First Load JS $\approx 103\text{ kB}$ across all administrative views.
 
 ### 31. Scalability and Capacity Planning (Tier: Core concern)

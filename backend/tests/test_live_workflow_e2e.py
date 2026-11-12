@@ -36,8 +36,8 @@ from app.core.database import SessionLocal
 from app.core.config import settings
 from app.domain.enums import UserRole, SessionState, AttendanceStatus
 from app.domain.models.academic import User, Faculty, SubjectOffering
-from app.domain.models.student import Student, EnrollmentSubmission, EnrollmentProfile
-from app.domain.models.session import AttendanceSession, AttendanceUnit
+from app.domain.models.student import Student, Enrollment as AcademicEnrollment, EnrollmentSubmission, EnrollmentProfile
+from app.domain.models.session import AttendanceSession, AttendanceUnit, RosterSnapshot, SnapshotStudentItem
 from app.domain.models.capture import Frame, FaceEvidence
 from app.domain.models.attendance import AttendanceRecord
 from app.domain.models.audit import CommitReceipt
@@ -366,4 +366,17 @@ def test_complete_12_step_real_workflow():
         print(f"     Offering Total Conducted Units: {analytics.total_conducted_units}")
 
     finally:
+        # Teardown ephemeral E2E workflow student so live database is not polluted
+        try:
+            if approved_student:
+                sid = approved_student.id
+                db.query(AttendanceRecord).filter(AttendanceRecord.student_id == sid).delete()
+                db.query(AcademicEnrollment).filter(AcademicEnrollment.student_id == sid).delete()
+                db.query(EnrollmentProfile).filter(EnrollmentProfile.student_id == sid).delete()
+                db.query(SnapshotStudentItem).filter(SnapshotStudentItem.student_id == sid).delete()
+                db.query(EnrollmentSubmission).filter(EnrollmentSubmission.roll_number == test_roll).delete()
+                db.query(Student).filter(Student.id == sid).delete()
+                db.commit()
+        except Exception:
+            db.rollback()
         db.close()

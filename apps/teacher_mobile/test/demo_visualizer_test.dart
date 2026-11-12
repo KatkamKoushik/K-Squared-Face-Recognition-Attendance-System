@@ -14,9 +14,10 @@ void main() {
     );
 
     // Initial render
-    expect(find.text('Ground-Truth Visualizer'), findsOneWidget);
-    expect(find.text('Take Camera Photo'), findsOneWidget);
-    expect(find.text('Pick from Gallery'), findsOneWidget);
+    expect(find.text('Face Visualizer'), findsOneWidget);
+    expect(find.text('Ground-Truth Face Visualizer'), findsOneWidget);
+    expect(find.text('Take Photo'), findsOneWidget);
+    expect(find.text('Pick Gallery'), findsOneWidget);
     expect(find.byIcon(Icons.tune), findsOneWidget);
   });
 }

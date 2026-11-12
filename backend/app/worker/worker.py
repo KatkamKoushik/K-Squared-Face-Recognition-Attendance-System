@@ -85,10 +85,16 @@ class VisionWorker:
         pad_mandatory = policy.pad_mandatory if policy else True
         pad_thresh = policy.pad_threshold if policy else 0.85
 
-        # Fetch enrolled profile vectors for eligible students
+        # Fetch enrolled profile vectors for eligible students (BIO-01: matching dimension & approved namespace/model)
+        allowed_namespaces = {self.recognizer.namespace, "sface_128d_v1", "kucet_sface_128d_v7_1"}
         profiles_stmt = select(EnrollmentProfile).where(
             EnrollmentProfile.student_id.in_(eligible_student_ids),
             EnrollmentProfile.is_active == True,
+            EnrollmentProfile.embedding_dimension == 128,
+            (
+                EnrollmentProfile.embedding_namespace.in_(allowed_namespaces)
+                | (EnrollmentProfile.model_artifact_id == self.recognizer.model_hash)
+            ),
         )
         profiles = list(db.execute(profiles_stmt).scalars().all())
         roster_gallery: Dict[str, List[float]] = {p.student_id: p.vector_data for p in profiles}
@@ -140,11 +146,15 @@ class VisionWorker:
             else:
                 emb = self.recognizer.compute_embedding(crop)
 
+            # BIO-03: Resolution-adaptive cosine thresholding for small/distant faces (< 50px)
+            face_w = int(round((det.box[2] - det.box[0]) * image.width)) if len(det.box) >= 4 else 0
+            eff_match_thresh = (match_thresh + 0.02) if (0 < face_w < 50) else match_thresh
+
             # 7. Exact roster 1:N search
             candidate = self.recognizer.search_exact_roster(
                 query_vector=emb.vector,
                 enrolled_profiles=roster_gallery,
-                match_threshold=match_thresh,
+                match_threshold=eff_match_thresh,
                 margin_threshold=margin_thresh,
             )
 

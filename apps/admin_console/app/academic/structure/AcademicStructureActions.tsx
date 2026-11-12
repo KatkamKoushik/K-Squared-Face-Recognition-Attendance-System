@@ -19,8 +19,8 @@ export default function AcademicStructureActions({ departments }: Props) {
   // Cohort Form
   const [cohortDeptId, setCohortDeptId] = useState(departments[0]?.id || "");
   const [cohortName, setCohortName] = useState("");
-  const [admYear, setAdmYear] = useState(2024);
-  const [gradYear, setGradYear] = useState(2028);
+  const [admYear, setAdmYear] = useState(2026);
+  const [gradYear, setGradYear] = useState(2030);
 
   const handleCreateDept = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -167,7 +167,7 @@ export default function AcademicStructureActions({ departments }: Props) {
                 <input
                   type="text"
                   required
-                  placeholder="e.g. CSE-2024-2028"
+                  placeholder="e.g. CSE-2026-2030"
                   value={cohortName}
                   onChange={(e) => setCohortName(e.target.value)}
                   className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-institutional-navy font-mono"

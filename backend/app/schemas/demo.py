@@ -13,7 +13,7 @@ class DemoFaceBox(BaseModel):
     quality_score: float
     quality_reason: str
     face_crop_base64: str
-    status: str  # MATCHED, UNKNOWN_VISITOR, AMBIGUOUS, QUALITY_REJECTED
+    status: str  # MATCHED, UNKNOWN_VISITOR, AMBIGUOUS, QUALITY_REJECTED, DUPLICATE_CONFLICT
     attendance_granted: bool
     student_id: Optional[str] = None
     roll_number: Optional[str] = None
@@ -23,6 +23,9 @@ class DemoFaceBox(BaseModel):
     reference_photo_base64: Optional[str] = None
     color_hex: str
     badge_label: str
+    face_width_px: Optional[int] = None
+    face_height_px: Optional[int] = None
+    effective_threshold: Optional[float] = None
 
 
 class DemoStudentResult(BaseModel):
@@ -34,6 +37,7 @@ class DemoStudentResult(BaseModel):
     similarity_score: Optional[float] = None
     face_crop_base64: Optional[str] = None
     reference_photo_base64: Optional[str] = None
+    department_code: Optional[str] = None
 
 
 class DemoEnrolledStudentSummary(BaseModel):
@@ -43,6 +47,7 @@ class DemoEnrolledStudentSummary(BaseModel):
     is_active: bool
     has_reference_photo: bool
     photo_url: Optional[str] = None
+    department_code: Optional[str] = None
 
 
 class DemoAnalysisResponse(BaseModel):
@@ -51,8 +56,10 @@ class DemoAnalysisResponse(BaseModel):
     present_count: int
     absent_count: int
     unknown_count: int
+    image_width: int = 0
+    image_height: int = 0
+    department_filter: Optional[str] = None
     detected_faces: List[DemoFaceBox]
     attendance_granted: List[DemoStudentResult]
     attendance_not_granted: List[DemoStudentResult]
     unidentified_faces: List[DemoFaceBox]
-

@@ -63,7 +63,7 @@ export default async function AcademicStructurePage() {
           <div className="mt-2 text-2xl font-serif font-bold text-institutional-navy">
             {cohorts.length}
           </div>
-          <p className="mt-1 text-xs text-slate-500">Graduation classes (2022 – 2027)</p>
+          <p className="mt-1 text-xs text-slate-500">Graduation classes (2023 – 2030)</p>
         </div>
 
         <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-xs">

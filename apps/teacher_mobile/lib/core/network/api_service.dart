@@ -325,13 +325,14 @@ class FrsApiService {
   }
 
   /// POST /demo/analyze
-  /// Universal branch-agnostic demo photo analysis with visual bounding boxes and reconciliation.
+  /// Universal demo photo analysis with visual bounding boxes, resolution-adaptive thresholding, and optional department scoping.
   Future<DemoAnalysisResponse> analyzeDemoImage({
     required List<int> imageBytes,
     required String filename,
-    double matchThreshold = 0.363,
+    double matchThreshold = 0.460,
     double marginThreshold = 0.10,
     double blurThreshold = 50.0,
+    String? departmentCode,
   }) async {
     final uri = Uri.parse('$baseUrl/demo/analyze');
     final request = http.MultipartRequest('POST', uri);
@@ -343,6 +344,9 @@ class FrsApiService {
     request.fields['match_threshold'] = matchThreshold.toString();
     request.fields['margin_threshold'] = marginThreshold.toString();
     request.fields['blur_threshold'] = blurThreshold.toString();
+    if (departmentCode != null && departmentCode.isNotEmpty && departmentCode != 'ALL') {
+      request.fields['department_code'] = departmentCode;
+    }
     request.files.add(
       http.MultipartFile.fromBytes('file', imageBytes, filename: filename),
     );
@@ -361,9 +365,13 @@ class FrsApiService {
   }
 
   /// GET /demo/enrolled-students
-  Future<List<Map<String, dynamic>>> getDemoEnrolledStudents() async {
+  Future<List<Map<String, dynamic>>> getDemoEnrolledStudents({String? departmentCode}) async {
+    String url = '$baseUrl/demo/enrolled-students';
+    if (departmentCode != null && departmentCode.isNotEmpty && departmentCode != 'ALL') {
+      url += '?department_code=$departmentCode';
+    }
     final res = await _client.get(
-      Uri.parse('$baseUrl/demo/enrolled-students'),
+      Uri.parse(url),
       headers: _headers(),
     ).timeout(const Duration(seconds: 6));
     _checkAuthError(res);

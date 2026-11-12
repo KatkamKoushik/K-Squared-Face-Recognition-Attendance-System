@@ -130,7 +130,12 @@ class CommitService:
             if u_idx not in unit_map:
                 raise ValueError(f"Conducted unit index {u_idx} was not planned in session {session_id}")
 
-        eligible_student_ids = {item.student_id for item in session.snapshot.items} if session.snapshot else set()
+        # LED-01: Session must have an authoritative frozen roster snapshot with eligible students
+        if not session.snapshot or not session.snapshot.items:
+            raise ValueError(
+                f"Session {session_id} cannot be committed without a frozen roster snapshot containing eligible students."
+            )
+        eligible_student_ids = {item.student_id for item in session.snapshot.items}
 
         seen_decisions = set()
         total_present = 0
@@ -142,7 +147,7 @@ class CommitService:
                 continue
 
             # Verify student belongs to frozen roster snapshot
-            if eligible_student_ids and decision.student_id not in eligible_student_ids:
+            if decision.student_id not in eligible_student_ids:
                 raise ValueError(
                     f"Student {decision.student_id} is not present in the frozen roster snapshot for session {session_id}"
                 )

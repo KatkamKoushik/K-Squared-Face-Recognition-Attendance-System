@@ -4,7 +4,7 @@ FRS V7.1 K² — Atomic Attendance Commit & Analytics Schemas.
 
 from datetime import datetime
 from typing import Optional, List
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from app.domain.enums import AttendanceStatus, AppealStatus
 
 
@@ -20,6 +20,16 @@ class AttendanceCommitRequest(BaseModel):
     idempotency_key: str = Field(..., min_length=16, max_length=128, description="Cryptographic client idempotency key")
     conducted_unit_indices: List[int] = Field(..., min_length=1, max_length=4)
     decisions: List[StudentUnitDecision] = Field(..., min_length=1)
+
+    @field_validator("conducted_unit_indices")
+    @classmethod
+    def validate_conducted_unit_indices(cls, v: List[int]) -> List[int]:
+        if len(v) != len(set(v)):
+            raise ValueError("conducted_unit_indices must not contain duplicate values.")
+        for idx in v:
+            if idx < 1 or idx > 4:
+                raise ValueError(f"conducted_unit_index {idx} out of bounds: must be between 1 and 4.")
+        return sorted(v)
 
 
 class CommitReceiptResponse(BaseModel):
