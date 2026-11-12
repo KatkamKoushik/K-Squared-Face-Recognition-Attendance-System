@@ -2,6 +2,9 @@
 FRS V7.1 K² — FastAPI Control Plane Application Factory & Lifecycle.
 """
 
+from dotenv import load_dotenv
+load_dotenv()
+
 from contextlib import asynccontextmanager
 import logging
 import uuid

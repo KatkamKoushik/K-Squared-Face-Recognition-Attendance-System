@@ -35,6 +35,7 @@ export default function AdminEnrollmentQueuePage() {
   const [error, setError] = useState<string | null>(null);
 
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
+  const [batchFilter, setBatchFilter] = useState<string>("ALL");
   const [searchTerm, setSearchTerm] = useState<string>("");
 
   // Review modal state
@@ -45,6 +46,11 @@ export default function AdminEnrollmentQueuePage() {
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
 
   const token = getAuthToken();
+
+  const filteredSubmissions = submissions.filter((sub) => {
+    if (batchFilter === "ALL") return true;
+    return sub.academic_year?.includes(batchFilter);
+  });
 
   useEffect(() => {
     loadSubmissions();
@@ -225,25 +231,39 @@ export default function AdminEnrollmentQueuePage() {
             ))}
           </div>
 
-          {/* Search Form */}
-          <form onSubmit={handleSearch} className="flex items-center space-x-2">
-            <div className="relative">
-              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search roll number, name..."
-                className="pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-300 rounded-lg text-xs focus:outline-hidden focus:ring-1 focus:ring-institutional-navy focus:bg-white w-52 sm:w-64"
-              />
-            </div>
-            <button
-              type="submit"
-              className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg transition-colors"
+          {/* Batch Filter & Search Form */}
+          <div className="flex flex-wrap items-center gap-2">
+            <select
+              value={batchFilter}
+              onChange={(e) => setBatchFilter(e.target.value)}
+              className="px-2.5 py-1.5 bg-slate-50 border border-slate-300 rounded-lg text-xs font-medium text-slate-700 focus:outline-hidden focus:ring-1 focus:ring-institutional-navy"
             >
-              Search
-            </button>
-          </form>
+              <option value="ALL">All Batches</option>
+              <option value="2026-2030">2026-2030 (First Year)</option>
+              <option value="2025-2029">2025-2029 (Second Year)</option>
+              <option value="2024-2028">2024-2028 (3rd Year)</option>
+              <option value="2023-2027">2023-2027 (Fourth Year)</option>
+            </select>
+
+            <form onSubmit={handleSearch} className="flex items-center space-x-2">
+              <div className="relative">
+                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Search roll number, name..."
+                  className="pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-300 rounded-lg text-xs focus:outline-hidden focus:ring-1 focus:ring-institutional-navy focus:bg-white w-52 sm:w-64"
+                />
+              </div>
+              <button
+                type="submit"
+                className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg transition-colors"
+              >
+                Search
+              </button>
+            </form>
+          </div>
         </div>
       </div>
 
@@ -261,12 +281,12 @@ export default function AdminEnrollmentQueuePage() {
             <RefreshCw className="w-5 h-5 animate-spin mx-auto text-institutional-navy mb-2" />
             <span>Loading enrollment queue...</span>
           </div>
-        ) : submissions.length === 0 ? (
+        ) : filteredSubmissions.length === 0 ? (
           <div className="p-12 text-center text-slate-500">
             <ShieldAlert className="w-8 h-8 mx-auto text-slate-400 mb-2" />
             <div className="text-sm font-semibold text-slate-700">No enrollment submissions found</div>
             <div className="text-xs text-slate-500 mt-1">
-              There are no staged biometric submissions matching the selected filter ({statusFilter}).
+              There are no staged biometric submissions matching the selected filter ({statusFilter}{batchFilter !== "ALL" ? ` • ${batchFilter}` : ""}).
             </div>
           </div>
         ) : (
@@ -285,7 +305,7 @@ export default function AdminEnrollmentQueuePage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {submissions.map((sub) => (
+                {filteredSubmissions.map((sub) => (
                   <tr key={sub.id} className="hover:bg-slate-50/80 transition-colors">
                     <td className="py-3 px-4">
                       <div

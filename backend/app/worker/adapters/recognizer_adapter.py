@@ -49,9 +49,10 @@ class RecognizerAdapter:
         """Discovers SFace ONNX model path across local, repo-relative, and container locations."""
         if explicit_path:
             return Path(explicit_path)
+        use_finetuned = os.getenv("USE_FINETUNED_MODEL", "0") == "1"
         preferred_filename = (
             self.FINETUNED_FILENAME
-            if os.getenv("USE_FINETUNED_MODEL") == "1"
+            if use_finetuned
             else self.DEFAULT_FILENAME
         )
         candidates = [

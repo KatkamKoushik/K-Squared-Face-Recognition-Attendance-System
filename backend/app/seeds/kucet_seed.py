@@ -122,8 +122,32 @@ def seed_kucet_institutional_data(db: Session) -> Dict[str, Any]:
         db.add(even_term)
         db.flush()
 
-    # 3. Cohorts (KUCET Classes)
+    # 3. Cohorts (KUCET Classes & Academic Batches)
     cohorts_data = [
+        # 2026-2030 (First Year)
+        {"dept": "CSE", "name": "B.Tech CSE Class of 2030 (First Year I/IV)", "adm": 2026, "grad": 2030},
+        {"dept": "CSD", "name": "B.Tech CSD Class of 2030 (First Year I/IV)", "adm": 2026, "grad": 2030},
+        {"dept": "ECE", "name": "B.Tech ECE Class of 2030 (First Year I/IV)", "adm": 2026, "grad": 2030},
+        {"dept": "IT", "name": "B.Tech IT Class of 2030 (First Year I/IV)", "adm": 2026, "grad": 2030},
+        # 2025-2029 (Second Year)
+        {"dept": "CSE", "name": "B.Tech CSE Class of 2029 (Second Year II/IV)", "adm": 2025, "grad": 2029},
+        {"dept": "CSD", "name": "B.Tech CSD Class of 2029 (Second Year II/IV)", "adm": 2025, "grad": 2029},
+        {"dept": "ECE", "name": "B.Tech ECE Class of 2029 (Second Year II/IV)", "adm": 2025, "grad": 2029},
+        {"dept": "IT", "name": "B.Tech IT Class of 2029 (Second Year II/IV)", "adm": 2025, "grad": 2029},
+        # 2024-2028 (3rd Year)
+        {"dept": "CSE", "name": "B.Tech CSE Class of 2028 (3rd Year III/IV)", "adm": 2024, "grad": 2028},
+        {"dept": "CSD", "name": "B.Tech CSD Class of 2028 (3rd Year III/IV)", "adm": 2024, "grad": 2028},
+        {"dept": "ECE", "name": "B.Tech ECE Class of 2028 (3rd Year III/IV)", "adm": 2024, "grad": 2028},
+        {"dept": "IT", "name": "B.Tech IT Class of 2028 (3rd Year III/IV)", "adm": 2024, "grad": 2028},
+        # 2023-2027 (Fourth Year)
+        {"dept": "CSE", "name": "B.Tech CSE Class of 2027 (Fourth Year IV/IV Sec A)", "adm": 2023, "grad": 2027},
+        {"dept": "CSD", "name": "B.Tech CSD Class of 2027 (Fourth Year IV/IV)", "adm": 2023, "grad": 2027},
+        {"dept": "ECE", "name": "B.Tech ECE Class of 2027 (Fourth Year IV/IV)", "adm": 2023, "grad": 2027},
+        {"dept": "IT", "name": "B.Tech IT Class of 2027 (Fourth Year IV/IV)", "adm": 2023, "grad": 2027},
+        {"dept": "EEE", "name": "B.Tech EEE Class of 2027 (Fourth Year IV/IV)", "adm": 2023, "grad": 2027},
+        {"dept": "MECH", "name": "B.Tech MECH Class of 2027 (Fourth Year IV/IV)", "adm": 2023, "grad": 2027},
+        {"dept": "CIVIL", "name": "B.Tech CIVIL Class of 2027 (Fourth Year IV/IV)", "adm": 2023, "grad": 2027},
+        # Legacy/Existing cohort references for compatibility
         {"dept": "CSE", "name": "B.Tech CSE Class of 2026 (Final Year IV/IV Sec A)", "adm": 2022, "grad": 2026},
         {"dept": "CSE", "name": "B.Tech CSE Class of 2027 (Third Year III/IV Sec A)", "adm": 2023, "grad": 2027},
         {"dept": "IT", "name": "B.Tech IT Class of 2026 (Final Year IV/IV)", "adm": 2022, "grad": 2026},
