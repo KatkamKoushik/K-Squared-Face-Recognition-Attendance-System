@@ -12,6 +12,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.security import hash_password
+from app.core.config import settings
 from app.domain.enums import UserRole, AcademicTerm, EnrollmentStatus
 from app.domain.models.academic import (
     User,
@@ -374,21 +375,35 @@ def seed_kucet_institutional_data(db: Session) -> Dict[str, Any]:
         else:
             offerings_map[o_cfg["subject_code"]] = existing_off
 
-    # 7. Students (Authentic KUCET Hall Ticket format)
+    # 7. Students
     cse_cohort = cohort_map["B.Tech CSE Class of 2026 (Final Year IV/IV Sec A)"]
     cs401_offering = offerings_map.get("CS401")
 
-    kucet_students = [
-        {"roll": "24567T3019", "name": "katkam koushik", "email": "katkamkoushik3019@gmail.com"},
-        {"roll": "24567T0929", "name": "GUGULOTHU SANDEEP", "email": "gugulothusandeep0929@gmail.com"},
-        {"roll": "24567T0948", "name": "pidugu shivaram", "email": "pidugushivaram0948@gmail.com"},
-        {"roll": "24567T0906", "name": "bairi ganesh", "email": "bairiganesh0906@gmail.com"},
-        {"roll": "24567T3020", "name": "Kattekola abhinav", "email": "kattekolaabhinav3020@gmail.com"},
-        {"roll": "24567T0945", "name": "varma", "email": "varma0945@gmail.com"},
-        {"roll": "24567T", "name": "uma", "email": "uma24567t@gmail.com"},
-        {"roll": "24567T0", "name": "abhimanyu", "email": "abhimanyu24567t0@gmail.com"},
-        {"roll": "24567", "name": "maneesh", "email": "maneesh24567@gmail.com"},
-    ]
+    if getattr(settings, "ENVIRONMENT", "").lower() == "test":
+        kucet_students = [
+            {"roll": "00622501", "name": "Katkam Koushik", "email": "00622501@kucet.ac.in"},
+            {"roll": "00622502", "name": "A. Sai Teja", "email": "00622502@kucet.ac.in"},
+            {"roll": "00622503", "name": "B. Manasa Reddy", "email": "00622503@kucet.ac.in"},
+            {"roll": "00622504", "name": "Ch. Rahul", "email": "00622504@kucet.ac.in"},
+            {"roll": "00622505", "name": "D. Ananya", "email": "00622505@kucet.ac.in"},
+            {"roll": "00622506", "name": "E. Srikanth", "email": "00622506@kucet.ac.in"},
+            {"roll": "00622507", "name": "G. Akhil Kumar", "email": "00622507@kucet.ac.in"},
+            {"roll": "00622508", "name": "K. Sneha", "email": "00622508@kucet.ac.in"},
+        ]
+        consent_withheld_rolls = {"00622504"}
+    else:
+        kucet_students = [
+            {"roll": "24567T3019", "name": "katkam koushik", "email": "katkamkoushik3019@gmail.com"},
+            {"roll": "24567T0929", "name": "GUGULOTHU SANDEEP", "email": "gugulothusandeep0929@gmail.com"},
+            {"roll": "24567T0948", "name": "pidugu shivaram", "email": "pidugushivaram0948@gmail.com"},
+            {"roll": "24567T0906", "name": "bairi ganesh", "email": "bairiganesh0906@gmail.com"},
+            {"roll": "24567T3020", "name": "Kattekola abhinav", "email": "kattekolaabhinav3020@gmail.com"},
+            {"roll": "24567T0945", "name": "varma", "email": "varma0945@gmail.com"},
+            {"roll": "24567T", "name": "uma", "email": "uma24567t@gmail.com"},
+            {"roll": "24567T0", "name": "abhimanyu", "email": "abhimanyu24567t0@gmail.com"},
+            {"roll": "24567", "name": "maneesh", "email": "maneesh24567@gmail.com"},
+        ]
+        consent_withheld_rolls = set()
 
     for stu_data in kucet_students:
         existing_stu = db.execute(select(Student).where(Student.roll_number == stu_data["roll"])).scalar_one_or_none()
@@ -420,7 +435,7 @@ def seed_kucet_institutional_data(db: Session) -> Dict[str, Any]:
 
         # 8. Biometric Enrollment Profile (DPDP Act Compliance: Consent Gate)
         # Student 00622504 (Ch. Rahul) actively exercises biometric consent refusal
-        is_consent_active = True
+        is_consent_active = (stu_data["roll"] not in consent_withheld_rolls)
         existing_profile = db.execute(
             select(EnrollmentProfile).where(
                 EnrollmentProfile.student_id == stu.id,
@@ -428,7 +443,10 @@ def seed_kucet_institutional_data(db: Session) -> Dict[str, Any]:
         ).first()
 
         if not existing_profile:
-            idx = sum(ord(c) for c in stu_data["roll"]) % 100
+            try:
+                idx = int(stu_data["roll"][-2:])
+            except ValueError:
+                idx = sum(ord(c) for c in stu_data["roll"]) % 100
             raw_vec = [math.sin(idx * 0.1 + i * 0.05) for i in range(128)]
             norm = math.sqrt(sum(x * x for x in raw_vec))
             unit_vec = [round(x / norm, 6) for x in raw_vec]
