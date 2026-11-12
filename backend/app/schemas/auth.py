@@ -12,6 +12,11 @@ class LoginRequest(BaseModel):
     password: str
 
 
+class FirebaseLoginRequest(BaseModel):
+    id_token: str
+    remember: bool = True
+
+
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
@@ -19,12 +24,14 @@ class TokenResponse(BaseModel):
     user_id: str
     role: UserRole
     email: str
+    department_id: Optional[str] = None
 
 
 class UserCreate(BaseModel):
     email: EmailStr
     password: str
     role: UserRole = UserRole.FACULTY
+    department_id: Optional[str] = None
 
 
 class UserResponse(BaseModel):
@@ -33,6 +40,7 @@ class UserResponse(BaseModel):
     id: str
     email: str
     role: UserRole
+    department_id: Optional[str] = None
     is_active: bool
 
 

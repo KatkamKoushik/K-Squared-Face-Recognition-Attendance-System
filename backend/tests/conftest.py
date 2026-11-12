@@ -59,25 +59,28 @@ def seed_data(db_session: Session):
     """Seeds baseline academic configuration: Admin, Faculty, Department, Cohort, Subject, Offering, Students."""
     today = date.today()
 
-    # 1. Admin & Faculty Users
+    # 1. Department
+    dept = Department(code="CSE", name="Computer Science and Engineering")
+    db_session.add(dept)
+    db_session.flush()
+
+    # 2. Admin & Faculty Users
     admin_user = User(
         email="admin@kucet.ac.in",
         hashed_password=hash_password("admin_pass_123"),
         role=UserRole.ADMIN,
+        department_id=dept.id,
     )
     fac_user = User(
         email="shiva.faculty@kucet.ac.in",
         hashed_password=hash_password("faculty_pass_123"),
         role=UserRole.FACULTY,
+        department_id=dept.id,
     )
     db_session.add_all([admin_user, fac_user])
     db_session.flush()
 
-    # 2. Department & Faculty Profile
-    dept = Department(code="CSE", name="Computer Science and Engineering")
-    db_session.add(dept)
-    db_session.flush()
-
+    # 3. Faculty Profile
     faculty = Faculty(
         user_id=fac_user.id,
         employee_id="FAC-CSE-001",

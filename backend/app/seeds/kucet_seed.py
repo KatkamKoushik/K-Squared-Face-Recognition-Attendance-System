@@ -179,75 +179,85 @@ def seed_kucet_institutional_data(db: Session) -> Dict[str, Any]:
         else:
             cohort_map[c_data["name"]] = existing_c
 
-    # 4. Verified KUCET Faculty & User Accounts
+    # 4. Verified KUCET Faculty & User Accounts (5-Tier RBAC)
     faculty_list = [
         {
             "emp_id": "KUCET-FAC-001",
             "name": "Dr. Nagavelli Ramana",
             "email": "principal.kucet@gmail.com",
             "dept": "CSE",
-            "role": UserRole.ADMIN,
+            "role": UserRole.SUPER_ADMIN,
+            "pw": "KucetFaculty@2026",
         },
         {
             "emp_id": "KUCET-FAC-CSE-001",
             "name": "Mr. V. Ramana Babu",
             "email": "ramana.vrb@gmail.com",
             "dept": "CSE",
-            "role": UserRole.FACULTY,
+            "role": UserRole.SUB_ADMIN,
+            "pw": "KucetFaculty@2026",
         },
         {
             "emp_id": "KUCET-FAC-ECE-001",
             "name": "Mrs. B. Srilatha",
             "email": "srilatha.ece@kucet.ac.in",
             "dept": "ECE",
-            "role": UserRole.FACULTY,
+            "role": UserRole.SUB_ADMIN,
+            "pw": "KucetFaculty@2026",
         },
         {
             "emp_id": "KUCET-FAC-EEE-001",
             "name": "Dr. A. Kumara Swamy",
             "email": "kumaraswamy.eee@kucet.ac.in",
             "dept": "EEE",
-            "role": UserRole.FACULTY,
+            "role": UserRole.SUB_ADMIN,
+            "pw": "KucetFaculty@2026",
         },
         {
             "emp_id": "KUCET-FAC-ME-001",
             "name": "Dr. Md. Owais Ahmed Sajjad",
             "email": "sajjad.owais44@gmail.com",
             "dept": "MECH",
-            "role": UserRole.FACULTY,
+            "role": UserRole.SUB_ADMIN,
+            "pw": "KucetFaculty@2026",
         },
         {
             "emp_id": "KUCET-FAC-IT-001",
             "name": "Dr. M. Soujanya",
             "email": "soujanyavedh@gmail.com",
             "dept": "IT",
-            "role": UserRole.FACULTY,
+            "role": UserRole.SUB_ADMIN,
+            "pw": "KucetFaculty@2026",
         },
         {
             "emp_id": "KUCET-FAC-CSD-001",
             "name": "Mrs. D. Priyanka",
             "email": "priyankadamera1223@gmail.com",
             "dept": "CSD",
-            "role": UserRole.FACULTY,
+            "role": UserRole.SUB_ADMIN,
+            "pw": "KucetFaculty@2026",
         },
         {
             "emp_id": "KUCET-FAC-CE-001",
             "name": "Mr. V. Amarender",
             "email": "amarender.civil@kucet.ac.in",
             "dept": "CIVIL",
-            "role": UserRole.FACULTY,
+            "role": UserRole.SUB_ADMIN,
+            "pw": "KucetFaculty@2026",
         },
     ]
 
     faculty_map = {}
     for f_data in faculty_list:
         existing_user = db.execute(select(User).where(User.email == f_data["email"])).scalar_one_or_none()
+        dept_id = dept_map[f_data["dept"]].id if f_data.get("dept") and f_data["dept"] in dept_map else None
         if not existing_user:
             u = User(
                 id=str(uuid.uuid4()),
                 email=f_data["email"],
-                hashed_password=hash_password("KucetFaculty@2026"),
+                hashed_password=hash_password(f_data.get("pw", "KucetFaculty@2026")),
                 role=f_data["role"],
+                department_id=dept_id,
                 is_active=True,
             )
             db.add(u)
@@ -258,15 +268,44 @@ def seed_kucet_institutional_data(db: Session) -> Dict[str, Any]:
                 user_id=u.id,
                 employee_id=f_data["emp_id"],
                 full_name=f_data["name"],
-                department_id=dept_map[f_data["dept"]].id,
+                department_id=dept_id,
             )
             db.add(fac)
             db.flush()
             faculty_map[f_data["emp_id"]] = fac
             stats["faculty"] += 1
         else:
+            existing_user.role = f_data["role"]
+            existing_user.department_id = dept_id
+            db.flush()
             fac = db.execute(select(Faculty).where(Faculty.user_id == existing_user.id)).scalar_one_or_none()
-            faculty_map[f_data["emp_id"]] = fac
+            if fac:
+                faculty_map[f_data["emp_id"]] = fac
+
+    # 4b. Seed Administrative Users for 5-Tier RBAC Testing
+    admin_accounts = [
+        {"email": "developer@frs.kucet.ac.in", "role": UserRole.DEVELOPER, "dept": None, "pw": "KucetDev@2026"},
+        {"email": "hod.cse@kucet.ac.in", "role": UserRole.ADMIN, "dept": "CSE", "pw": "KucetAdmin@2026"},
+        {"email": "hod.ece@kucet.ac.in", "role": UserRole.ADMIN, "dept": "ECE", "pw": "KucetAdmin@2026"},
+    ]
+    for adm in admin_accounts:
+        adm_user = db.execute(select(User).where(User.email == adm["email"])).scalar_one_or_none()
+        adm_dept_id = dept_map[adm["dept"]].id if adm["dept"] and adm["dept"] in dept_map else None
+        if not adm_user:
+            u_adm = User(
+                id=str(uuid.uuid4()),
+                email=adm["email"],
+                hashed_password=hash_password(adm["pw"]),
+                role=adm["role"],
+                department_id=adm_dept_id,
+                is_active=True,
+            )
+            db.add(u_adm)
+            db.flush()
+        else:
+            adm_user.role = adm["role"]
+            adm_user.department_id = adm_dept_id
+            db.flush()
 
     # 5. Subjects
     subjects_data = [
@@ -432,6 +471,20 @@ def seed_kucet_institutional_data(db: Session) -> Dict[str, Any]:
             stats["students"] += 1
         else:
             stu = existing_stu
+
+        # Ensure student User account exists for Student Portal login
+        existing_stu_user = db.execute(select(User).where(User.email == stu_data["email"])).scalar_one_or_none()
+        if not existing_stu_user:
+            u_stu = User(
+                id=str(uuid.uuid4()),
+                email=stu_data["email"],
+                hashed_password=hash_password("KucetStudent@2026"),
+                role=UserRole.STUDENT,
+                department_id=cse_cohort.department_id,
+                is_active=True,
+            )
+            db.add(u_stu)
+            db.flush()
 
         # 8. Biometric Enrollment Profile (DPDP Act Compliance: Consent Gate)
         # Student 00622504 (Ch. Rahul) actively exercises biometric consent refusal

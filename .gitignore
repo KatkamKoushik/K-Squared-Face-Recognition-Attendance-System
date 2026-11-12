@@ -26,6 +26,9 @@ desktop.ini
 *.key
 *.cert
 *.p12
+*firebase*.json
+*serviceAccount*.json
+serviceAccountKey.json
 
 # ==============================================================================
 # Node.js / Next.js (apps/admin_console)

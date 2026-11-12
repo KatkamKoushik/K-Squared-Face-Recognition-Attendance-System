@@ -81,6 +81,11 @@ class Settings(BaseSettings):
         description="Supabase Service Role Secret Key (configured via environment, never hardcoded in source)",
     )
 
+    # Firebase Authentication Integration
+    FIREBASE_PROJECT_ID: Optional[str] = "frs-project-9801a"
+    FIREBASE_CREDENTIALS_PATH: Optional[str] = None
+    USE_FIREBASE_AUTH: bool = True
+
     # Cloudinary Object Storage for Images & Biometrics
     CLOUDINARY_CLOUD_NAME: Optional[str] = Field(default=None, description="Cloudinary cloud name / product environment")
     CLOUDINARY_API_KEY: Optional[str] = Field(default=None, description="Cloudinary API Key")

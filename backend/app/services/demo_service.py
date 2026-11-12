@@ -64,6 +64,16 @@ class DemoService:
         return DemoService._create_fallback_avatar(full_name, roll_number)
 
     @staticmethod
+    def _mask_name(full_name: Optional[str]) -> str:
+        """Sanitizes student full name into privacy-preserving masked format for unauthenticated callers."""
+        if not full_name:
+            return "Enrolled Student"
+        parts = full_name.strip().split()
+        if len(parts) == 1:
+            return parts[0][:2] + "***" if len(parts[0]) > 2 else "Student"
+        return f"{parts[0]} {parts[1][:1]}***"
+
+    @staticmethod
     def list_enrolled_demo_students(
         db: Session,
         department_code: Optional[str] = None,
@@ -93,7 +103,9 @@ class DemoService:
             if student.id in seen_ids:
                 continue
             seen_ids.add(student.id)
-            display_roll = student.roll_number if is_authorized else (student.roll_number[:4] + "***")
+            display_roll = student.roll_number if is_authorized else (student.roll_number[:4] + "***" if len(student.roll_number) > 4 else "***")
+            display_name = student.full_name if is_authorized else DemoService._mask_name(student.full_name)
+            display_id = student.id if is_authorized else f"anon_{student.id[:8]}"
             display_photo = (
                 photo_path
                 if (is_authorized and photo_path and (photo_path.startswith("http://") or photo_path.startswith("https://")))
@@ -101,9 +113,9 @@ class DemoService:
             )
             results.append(
                 DemoEnrolledStudentSummary(
-                    student_id=student.id,
+                    student_id=display_id,
                     roll_number=display_roll,
-                    full_name=student.full_name,
+                    full_name=display_name,
                     is_active=student.is_active,
                     has_reference_photo=bool(photo_path and (photo_path.startswith("http") or os.path.exists(photo_path))),
                     photo_url=display_photo,
@@ -312,7 +324,9 @@ class DemoService:
                     if is_authorized
                     else None
                 )
-                display_roll = s_meta["roll_number"] if is_authorized else (s_meta["roll_number"][:4] + "***")
+                display_roll = s_meta["roll_number"] if is_authorized else (s_meta["roll_number"][:4] + "***" if len(s_meta["roll_number"]) > 4 else "***")
+                display_name = s_meta["full_name"] if is_authorized else DemoService._mask_name(s_meta["full_name"])
+                display_id = candidate.student_id if is_authorized else f"anon_{candidate.student_id[:8]}"
                 face_box = DemoFaceBox(
                     face_index=idx,
                     box=det.box,
@@ -322,14 +336,14 @@ class DemoService:
                     face_crop_base64=crop_base64,
                     status="MATCHED",
                     attendance_granted=True,
-                    student_id=candidate.student_id,
+                    student_id=display_id,
                     roll_number=display_roll,
-                    full_name=s_meta["full_name"],
+                    full_name=display_name,
                     similarity_score=candidate.similarity_score,
                     margin=candidate.margin_to_second,
                     reference_photo_base64=ref_b64,
                     color_hex="#10B981",  # Emerald green
-                    badge_label=f"{s_meta['full_name']} ({display_roll})",
+                    badge_label=f"{display_name} ({display_roll})",
                     face_width_px=face_w,
                     face_height_px=face_h,
                     effective_threshold=eff_thresh,
@@ -340,6 +354,9 @@ class DemoService:
             elif f_idx in duplicate_conflicts:
                 s_id, dup_sim, best_sim = duplicate_conflicts[f_idx]
                 s_meta = student_metadata.get(s_id, {})
+                display_roll = s_meta.get("roll_number") if is_authorized else ((s_meta.get("roll_number") or "")[:4] + "***" if len(s_meta.get("roll_number") or "") > 4 else "***")
+                display_name = s_meta.get("full_name") if is_authorized else DemoService._mask_name(s_meta.get("full_name"))
+                display_id = s_id if is_authorized else f"anon_{s_id[:8]}"
                 face_box = DemoFaceBox(
                     face_index=idx,
                     box=det.box,
@@ -349,13 +366,13 @@ class DemoService:
                     face_crop_base64=crop_base64,
                     status="DUPLICATE_CONFLICT",
                     attendance_granted=False,
-                    student_id=s_id,
-                    roll_number=s_meta.get("roll_number"),
-                    full_name=s_meta.get("full_name"),
+                    student_id=display_id,
+                    roll_number=display_roll,
+                    full_name=display_name,
                     similarity_score=dup_sim,
                     margin=candidate.margin_to_second,
                     color_hex="#F59E0B",  # Amber orange
-                    badge_label=f"Duplicate Match: {s_meta.get('full_name', s_id)} (Sim: {dup_sim:.3f} < {best_sim:.3f})",
+                    badge_label=f"Duplicate Match: {display_name} (Sim: {dup_sim:.3f} < {best_sim:.3f})",
                     face_width_px=face_w,
                     face_height_px=face_h,
                     effective_threshold=eff_thresh,
@@ -365,6 +382,9 @@ class DemoService:
 
             elif candidate.reason_code == "AMBIGUOUS_LOOKALIKE_CONFLICT":
                 s_meta = student_metadata.get(candidate.student_id, {})
+                display_roll = s_meta.get("roll_number") if is_authorized else ((s_meta.get("roll_number") or "")[:4] + "***" if len(s_meta.get("roll_number") or "") > 4 else "***")
+                display_name = s_meta.get("full_name") if is_authorized else DemoService._mask_name(s_meta.get("full_name"))
+                display_id = candidate.student_id if is_authorized else f"anon_{candidate.student_id[:8]}"
                 face_box = DemoFaceBox(
                     face_index=idx,
                     box=det.box,
@@ -374,9 +394,9 @@ class DemoService:
                     face_crop_base64=crop_base64,
                     status="AMBIGUOUS",
                     attendance_granted=False,
-                    student_id=candidate.student_id,
-                    roll_number=s_meta.get("roll_number"),
-                    full_name=s_meta.get("full_name"),
+                    student_id=display_id,
+                    roll_number=display_roll,
+                    full_name=display_name,
                     similarity_score=candidate.similarity_score,
                     margin=candidate.margin_to_second,
                     color_hex="#F59E0B",  # Amber orange
@@ -427,15 +447,17 @@ class DemoService:
                 if is_authorized
                 else None
             )
-            display_roll = s_meta["roll_number"] if is_authorized else (s_meta["roll_number"][:4] + "***")
+            display_roll = s_meta["roll_number"] if is_authorized else (s_meta["roll_number"][:4] + "***" if len(s_meta["roll_number"]) > 4 else "***")
+            display_name = s_meta["full_name"] if is_authorized else DemoService._mask_name(s_meta["full_name"])
+            display_id = s_id if is_authorized else f"anon_{s_id[:8]}"
             dept = s_meta.get("department_code")
             if s_id in matched_student_ids:
                 best_score, crop_b64 = matched_student_ids[s_id]
                 attendance_granted_list.append(
                     DemoStudentResult(
-                        student_id=s_id,
+                        student_id=display_id,
                         roll_number=display_roll,
-                        full_name=s_meta["full_name"],
+                        full_name=display_name,
                         attendance_granted=True,
                         status="PRESENT",
                         similarity_score=best_score,
@@ -447,9 +469,9 @@ class DemoService:
             else:
                 attendance_not_granted_list.append(
                     DemoStudentResult(
-                        student_id=s_id,
+                        student_id=display_id,
                         roll_number=display_roll,
-                        full_name=s_meta["full_name"],
+                        full_name=display_name,
                         attendance_granted=False,
                         status="ABSENT",
                         similarity_score=None,

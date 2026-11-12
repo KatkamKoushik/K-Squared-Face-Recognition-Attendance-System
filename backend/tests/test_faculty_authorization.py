@@ -270,7 +270,12 @@ def test_student_directory_scoped_authorization(db_session: Session, seed_data):
     db_session.flush()
 
     # Admin
-    admin_user = User(email="admin_students@kucet.ac.in", hashed_password="pw", role="ADMIN")
+    admin_user = User(
+        email="admin_students@kucet.ac.in",
+        hashed_password="pw",
+        role="ADMIN",
+        department_id=seed_data["department"].id,
+    )
     db_session.add(admin_user)
     db_session.flush()
     token_admin = create_access_token(subject=str(admin_user.id), role="ADMIN")

@@ -4,6 +4,8 @@
  * Handles client-side bearer token injection for authenticated endpoints.
  */
 
+import { fallbackFromSupabase } from "./supabaseFallback";
+
 const DEFAULT_REMOTE_API = "https://straddle-deflate-footwear.ngrok-free.dev/api/v1";
 
 export function getApiBase(): string {
@@ -23,44 +25,12 @@ const AUTH_USER_KEY = "kucet_frs_auth_user";
 
 let inMemoryToken: string | null = null;
 let inMemoryUser: StoredAuthUser | null = null;
-let serverCachedToken: string | null = null;
-let serverCachedTokenExpiry = 0;
-
-export async function getServerAdminToken(): Promise<string | null> {
-  const now = Date.now();
-  if (serverCachedToken && now < serverCachedTokenExpiry) {
-    return serverCachedToken;
-  }
-  try {
-    const res = await fetch(`${getApiBase()}/auth/login`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "ngrok-skip-browser-warning": "1",
-      },
-      body: JSON.stringify({
-        email: "principal.kucet@gmail.com",
-        password: "KucetFaculty@2026",
-      }),
-    });
-    if (!res.ok) return null;
-    const json = await res.json();
-    const data = (json && typeof json === "object" && "data" in json) ? json.data : json;
-    if (data && data.access_token) {
-      serverCachedToken = data.access_token;
-      serverCachedTokenExpiry = now + 45 * 60 * 1000;
-      return serverCachedToken;
-    }
-  } catch {
-    // Non-blocking
-  }
-  return null;
-}
 
 export interface StoredAuthUser {
   user_id: string;
   email: string;
   role: string;
+  department_id?: string | null;
 }
 
 export interface LoginResponse {
@@ -70,6 +40,7 @@ export interface LoginResponse {
   user_id: string;
   role: string;
   email: string;
+  department_id?: string | null;
 }
 
 export function getAuthToken(): string | null {
@@ -162,6 +133,7 @@ export async function login(email: string, password: string, remember: boolean =
         user_id: loginData.user_id,
         email: loginData.email,
         role: loginData.role,
+        department_id: loginData.department_id,
       }, remember);
       return loginData;
     }
@@ -179,10 +151,7 @@ export function logout(): void {
 
 export async function fetchFromApi<T>(endpoint: string, options?: RequestInit): Promise<T | null> {
   try {
-    let token = getAuthToken();
-    if (!token) {
-      token = await getServerAdminToken();
-    }
+    const token = getAuthToken();
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
       "ngrok-skip-browser-warning": "1",
@@ -200,6 +169,14 @@ export async function fetchFromApi<T>(endpoint: string, options?: RequestInit): 
     });
 
     if (!res.ok) {
+      if (res.status === 401 || res.status === 403) {
+        // Backend actively denied authorization; fail closed and never bypass with database fallback
+        return null;
+      }
+      const fallback = await fallbackFromSupabase<T>(endpoint);
+      if (fallback !== null) {
+        return fallback;
+      }
       return null;
     }
 
@@ -210,6 +187,10 @@ export async function fetchFromApi<T>(endpoint: string, options?: RequestInit): 
     return json as T;
   } catch (error: any) {
     const msg = error?.cause?.code || error?.message || String(error);
+    const fallback = await fallbackFromSupabase<T>(endpoint);
+    if (fallback !== null) {
+      return fallback;
+    }
     if (process.env.NODE_ENV === "development") {
       console.info(`[API Fallback] ${endpoint} unreachable (${msg}); using static snapshot.`);
     }
@@ -557,17 +538,15 @@ export function getSubmissionPhotoUrl(id: string, storagePath?: string): string 
 }
 
 export async function approveEnrollmentSubmission(id: string): Promise<EnrollmentSubmissionItem> {
-  let token = getAuthToken();
+  const token = getAuthToken();
   if (!token) {
-    token = await getServerAdminToken();
+    throw new Error("Authentication required: Please sign in as an administrator to approve enrollment submissions.");
   }
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     "ngrok-skip-browser-warning": "1",
+    "Authorization": `Bearer ${token}`,
   };
-  if (token && token !== "null" && token !== "undefined") {
-    headers["Authorization"] = `Bearer ${token}`;
-  }
 
   const res = await fetch(`${getApiBase()}/enrollment/submissions/${id}/approve`, {
     method: "POST",
@@ -584,17 +563,15 @@ export async function approveEnrollmentSubmission(id: string): Promise<Enrollmen
 }
 
 export async function rejectEnrollmentSubmission(id: string, reason: string): Promise<EnrollmentSubmissionItem> {
-  let token = getAuthToken();
+  const token = getAuthToken();
   if (!token) {
-    token = await getServerAdminToken();
+    throw new Error("Authentication required: Please sign in as an administrator to reject enrollment submissions.");
   }
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     "ngrok-skip-browser-warning": "1",
+    "Authorization": `Bearer ${token}`,
   };
-  if (token && token !== "null" && token !== "undefined") {
-    headers["Authorization"] = `Bearer ${token}`;
-  }
 
   const res = await fetch(`${getApiBase()}/enrollment/submissions/${id}/reject`, {
     method: "POST",
@@ -612,17 +589,15 @@ export async function rejectEnrollmentSubmission(id: string, reason: string): Pr
 }
 
 export async function requestRecaptureEnrollmentSubmission(id: string, reason: string): Promise<EnrollmentSubmissionItem> {
-  let token = getAuthToken();
+  const token = getAuthToken();
   if (!token) {
-    token = await getServerAdminToken();
+    throw new Error("Authentication required: Please sign in as an administrator to request enrollment recapture.");
   }
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     "ngrok-skip-browser-warning": "1",
+    "Authorization": `Bearer ${token}`,
   };
-  if (token && token !== "null" && token !== "undefined") {
-    headers["Authorization"] = `Bearer ${token}`;
-  }
 
   const res = await fetch(`${getApiBase()}/enrollment/submissions/${id}/recapture`, {
     method: "POST",

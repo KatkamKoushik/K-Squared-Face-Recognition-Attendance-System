@@ -284,11 +284,14 @@ class StudentService:
         db: Session,
         status: Optional[AppealStatus] = None,
         limit: int = 100,
+        user: Optional[User] = None,
     ) -> List[AttendanceAppeal]:
-        """Administrative method: lists all pending or reviewed student appeals."""
+        """Administrative method: lists student appeals, scoped by department for department admins."""
         stmt = select(AttendanceAppeal).order_by(AttendanceAppeal.created_at.desc()).limit(limit)
         if status:
             stmt = stmt.where(AttendanceAppeal.status == status)
+        if user and user.role == UserRole.ADMIN and user.department_id:
+            stmt = stmt.join(Student, AttendanceAppeal.student_id == Student.id).join(Cohort, Student.cohort_id == Cohort.id).where(Cohort.department_id == user.department_id)
         result = db.execute(stmt)
         return list(result.scalars().all())
 
@@ -308,6 +311,14 @@ class StudentService:
 
         if not appeal:
             raise ResourceNotFoundError(resource="AttendanceAppeal", identifier=appeal_id)
+
+        if reviewer.role == UserRole.ADMIN and reviewer.department_id:
+            student = db.get(Student, appeal.student_id)
+            if student and student.cohort and student.cohort.department_id != reviewer.department_id:
+                raise PermissionDeniedError(
+                    message="Access denied: Department administrator cannot review appeals of another department.",
+                    reason_code="DEPARTMENT_ACCESS_RESTRICTED",
+                )
 
         appeal.status = AppealStatus.APPROVED if approved else AppealStatus.REJECTED
         appeal.review_notes = review_notes

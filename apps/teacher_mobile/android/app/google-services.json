@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "567051716845",
+    "project_id": "frs-project-9801a",
+    "storage_bucket": "frs-project-9801a.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:567051716845:android:fe82356839154ed15e64e4",
+        "android_client_info": {
+          "package_name": "com.kucet.frs.frs_teacher_app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "567051716845-t5hc0c5kmlihr83rp05kivvlpgsmr5g8.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.kucet.frs.frs_teacher_app",
+            "certificate_hash": "819bd6a3f1b8a547baf2098d1eed798d4c7c87ba"
+          }
+        },
+        {
+          "client_id": "567051716845-h1bbbdnmum4klpn6a95nppqnm8bcqk83.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCUv_5RHH5E2Xbu0sbJGKkJEycR8tsmIVQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "567051716845-h1bbbdnmum4klpn6a95nppqnm8bcqk83.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
+

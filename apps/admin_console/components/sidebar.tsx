@@ -23,23 +23,49 @@ import {
 } from "lucide-react";
 import { logout, getStoredUser, StoredAuthUser } from "@/lib/api";
 
-const navigationItems = [
-  { name: "Executive Overview", href: "/", icon: LayoutDashboard },
-  { name: "Demo Visualizer", href: "/demo", icon: Camera },
-  { name: "Biometric Queue", href: "/admin/enrollment", icon: ShieldAlert },
-  { name: "Attendance Appeals", href: "/admin/appeals", icon: FileText },
+interface NavItem {
+  name: string;
+  href: string;
+  icon: React.ComponentType<{ className?: string }>;
+  allowedRoles?: string[];
+}
+
+const allNavigationItems: NavItem[] = [
+  { name: "Executive Overview", href: "/", icon: LayoutDashboard, allowedRoles: ["DEVELOPER", "SUPER_ADMIN", "ADMIN"] },
+  { name: "Demo Visualizer", href: "/demo", icon: Camera, allowedRoles: ["DEVELOPER", "SUPER_ADMIN", "ADMIN", "SUB_ADMIN", "FACULTY"] },
+  { name: "Biometric Queue", href: "/admin/enrollment", icon: ShieldAlert, allowedRoles: ["DEVELOPER", "SUPER_ADMIN", "ADMIN"] },
+  { name: "Attendance Appeals", href: "/admin/appeals", icon: FileText, allowedRoles: ["DEVELOPER", "SUPER_ADMIN", "ADMIN"] },
+  { name: "Academic Structure", href: "/academic/structure", icon: Building2, allowedRoles: ["DEVELOPER", "SUPER_ADMIN"] },
+  { name: "Student Enrolment", href: "/students", icon: Users, allowedRoles: ["DEVELOPER", "SUPER_ADMIN", "ADMIN"] },
+  { name: "Course Offerings", href: "/academic/offerings", icon: BookOpen, allowedRoles: ["DEVELOPER", "SUPER_ADMIN", "ADMIN", "SUB_ADMIN", "FACULTY"] },
+  { name: "Joint-Class Groups", href: "/academic/joint-groups", icon: GitMerge, allowedRoles: ["DEVELOPER", "SUPER_ADMIN", "ADMIN"] },
+  { name: "Live Roster Preview", href: "/roster-preview", icon: Eye, allowedRoles: ["DEVELOPER", "SUPER_ADMIN", "ADMIN", "SUB_ADMIN", "FACULTY"] },
+  { name: "Attendance Analytics", href: "/reports/attendance", icon: BarChart3, allowedRoles: ["DEVELOPER", "SUPER_ADMIN", "ADMIN", "SUB_ADMIN", "FACULTY"] },
+  { name: "Governance & Privacy", href: "/governance", icon: ShieldCheck, allowedRoles: ["DEVELOPER", "SUPER_ADMIN"] },
+  { name: "Controlled Pilot", href: "/pilot", icon: FlaskConical, allowedRoles: ["DEVELOPER", "SUPER_ADMIN"] },
+  { name: "Audit Trail Browser", href: "/audit/logs", icon: FileCheck2, allowedRoles: ["DEVELOPER", "SUPER_ADMIN"] },
+  { name: "System Readiness", href: "/system/readiness", icon: Activity, allowedRoles: ["DEVELOPER"] },
   { name: "Student Portal", href: "/student/login", icon: LogIn },
-  { name: "Academic Structure", href: "/academic/structure", icon: Building2 },
-  { name: "Student Enrolment", href: "/students", icon: Users },
-  { name: "Course Offerings", href: "/academic/offerings", icon: BookOpen },
-  { name: "Joint-Class Groups", href: "/academic/joint-groups", icon: GitMerge },
-  { name: "Live Roster Preview", href: "/roster-preview", icon: Eye },
-  { name: "Attendance Analytics", href: "/reports/attendance", icon: BarChart3 },
-  { name: "Governance & Privacy", href: "/governance", icon: ShieldCheck },
-  { name: "Controlled Pilot", href: "/pilot", icon: FlaskConical },
-  { name: "Audit Trail Browser", href: "/audit/logs", icon: FileCheck2 },
-  { name: "System Readiness", href: "/system/readiness", icon: Activity },
 ];
+
+function getRoleDisplay(user: StoredAuthUser | null) {
+  if (!user) return { title: "Role: Academic Administrator", subtitle: "Public Institutional Preview" };
+  switch (user.role) {
+    case "DEVELOPER":
+      return { title: "Tier 1: Developer", subtitle: "System Root & Diagnostics" };
+    case "SUPER_ADMIN":
+      return { title: "Tier 2: Super Admin", subtitle: "Institutional Authority" };
+    case "ADMIN":
+      return { title: "Tier 3: Department Admin", subtitle: user.department_id ? "Department Scoped" : "Department Head" };
+    case "SUB_ADMIN":
+    case "FACULTY":
+      return { title: "Tier 4: Sub-Admin (Faculty)", subtitle: "Teaching Class Scope" };
+    case "STUDENT":
+      return { title: "Tier 5: Student", subtitle: "Self-Service Identity" };
+    default:
+      return { title: `Role: ${user.role}`, subtitle: user.email };
+  }
+}
 
 export function AdminSidebar() {
   const router = useRouter();
@@ -67,6 +93,14 @@ export function AdminSidebar() {
     router.push("/login");
   };
 
+  const navItems = user
+    ? allNavigationItems.filter(
+        (item) => !item.allowedRoles || item.allowedRoles.includes(user.role)
+      )
+    : allNavigationItems;
+
+  const roleInfo = getRoleDisplay(user);
+
   return (
     <aside className="w-64 bg-institutional-navy text-white flex flex-col min-h-screen border-r border-institutional-navy/20 shrink-0">
       {/* Brand Header */}
@@ -86,22 +120,20 @@ export function AdminSidebar() {
 
       {/* Role Badge */}
       <div className="px-6 py-3 bg-white/5 border-b border-white/10 flex items-center space-x-2">
-        <ShieldAlert className="w-4 h-4 text-institutional-gold" />
+        <ShieldAlert className="w-4 h-4 text-institutional-gold shrink-0" />
         <div className="overflow-hidden">
-          <span className="text-xs font-medium text-white/80 block truncate">
-            {user ? `Role: ${user.role}` : "Role: Academic Administrator"}
+          <span className="text-xs font-semibold text-white/90 block truncate">
+            {roleInfo.title}
           </span>
-          {user && (
-            <span className="text-[10px] text-white/50 block truncate">
-              {user.email}
-            </span>
-          )}
+          <span className="text-[10px] text-white/50 block truncate">
+            {user ? `${user.email} (${roleInfo.subtitle})` : roleInfo.subtitle}
+          </span>
         </div>
       </div>
 
       {/* Nav Menu */}
       <nav className="flex-1 px-4 py-4 space-y-1">
-        {navigationItems.map((item) => {
+        {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = pathname === item.href;
           return (

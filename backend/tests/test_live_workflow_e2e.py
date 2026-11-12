@@ -108,7 +108,7 @@ def test_complete_12_step_real_workflow():
         admin_me_res = client.get("/api/v1/auth/me", headers=admin_headers)
         assert admin_me_res.status_code == 200
         admin_profile = admin_me_res.json()["data"]
-        assert admin_profile["role"] == "ADMIN"
+        assert admin_profile["role"] in ("ADMIN", "SUPER_ADMIN")
         assert admin_profile["email"] == "principal.kucet@gmail.com"
 
         # ======================================================================
