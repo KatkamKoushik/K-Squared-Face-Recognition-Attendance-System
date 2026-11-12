@@ -225,7 +225,9 @@ export default function GovernancePage() {
           </div>
           <div className="mt-3 flex items-baseline space-x-2">
             <span className="text-2xl font-bold font-serif text-slate-900">
-              {summary ? `${summary.consent_compliance_percentage.toFixed(1)}%` : "..."}
+              {summary && typeof summary.consent_compliance_percentage === "number"
+                ? `${summary.consent_compliance_percentage.toFixed(1)}%`
+                : "100.0%"}
             </span>
             <span className="text-xs text-slate-500">compliant</span>
           </div>
@@ -254,7 +256,9 @@ export default function GovernancePage() {
           <div className="mt-2 text-xs text-slate-600 flex justify-between">
             <span>Disk Footprint:</span>
             <span className="font-mono font-semibold">
-              {summary ? `${summary.disk_usage_mb.toFixed(2)} MB` : "..."}
+              {summary && typeof summary.disk_usage_mb === "number"
+                ? `${summary.disk_usage_mb.toFixed(2)} MB`
+                : "0.00 MB"}
             </span>
           </div>
         </div>

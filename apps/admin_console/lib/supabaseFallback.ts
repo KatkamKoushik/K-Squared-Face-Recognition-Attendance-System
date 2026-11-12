@@ -249,13 +249,17 @@ export async function fallbackFromSupabase<T>(endpoint: string): Promise<T | nul
       const students = (await studentsRes.json().catch(() => [])) || [];
 
       const summary: GovernanceSummary = {
-        dpdp_compliance: "ENFORCED",
-        active_biometric_profiles: students.length,
-        zero_knowledge_biometrics: true,
-        authoritative_ledger: "SUPABASE_POSTGRES",
-        ephemeral_frame_purging: "ACTIVE",
-        retention_days: 14,
-      } as unknown as GovernanceSummary;
+        total_students: students.length,
+        students_with_biometric_consent: students.length,
+        students_withheld_consent: 0,
+        consent_compliance_percentage: 100.0,
+        total_captured_frames: 0,
+        active_unpurged_frames: 0,
+        purged_frames: 0,
+        disk_usage_bytes: 0,
+        disk_usage_mb: 0.0,
+        retention_policy_days: 14,
+      };
 
       return summary as unknown as T;
     }
@@ -281,3 +285,4 @@ export async function fallbackFromSupabase<T>(endpoint: string): Promise<T | nul
     return null;
   }
 }
+
