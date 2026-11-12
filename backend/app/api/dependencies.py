@@ -5,7 +5,7 @@ Enforces scoped authentication, server-side RBAC, and request correlation tracin
 
 import uuid
 from typing import List, Optional
-from fastapi import Depends, Header, HTTPException, status
+from fastapi import Depends, Header, HTTPException, Query, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -26,13 +26,15 @@ def get_correlation_id(x_correlation_id: Optional[str] = Header(None)) -> str:
 
 def get_current_user(
     auth: Optional[HTTPAuthorizationCredentials] = Depends(security_scheme),
+    token_param: Optional[str] = Query(None, alias="token"),
     db: Session = Depends(get_db),
 ) -> User:
     """Validates the Bearer token (internal JWT) and returns the authenticated user."""
-    if not auth or not auth.credentials or auth.credentials in ("null", "undefined"):
-        raise AuthenticationError("Authorization header missing or invalid", reason_code="TOKEN_MISSING")
+    raw_token = auth.credentials if (auth and auth.credentials) else token_param
+    if not raw_token or raw_token in ("null", "undefined"):
+        raise AuthenticationError("Authorization header or token parameter missing or invalid", reason_code="TOKEN_MISSING")
 
-    payload = verify_token(auth.credentials)
+    payload = verify_token(raw_token)
 
     # Session revocation hardening: raw Firebase ID tokens must be exchanged for an institutional session token
     if payload.get("firebase") is not None or payload.get("token_type") == "firebase_id_token":

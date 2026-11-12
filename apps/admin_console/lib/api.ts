@@ -4,7 +4,6 @@
  * Handles client-side bearer token injection for authenticated endpoints.
  */
 
-import { fallbackFromSupabase } from "./supabaseFallback";
 
 const DEFAULT_REMOTE_API = "https://straddle-deflate-footwear.ngrok-free.dev/api/v1";
 
@@ -250,12 +249,8 @@ export async function fetchFromApi<T>(endpoint: string, options?: RequestInit): 
 
     if (!res.ok) {
       if (res.status === 401 || res.status === 403) {
-        // Backend actively denied authorization; fail closed and never bypass with database fallback
+        // Backend actively denied authorization; fail closed
         return null;
-      }
-      const fallback = await fallbackFromSupabase<T>(endpoint);
-      if (fallback !== null) {
-        return fallback;
       }
       return null;
     }
@@ -267,12 +262,8 @@ export async function fetchFromApi<T>(endpoint: string, options?: RequestInit): 
     return json as T;
   } catch (error: any) {
     const msg = error?.cause?.code || error?.message || String(error);
-    const fallback = await fallbackFromSupabase<T>(endpoint);
-    if (fallback !== null) {
-      return fallback;
-    }
     if (process.env.NODE_ENV === "development") {
-      console.info(`[API Fallback] ${endpoint} unreachable (${msg}); using static snapshot.`);
+      console.warn(`[API Error] ${endpoint} unreachable or failed: ${msg}`);
     }
     return null;
   }
@@ -1072,5 +1063,84 @@ export async function reviewStudentDataCorrection(
     method: "POST",
     body: JSON.stringify({ approved, review_notes: reviewNotes }),
   });
+}
+
+export interface RealtimeEvent<T = any> {
+  event_id: string;
+  event_type: string;
+  timestamp: string;
+  channel: string;
+  payload: T;
+}
+
+/**
+ * Subscribes to live institutional Server-Sent Events (SSE) with authenticated channel filtering.
+ * Automatically attempts reconnection if the network is interrupted.
+ * Returns an unsubscribe cleanup function.
+ */
+export function subscribeToRealtimeEvents(
+  channels: string[],
+  onEvent: (event: RealtimeEvent) => void,
+  onError?: (err: any) => void
+): () => void {
+  if (typeof window === "undefined" || !("EventSource" in window)) {
+    return () => {};
+  }
+
+  const token = getAuthToken();
+  if (!token) {
+    return () => {};
+  }
+
+  const encodedChannels = encodeURIComponent(channels.join(","));
+  const encodedToken = encodeURIComponent(token);
+  const streamUrl = `${getApiBase()}/events/stream?channels=${encodedChannels}&token=${encodedToken}`;
+
+  const eventSource = new EventSource(streamUrl);
+
+  const handleMessage = (e: MessageEvent) => {
+    try {
+      const data = JSON.parse(e.data) as RealtimeEvent;
+      onEvent(data);
+    } catch {
+      // Non-JSON or comment ping
+    }
+  };
+
+  eventSource.onmessage = handleMessage;
+
+  // Listen to specific domain event types
+  const eventTypes = [
+    "SESSION_STATE_CHANGED",
+    "FRAME_PROCESSED",
+    "PROPOSAL_READY",
+    "RECEIPT_ISSUED",
+    "ENROLLMENT_SUBMITTED",
+    "ENROLLMENT_DECIDED",
+    "ATTENDANCE_APPEALED",
+    "ATTENDANCE_APPEAL_REVIEWED",
+    "CORRECTION_SUBMITTED",
+    "CORRECTION_REVIEWED",
+    "DASHBOARD_STATS_UPDATED",
+  ];
+
+  eventTypes.forEach((evtType) => {
+    eventSource.addEventListener(evtType, (e: any) => {
+      try {
+        const data = JSON.parse(e.data) as RealtimeEvent;
+        onEvent(data);
+      } catch {}
+    });
+  });
+
+  if (onError) {
+    eventSource.onerror = (err) => {
+      onError(err);
+    };
+  }
+
+  return () => {
+    eventSource.close();
+  };
 }
 

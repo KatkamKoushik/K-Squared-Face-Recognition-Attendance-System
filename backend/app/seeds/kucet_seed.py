@@ -5,6 +5,8 @@ Kakatiya University College of Engineering & Technology, Warangal.
 """
 
 import math
+import os
+import secrets
 import uuid
 from datetime import date
 from typing import Dict, Any
@@ -29,6 +31,19 @@ from app.domain.models.academic import (
 )
 from app.domain.models.student import Student, Enrollment, EnrollmentProfile
 from app.services.model_registry_service import ModelRegistryService
+
+
+def get_seed_password(env_var: str, role_default: str) -> str:
+    """
+    Retrieves seed password from environment. In non-development environments,
+    generates a high-entropy cryptographically secure password if not provided.
+    """
+    configured = os.getenv(env_var)
+    if configured:
+        return configured
+    if settings.ENVIRONMENT == "development":
+        return role_default
+    return secrets.token_urlsafe(24)
 
 
 def seed_kucet_institutional_data(db: Session) -> Dict[str, Any]:
@@ -180,6 +195,7 @@ def seed_kucet_institutional_data(db: Session) -> Dict[str, Any]:
             cohort_map[c_data["name"]] = existing_c
 
     # 4. Verified KUCET Faculty & User Accounts (5-Tier RBAC)
+    seed_faculty_pw = get_seed_password("SEED_FACULTY_PASSWORD", "KucetFaculty@2026")
     faculty_list = [
         {
             "emp_id": "KUCET-FAC-001",
@@ -187,7 +203,6 @@ def seed_kucet_institutional_data(db: Session) -> Dict[str, Any]:
             "email": "principal.kucet@gmail.com",
             "dept": "CSE",
             "role": UserRole.SUPER_ADMIN,
-            "pw": "KucetFaculty@2026",
         },
         {
             "emp_id": "KUCET-FAC-CSE-001",
@@ -195,7 +210,6 @@ def seed_kucet_institutional_data(db: Session) -> Dict[str, Any]:
             "email": "ramana.vrb@gmail.com",
             "dept": "CSE",
             "role": UserRole.SUB_ADMIN,
-            "pw": "KucetFaculty@2026",
         },
         {
             "emp_id": "KUCET-FAC-ECE-001",
@@ -203,7 +217,6 @@ def seed_kucet_institutional_data(db: Session) -> Dict[str, Any]:
             "email": "srilatha.ece@kucet.ac.in",
             "dept": "ECE",
             "role": UserRole.SUB_ADMIN,
-            "pw": "KucetFaculty@2026",
         },
         {
             "emp_id": "KUCET-FAC-EEE-001",
@@ -211,7 +224,6 @@ def seed_kucet_institutional_data(db: Session) -> Dict[str, Any]:
             "email": "kumaraswamy.eee@kucet.ac.in",
             "dept": "EEE",
             "role": UserRole.SUB_ADMIN,
-            "pw": "KucetFaculty@2026",
         },
         {
             "emp_id": "KUCET-FAC-ME-001",
@@ -219,7 +231,6 @@ def seed_kucet_institutional_data(db: Session) -> Dict[str, Any]:
             "email": "sajjad.owais44@gmail.com",
             "dept": "MECH",
             "role": UserRole.SUB_ADMIN,
-            "pw": "KucetFaculty@2026",
         },
         {
             "emp_id": "KUCET-FAC-IT-001",
@@ -227,7 +238,6 @@ def seed_kucet_institutional_data(db: Session) -> Dict[str, Any]:
             "email": "soujanyavedh@gmail.com",
             "dept": "IT",
             "role": UserRole.SUB_ADMIN,
-            "pw": "KucetFaculty@2026",
         },
         {
             "emp_id": "KUCET-FAC-CSD-001",
@@ -235,7 +245,6 @@ def seed_kucet_institutional_data(db: Session) -> Dict[str, Any]:
             "email": "priyankadamera1223@gmail.com",
             "dept": "CSD",
             "role": UserRole.SUB_ADMIN,
-            "pw": "KucetFaculty@2026",
         },
         {
             "emp_id": "KUCET-FAC-CE-001",
@@ -243,7 +252,6 @@ def seed_kucet_institutional_data(db: Session) -> Dict[str, Any]:
             "email": "amarender.civil@kucet.ac.in",
             "dept": "CIVIL",
             "role": UserRole.SUB_ADMIN,
-            "pw": "KucetFaculty@2026",
         },
     ]
 
@@ -255,7 +263,7 @@ def seed_kucet_institutional_data(db: Session) -> Dict[str, Any]:
             u = User(
                 id=str(uuid.uuid4()),
                 email=f_data["email"],
-                hashed_password=hash_password(f_data.get("pw", "KucetFaculty@2026")),
+                hashed_password=hash_password(seed_faculty_pw),
                 role=f_data["role"],
                 department_id=dept_id,
                 is_active=True,
@@ -283,10 +291,12 @@ def seed_kucet_institutional_data(db: Session) -> Dict[str, Any]:
                 faculty_map[f_data["emp_id"]] = fac
 
     # 4b. Seed Administrative Users for 5-Tier RBAC Testing
+    seed_dev_pw = get_seed_password("SEED_DEVELOPER_PASSWORD", "KucetDev@2026")
+    seed_admin_pw = get_seed_password("SEED_ADMIN_PASSWORD", "KucetAdmin@2026")
     admin_accounts = [
-        {"email": "developer@frs.kucet.ac.in", "role": UserRole.DEVELOPER, "dept": None, "pw": "KucetDev@2026"},
-        {"email": "hod.cse@kucet.ac.in", "role": UserRole.ADMIN, "dept": "CSE", "pw": "KucetAdmin@2026"},
-        {"email": "hod.ece@kucet.ac.in", "role": UserRole.ADMIN, "dept": "ECE", "pw": "KucetAdmin@2026"},
+        {"email": "developer@frs.kucet.ac.in", "role": UserRole.DEVELOPER, "dept": None, "pw": seed_dev_pw},
+        {"email": "hod.cse@kucet.ac.in", "role": UserRole.ADMIN, "dept": "CSE", "pw": seed_admin_pw},
+        {"email": "hod.ece@kucet.ac.in", "role": UserRole.ADMIN, "dept": "ECE", "pw": seed_admin_pw},
     ]
     for adm in admin_accounts:
         adm_user = db.execute(select(User).where(User.email == adm["email"])).scalar_one_or_none()
@@ -444,6 +454,7 @@ def seed_kucet_institutional_data(db: Session) -> Dict[str, Any]:
         ]
         consent_withheld_rolls = set()
 
+    seed_student_pw = get_seed_password("SEED_STUDENT_PASSWORD", "KucetStudent@2026")
     for stu_data in kucet_students:
         existing_stu = db.execute(select(Student).where(Student.roll_number == stu_data["roll"])).scalar_one_or_none()
         if not existing_stu:
@@ -478,12 +489,16 @@ def seed_kucet_institutional_data(db: Session) -> Dict[str, Any]:
             u_stu = User(
                 id=str(uuid.uuid4()),
                 email=stu_data["email"],
-                hashed_password=hash_password("KucetStudent@2026"),
+                hashed_password=hash_password(seed_student_pw),
                 role=UserRole.STUDENT,
                 department_id=cse_cohort.department_id,
+                student_id=stu.id,
                 is_active=True,
             )
             db.add(u_stu)
+            db.flush()
+        elif not existing_stu_user.student_id:
+            existing_stu_user.student_id = stu.id
             db.flush()
 
         # 8. Biometric Enrollment Profile (DPDP Act Compliance: Consent Gate)

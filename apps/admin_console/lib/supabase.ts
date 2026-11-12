@@ -11,11 +11,6 @@ export const SUPABASE_PUBLISHABLE_KEY =
   process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
   "sb_publishable_-7c2WIgh_dbXIewd-7-BAA_EDWdSiqZ";
 
-export const SUPABASE_SERVICE_ROLE_KEY =
-  process.env.SUPABASE_SERVICE_ROLE_KEY ||
-  process.env.SUPABASE_SECRET_KEY ||
-  "";
-
 export interface SupabaseConfig {
   url: string;
   publishableKey: string;
@@ -44,7 +39,7 @@ export async function supabaseFetch(
   const cleanEndpoint = endpoint.replace(/^\//, "");
   const targetUrl = `${cleanBase}/${cleanEndpoint}`;
 
-  const activeKey = SUPABASE_SERVICE_ROLE_KEY || SUPABASE_PUBLISHABLE_KEY;
+  const activeKey = SUPABASE_PUBLISHABLE_KEY;
 
   const headers = new Headers(options.headers || {});
   headers.set("apikey", activeKey);

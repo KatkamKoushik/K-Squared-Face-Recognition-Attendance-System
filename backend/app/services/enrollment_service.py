@@ -26,6 +26,8 @@ from app.domain.models.audit import AuditEvent
 from app.domain.models.student import Student, EnrollmentProfile, EnrollmentSubmission
 from app.domain.models.session import AttendanceSession
 from app.schemas.enrollment import EnrollmentSubmissionCreate
+from app.schemas.events import EventMessage, RealtimeEventType
+from app.services.event_broadcaster import broadcaster
 from app.services.storage_service import CloudinaryStorageService
 from app.worker.adapters.detector_adapter import DetectorAdapter
 from app.worker.adapters.recognizer_adapter import RecognizerAdapter
@@ -174,6 +176,20 @@ class EnrollmentService:
             db.add(submission)
         db.commit()
         db.refresh(submission)
+
+        broadcaster.publish_sync(
+            EventMessage(
+                event_type=RealtimeEventType.ENROLLMENT_SUBMITTED,
+                channel="global:admin",
+                payload={
+                    "submission_id": submission.id,
+                    "roll_number": submission.roll_number,
+                    "full_name": submission.full_name,
+                    "department": submission.department,
+                },
+            )
+        )
+
         return submission
 
     @staticmethod
@@ -301,6 +317,15 @@ class EnrollmentService:
 
         db.commit()
         db.refresh(sub)
+
+        broadcaster.publish_sync(
+            EventMessage(
+                event_type=RealtimeEventType.ENROLLMENT_DECIDED,
+                channel="global:admin",
+                payload={"submission_id": sub.id, "status": "APPROVED", "roll_number": sub.roll_number},
+            )
+        )
+
         return sub
 
     @staticmethod
@@ -312,6 +337,15 @@ class EnrollmentService:
         sub.rejection_reason = reason or "Administrative rejection based on enrollment guidelines."
         db.commit()
         db.refresh(sub)
+
+        broadcaster.publish_sync(
+            EventMessage(
+                event_type=RealtimeEventType.ENROLLMENT_DECIDED,
+                channel="global:admin",
+                payload={"submission_id": sub.id, "status": "REJECTED", "roll_number": sub.roll_number, "reason": sub.rejection_reason},
+            )
+        )
+
         return sub
 
     @staticmethod
@@ -323,6 +357,15 @@ class EnrollmentService:
         sub.rejection_reason = reason or "Photo quality inadequate. Frontal portrait recapture required."
         db.commit()
         db.refresh(sub)
+
+        broadcaster.publish_sync(
+            EventMessage(
+                event_type=RealtimeEventType.ENROLLMENT_DECIDED,
+                channel="global:admin",
+                payload={"submission_id": sub.id, "status": "RECAPTURE_REQUIRED", "roll_number": sub.roll_number, "reason": sub.rejection_reason},
+            )
+        )
+
         return sub
 
     @staticmethod

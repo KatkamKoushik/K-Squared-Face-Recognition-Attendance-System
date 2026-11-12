@@ -17,6 +17,8 @@ from app.domain.models.session import AttendanceSession, AttendanceUnit
 from app.domain.models.attendance import AttendanceRecord, AttendanceAppeal
 from app.domain.models.audit import AuditEvent, CommitReceipt
 from app.schemas.attendance import AttendanceAppealCreate
+from app.schemas.events import EventMessage, RealtimeEventType
+from app.services.event_broadcaster import broadcaster
 
 
 def utc_now() -> datetime:
@@ -300,6 +302,30 @@ class StudentService:
         db.add(audit)
         db.commit()
         db.refresh(appeal)
+
+        dept_id = student.cohort.department_id if (student and student.cohort) else None
+        event_payload = {
+            "appeal_id": appeal.id,
+            "student_id": student.id,
+            "session_id": appeal.session_id,
+            "status": "PENDING",
+        }
+        broadcaster.publish_sync(
+            EventMessage(
+                event_type=RealtimeEventType.ATTENDANCE_APPEALED,
+                channel=f"user:{student.id}",
+                payload=event_payload,
+            )
+        )
+        if dept_id:
+            broadcaster.publish_sync(
+                EventMessage(
+                    event_type=RealtimeEventType.ATTENDANCE_APPEALED,
+                    channel=f"department:{dept_id}",
+                    payload=event_payload,
+                )
+            )
+
         return appeal
 
     @staticmethod
@@ -408,6 +434,32 @@ class StudentService:
         db.add(audit)
         db.commit()
         db.refresh(appeal)
+
+        dept_id = reviewer.department_id
+        event_payload = {
+            "appeal_id": appeal.id,
+            "student_id": appeal.student_id,
+            "session_id": appeal.session_id,
+            "status": appeal_status_val,
+            "approved": approved,
+            "review_notes": review_notes,
+        }
+        broadcaster.publish_sync(
+            EventMessage(
+                event_type=RealtimeEventType.ATTENDANCE_APPEAL_REVIEWED,
+                channel=f"user:{appeal.student_id}",
+                payload=event_payload,
+            )
+        )
+        if dept_id:
+            broadcaster.publish_sync(
+                EventMessage(
+                    event_type=RealtimeEventType.ATTENDANCE_APPEAL_REVIEWED,
+                    channel=f"department:{dept_id}",
+                    payload=event_payload,
+                )
+            )
+
         return appeal
 
     @staticmethod
@@ -448,6 +500,31 @@ class StudentService:
         db.add(audit)
         db.commit()
         db.refresh(correction)
+
+        dept_id = student.cohort.department_id if (student and student.cohort) else None
+        event_payload = {
+            "correction_id": correction.id,
+            "student_id": student.id,
+            "field_name": field_name,
+            "requested_value": requested_value,
+            "status": "PENDING",
+        }
+        broadcaster.publish_sync(
+            EventMessage(
+                event_type=RealtimeEventType.CORRECTION_SUBMITTED,
+                channel=f"user:{student.id}",
+                payload=event_payload,
+            )
+        )
+        if dept_id:
+            broadcaster.publish_sync(
+                EventMessage(
+                    event_type=RealtimeEventType.CORRECTION_SUBMITTED,
+                    channel=f"department:{dept_id}",
+                    payload=event_payload,
+                )
+            )
+
         return correction
 
     @staticmethod
@@ -541,4 +618,29 @@ class StudentService:
         db.add(audit)
         db.commit()
         db.refresh(correction)
+
+        dept_id = reviewer.department_id
+        event_payload = {
+            "correction_id": correction.id,
+            "student_id": correction.student_id,
+            "status": correction.status,
+            "approved": approved,
+            "review_notes": review_notes,
+        }
+        broadcaster.publish_sync(
+            EventMessage(
+                event_type=RealtimeEventType.CORRECTION_REVIEWED,
+                channel=f"user:{correction.student_id}",
+                payload=event_payload,
+            )
+        )
+        if dept_id:
+            broadcaster.publish_sync(
+                EventMessage(
+                    event_type=RealtimeEventType.CORRECTION_REVIEWED,
+                    channel=f"department:{dept_id}",
+                    payload=event_payload,
+                )
+            )
+
         return correction
