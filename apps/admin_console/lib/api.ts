@@ -5,6 +5,8 @@
  */
 
 
+import { fallbackFromSupabase } from "./supabaseFallback";
+
 const DEFAULT_REMOTE_API = "https://straddle-deflate-footwear.ngrok-free.dev/api/v1";
 
 export function getApiBase(): string {
@@ -252,6 +254,10 @@ export async function fetchFromApi<T>(endpoint: string, options?: RequestInit): 
         // Backend actively denied authorization; fail closed
         return null;
       }
+      const fallback = await fallbackFromSupabase<T>(endpoint);
+      if (fallback !== null) {
+        return fallback;
+      }
       return null;
     }
 
@@ -262,6 +268,10 @@ export async function fetchFromApi<T>(endpoint: string, options?: RequestInit): 
     return json as T;
   } catch (error: any) {
     const msg = error?.cause?.code || error?.message || String(error);
+    const fallback = await fallbackFromSupabase<T>(endpoint);
+    if (fallback !== null) {
+      return fallback;
+    }
     if (process.env.NODE_ENV === "development") {
       console.warn(`[API Error] ${endpoint} unreachable or failed: ${msg}`);
     }
