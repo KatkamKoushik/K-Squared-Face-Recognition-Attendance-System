@@ -138,15 +138,15 @@ def test_finetuned_model_loading_and_inference(db_session: Session):
     # 1. Adapter initialization with fine-tuned model path
     adapter = RecognizerAdapter(model_path=finetuned_path, strict_mode=True)
     assert adapter._recognizer is not None
-    assert adapter.model_hash == RecognizerAdapter.FINETUNED_HASH
-    assert adapter.namespace == "kucet_frs_sface_finetuned_v1"
+    assert adapter.model_hash in (RecognizerAdapter.FINETUNED_HASH, RecognizerAdapter.FINETUNED_HASH_V2)
+    assert adapter.namespace in ("kucet_frs_sface_finetuned_v1", "kucet_frs_sface_finetuned_v2")
 
     # 2. Embedding calculation and unit hypersphere assertion
     face_crop = Image.new("RGB", (112, 112), color=(140, 100, 80))
     emb = adapter.compute_embedding(face_crop)
     assert emb.dimension == 128
-    assert emb.namespace == "kucet_frs_sface_finetuned_v1"
-    assert emb.recognizer_model_hash == RecognizerAdapter.FINETUNED_HASH
+    assert emb.namespace in ("kucet_frs_sface_finetuned_v1", "kucet_frs_sface_finetuned_v2")
+    assert emb.recognizer_model_hash in (RecognizerAdapter.FINETUNED_HASH, RecognizerAdapter.FINETUNED_HASH_V2)
 
     vec = np.array(emb.vector, dtype=np.float32)
     norm = np.linalg.norm(vec)

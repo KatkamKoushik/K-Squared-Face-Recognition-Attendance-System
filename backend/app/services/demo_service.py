@@ -74,7 +74,7 @@ class DemoService:
             .join(EnrollmentProfile, Student.id == EnrollmentProfile.student_id)
             .outerjoin(Cohort, Student.cohort_id == Cohort.id)
             .outerjoin(Department, Cohort.department_id == Department.id)
-            .outerjoin(
+            .join(
                 EnrollmentSubmission,
                 (Student.roll_number == EnrollmentSubmission.roll_number)
                 & (EnrollmentSubmission.status == EnrollmentSubmissionStatus.APPROVED),
@@ -145,7 +145,7 @@ class DemoService:
             .join(EnrollmentProfile, Student.id == EnrollmentProfile.student_id)
             .outerjoin(Cohort, Student.cohort_id == Cohort.id)
             .outerjoin(Department, Cohort.department_id == Department.id)
-            .outerjoin(
+            .join(
                 EnrollmentSubmission,
                 (Student.roll_number == EnrollmentSubmission.roll_number)
                 & (EnrollmentSubmission.status == EnrollmentSubmissionStatus.APPROVED),
