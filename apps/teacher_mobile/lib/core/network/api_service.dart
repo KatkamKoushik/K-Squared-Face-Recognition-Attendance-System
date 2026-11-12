@@ -126,6 +126,56 @@ class FrsApiService {
     throw Exception('Login rejected ($detail)');
   }
 
+  /// POST /auth/firebase
+  /// Exchanges a verified Firebase ID token for an institutional JWT access token.
+  Future<Map<String, dynamic>?> loginWithFirebase({
+    required String firebaseIdToken,
+  }) async {
+    final res = await _client.post(
+      Uri.parse('$baseUrl/auth/firebase'),
+      headers: _headers(),
+      body: jsonEncode({
+        'id_token': firebaseIdToken,
+      }),
+    ).timeout(const Duration(seconds: 8));
+
+    if (res.statusCode == 200) {
+      final payload = _unwrap(res);
+      if (payload is Map<String, dynamic>) {
+        authToken = payload['access_token'] as String?;
+        return payload;
+      }
+    }
+
+    String detail = 'HTTP ${res.statusCode}';
+    try {
+      final err = jsonDecode(res.body);
+      if (err is Map && err.containsKey('detail')) {
+        detail = err['detail'].toString();
+      }
+    } catch (_) {}
+    throw Exception('Firebase authentication rejected ($detail)');
+  }
+
+  /// POST /auth/refresh
+  /// Refreshes the institutional JWT access token.
+  Future<Map<String, dynamic>?> refreshToken() async {
+    final res = await _client.post(
+      Uri.parse('$baseUrl/auth/refresh'),
+      headers: _headers(),
+    ).timeout(const Duration(seconds: 8));
+    _checkAuthError(res);
+
+    if (res.statusCode == 200) {
+      final payload = _unwrap(res);
+      if (payload is Map<String, dynamic>) {
+        authToken = payload['access_token'] as String?;
+        return payload;
+      }
+    }
+    return null;
+  }
+
   /// Clears active JWT session token.
   void logout() {
     authToken = null;

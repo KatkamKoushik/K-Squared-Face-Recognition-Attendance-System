@@ -18,7 +18,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.core.database import Base
-from app.domain.enums import EnrollmentStatus, EnrollmentSubmissionStatus
+from app.domain.enums import EnrollmentStatus, EnrollmentSubmissionStatus, StudentLifecycleStatus
 
 
 def utc_now() -> datetime:
@@ -34,11 +34,15 @@ class Student(Base):
     full_name: Mapped[str] = mapped_column(String(100), nullable=False)
     cohort_id: Mapped[str] = mapped_column(String(36), ForeignKey("cohorts.id"), nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    lifecycle_status: Mapped[StudentLifecycleStatus] = mapped_column(
+        String(20), default=StudentLifecycleStatus.ACTIVE, nullable=False
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
 
     cohort = relationship("Cohort", back_populates="students")
     enrollments: Mapped[List["Enrollment"]] = relationship("Enrollment", back_populates="student")
     profiles: Mapped[List["EnrollmentProfile"]] = relationship("EnrollmentProfile", back_populates="student")
+    corrections: Mapped[List["StudentDataCorrection"]] = relationship("StudentDataCorrection", back_populates="student")
 
 
 class Enrollment(Base):
@@ -95,7 +99,7 @@ class EnrollmentSubmission(Base):
     __tablename__ = "enrollment_submissions"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    roll_number: Mapped[str] = mapped_column(String(50), index=True, nullable=False)
+    roll_number: Mapped[str] = mapped_column(String(50), nullable=False)
     full_name: Mapped[str] = mapped_column(String(100), nullable=False)
     institutional_email: Mapped[str] = mapped_column(String(255), nullable=False)
     department: Mapped[str] = mapped_column(String(100), nullable=False)
@@ -107,7 +111,7 @@ class EnrollmentSubmission(Base):
     photo_mime: Mapped[str] = mapped_column(String(50), nullable=False)
 
     status: Mapped[EnrollmentSubmissionStatus] = mapped_column(
-        String(30), default=EnrollmentSubmissionStatus.PENDING_REVIEW, nullable=False, index=True
+        String(30), default=EnrollmentSubmissionStatus.PENDING_REVIEW, nullable=False
     )
     consent_acknowledged: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     rejection_reason: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
@@ -122,4 +126,33 @@ class EnrollmentSubmission(Base):
     __table_args__ = (
         Index("idx_submission_status_created", "status", "created_at"),
         Index("idx_submission_roll", "roll_number"),
+    )
+
+
+class StudentDataCorrection(Base):
+    """
+    Formal student profile correction request.
+    Audited lifecycle: PENDING -> APPROVED | REJECTED.
+    """
+    __tablename__ = "student_data_corrections"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    student_id: Mapped[str] = mapped_column(String(36), ForeignKey("students.id"), nullable=False)
+    field_name: Mapped[str] = mapped_column(String(50), nullable=False)
+    requested_value: Mapped[str] = mapped_column(String(255), nullable=False)
+    current_value: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    reason: Mapped[str] = mapped_column(String(500), nullable=False)
+    status: Mapped[str] = mapped_column(String(20), default="PENDING", nullable=False, index=True)
+    review_notes: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    reviewed_by_user_id: Mapped[Optional[str]] = mapped_column(String(36), ForeignKey("users.id"), nullable=True)
+    reviewed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+
+    student: Mapped["Student"] = relationship("Student", back_populates="corrections")
+    reviewed_by = relationship("User")
+
+    __table_args__ = (
+        Index("idx_correction_student_status", "student_id", "status"),
+        Index("idx_fk_student_data_corrections_student", "student_id"),
+        Index("idx_fk_student_data_corrections_reviewed_by", "reviewed_by_user_id"),
     )

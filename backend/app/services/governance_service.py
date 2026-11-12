@@ -96,7 +96,7 @@ class GovernanceService:
         3. Removes physical image files from disk.
         4. Updates Frame status to PURGED and records audit trail.
         """
-        if user.role != UserRole.ADMIN:
+        if user.role not in [UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.DEVELOPER]:
             raise PermissionDeniedError(
                 message="Only system administrators may execute data retention purges.",
                 reason_code="ADMIN_PRIVILEGE_REQUIRED",
@@ -173,7 +173,7 @@ class GovernanceService:
         their enrollment profiles are set to inactive, requiring manual non-biometric
         roll-call alternatives during review.
         """
-        if user.role not in [UserRole.ADMIN, UserRole.FACULTY]:
+        if user.role not in [UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.FACULTY, UserRole.STUDENT]:
             raise PermissionDeniedError(
                 message="Authorized institutional coordinator or administrator required.",
                 reason_code="INSUFFICIENT_PERMISSIONS",
@@ -182,6 +182,12 @@ class GovernanceService:
         student = db.get(Student, request.student_id)
         if not student:
             raise ResourceNotFoundError("Student", request.student_id)
+
+        if user.role == UserRole.STUDENT and student.institutional_email != user.email:
+            raise PermissionDeniedError(
+                message="Students may only manage their own biometric consent status.",
+                reason_code="STUDENT_OWNERSHIP_REQUIRED",
+            )
 
         profiles_stmt = select(EnrollmentProfile).where(
             EnrollmentProfile.student_id == request.student_id

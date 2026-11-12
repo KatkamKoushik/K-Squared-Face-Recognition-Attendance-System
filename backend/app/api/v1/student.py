@@ -4,8 +4,9 @@ Guarantees strict tenant isolation: students can only query their own attendance
 and submit appeals against their own records.
 """
 
+from datetime import datetime
 from typing import List, Optional, Dict, Any
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from fastapi import APIRouter, Depends, status, HTTPException
 from sqlalchemy.orm import Session
 
@@ -29,6 +30,7 @@ class StudentProfileResponse(BaseModel):
     institutional_email: Optional[str] = None
     cohort_name: str
     department_name: str
+    lifecycle_status: str = "ACTIVE"
 
 
 class StudentAttendanceSummaryItem(BaseModel):
@@ -48,6 +50,33 @@ class AppealReviewRequest(BaseModel):
     review_notes: str
 
 
+class StudentDataCorrectionCreate(BaseModel):
+    field_name: str = Field(..., min_length=2, max_length=50, examples=["full_name", "institutional_email"])
+    requested_value: str = Field(..., min_length=1, max_length=255)
+    reason: str = Field(..., min_length=5, max_length=500)
+
+
+class StudentDataCorrectionResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    student_id: str
+    field_name: str
+    requested_value: str
+    current_value: Optional[str] = None
+    reason: str
+    status: str
+    review_notes: Optional[str] = None
+    reviewed_by_user_id: Optional[str] = None
+    reviewed_at: Optional[datetime] = None
+    created_at: datetime
+
+
+class DataCorrectionReviewRequest(BaseModel):
+    approved: bool
+    review_notes: str = Field(..., min_length=3, max_length=500)
+
+
 @router.get("/me", response_model=ResponseEnvelope[StudentProfileResponse])
 def get_my_profile(
     db: Session = Depends(get_db),
@@ -56,6 +85,7 @@ def get_my_profile(
 ):
     """Retrieves authoritative student profile for currently logged in student."""
     student = StudentService.get_student_for_user(db, current_user)
+    life_status = student.lifecycle_status.value if hasattr(student.lifecycle_status, "value") else str(student.lifecycle_status)
     data = StudentProfileResponse(
         id=student.id,
         roll_number=student.roll_number,
@@ -63,6 +93,7 @@ def get_my_profile(
         institutional_email=student.institutional_email,
         cohort_name=student.cohort.name if student.cohort else "Assigned Cohort",
         department_name=student.cohort.department.name if student.cohort and student.cohort.department else "Department",
+        lifecycle_status=life_status,
     )
     return ResponseEnvelope(data=data, correlation_id=correlation_id)
 
@@ -151,3 +182,70 @@ def review_appeal_admin(
         correlation_id=correlation_id,
     )
     return ResponseEnvelope(data=AttendanceAppealResponse.model_validate(appeal), correlation_id=correlation_id)
+
+
+@router.post("/me/data-correction-request", response_model=ResponseEnvelope[StudentDataCorrectionResponse], status_code=status.HTTP_201_CREATED)
+def submit_my_data_correction(
+    data: StudentDataCorrectionCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    correlation_id: str = Depends(get_correlation_id),
+):
+    """Submits a formal student profile correction request."""
+    student = StudentService.get_student_for_user(db, current_user)
+    correction = StudentService.submit_data_correction(
+        db=db,
+        student=student,
+        field_name=data.field_name,
+        requested_value=data.requested_value,
+        reason=data.reason,
+        correlation_id=correlation_id,
+    )
+    return ResponseEnvelope(data=StudentDataCorrectionResponse.model_validate(correction), correlation_id=correlation_id)
+
+
+@router.get("/me/data-correction-requests", response_model=ResponseEnvelope[List[StudentDataCorrectionResponse]])
+def list_my_data_corrections(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    correlation_id: str = Depends(get_correlation_id),
+):
+    """Lists all profile correction requests submitted by the current student."""
+    student = StudentService.get_student_for_user(db, current_user)
+    corrections = StudentService.list_student_corrections(db, student)
+    items = [StudentDataCorrectionResponse.model_validate(c) for c in corrections]
+    return ResponseEnvelope(data=items, correlation_id=correlation_id)
+
+
+@router.get("/data-corrections/all", response_model=ResponseEnvelope[List[StudentDataCorrectionResponse]])
+def list_all_data_corrections_admin(
+    status_filter: Optional[str] = None,
+    limit: int = 100,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
+    correlation_id: str = Depends(get_correlation_id),
+):
+    """Administrative endpoint: lists student data correction requests, department-scoped for department admins."""
+    corrections = StudentService.list_all_corrections(db, status=status_filter, limit=limit, user=current_user)
+    items = [StudentDataCorrectionResponse.model_validate(c) for c in corrections]
+    return ResponseEnvelope(data=items, correlation_id=correlation_id)
+
+
+@router.post("/data-corrections/{request_id}/review", response_model=ResponseEnvelope[StudentDataCorrectionResponse])
+def review_data_correction_admin(
+    request_id: str,
+    req: DataCorrectionReviewRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
+    correlation_id: str = Depends(get_correlation_id),
+):
+    """Administrative endpoint: approves or rejects a student data correction request."""
+    correction = StudentService.review_data_correction(
+        db=db,
+        request_id=request_id,
+        reviewer=current_user,
+        approved=req.approved,
+        review_notes=req.review_notes,
+        correlation_id=correlation_id,
+    )
+    return ResponseEnvelope(data=StudentDataCorrectionResponse.model_validate(correction), correlation_id=correlation_id)

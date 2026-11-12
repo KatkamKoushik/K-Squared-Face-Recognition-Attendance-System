@@ -6,8 +6,9 @@ Provides institutional compliance telemetry, raw frame purging, and consent cont
 from typing import Optional
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
-from app.api.dependencies import get_current_user, get_optional_current_user, get_correlation_id
+from app.api.dependencies import require_roles, get_current_user, get_correlation_id
 from app.core.database import get_db
+from app.domain.enums import UserRole
 from app.domain.models.academic import User
 from app.schemas.common import ResponseEnvelope
 from app.schemas.governance import (
@@ -25,7 +26,7 @@ router = APIRouter(prefix="/governance", tags=["Data Governance & Privacy"])
 @router.get("/status", response_model=ResponseEnvelope[GovernanceSummaryResponse])
 def get_governance_summary(
     db: Session = Depends(get_db),
-    current_user: Optional[User] = Depends(get_optional_current_user),
+    current_user: User = Depends(require_roles([UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.FACULTY, UserRole.SUB_ADMIN])),
     correlation_id: str = Depends(get_correlation_id),
 ):
     """
@@ -44,7 +45,7 @@ def get_governance_summary(
 def purge_raw_frames(
     request: PurgeRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_roles([UserRole.SUPER_ADMIN])),
     correlation_id: str = Depends(get_correlation_id),
 ):
     """
@@ -68,7 +69,7 @@ def purge_raw_frames(
 def toggle_student_consent(
     request: ConsentToggleRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_roles([UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.STUDENT])),
     correlation_id: str = Depends(get_correlation_id),
 ):
     """

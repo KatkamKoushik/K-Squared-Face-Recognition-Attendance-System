@@ -2,15 +2,20 @@
 FRS V7.1 K² — Academic Administration DTO Schemas.
 """
 
-from datetime import date
+from datetime import date, datetime
 from typing import Optional, List
 from pydantic import BaseModel, ConfigDict, Field
-from app.domain.enums import AcademicTerm, EnrollmentStatus
+from app.domain.enums import AcademicTerm, EnrollmentStatus, StudentLifecycleStatus
 
 
 class DepartmentCreate(BaseModel):
     code: str = Field(..., max_length=20, examples=["CSE", "ECE"])
     name: str = Field(..., max_length=100)
+
+
+class DepartmentUpdate(BaseModel):
+    name: Optional[str] = Field(None, max_length=100)
+    is_active: Optional[bool] = None
 
 
 class DepartmentResponse(DepartmentCreate):
@@ -27,6 +32,13 @@ class CohortCreate(BaseModel):
     graduation_year: int
 
 
+class CohortUpdate(BaseModel):
+    name: Optional[str] = Field(None, max_length=50)
+    admission_year: Optional[int] = None
+    graduation_year: Optional[int] = None
+    is_active: Optional[bool] = None
+
+
 class CohortResponse(CohortCreate):
     model_config = ConfigDict(from_attributes=True)
 
@@ -41,6 +53,13 @@ class AcademicYearCreate(BaseModel):
     is_current: bool = False
 
 
+class AcademicYearUpdate(BaseModel):
+    year_code: Optional[str] = Field(None, max_length=20)
+    start_date: Optional[date] = None
+    end_date: Optional[date] = None
+    is_current: Optional[bool] = None
+
+
 class AcademicYearResponse(AcademicYearCreate):
     model_config = ConfigDict(from_attributes=True)
 
@@ -52,6 +71,13 @@ class TermCreate(BaseModel):
     term_type: AcademicTerm
     start_date: date
     end_date: date
+
+
+class TermUpdate(BaseModel):
+    term_type: Optional[AcademicTerm] = None
+    start_date: Optional[date] = None
+    end_date: Optional[date] = None
+    is_active: Optional[bool] = None
 
 
 class TermResponse(TermCreate):
@@ -68,6 +94,12 @@ class SubjectCreate(BaseModel):
     credits: int = 3
 
 
+class SubjectUpdate(BaseModel):
+    code: Optional[str] = Field(None, max_length=20)
+    name: Optional[str] = Field(None, max_length=100)
+    credits: Optional[int] = None
+
+
 class SubjectResponse(SubjectCreate):
     model_config = ConfigDict(from_attributes=True)
 
@@ -79,6 +111,11 @@ class SubjectOfferingCreate(BaseModel):
     term_id: str
     primary_cohort_id: str
     section: str = "A"
+
+
+class SubjectOfferingUpdate(BaseModel):
+    section: Optional[str] = Field(None, max_length=10)
+    is_active: Optional[bool] = None
 
 
 class SubjectOfferingResponse(SubjectOfferingCreate):
@@ -138,6 +175,25 @@ class StudentResponse(StudentCreate):
 
     id: str
     is_active: bool
+    lifecycle_status: StudentLifecycleStatus = StudentLifecycleStatus.ACTIVE
+
+
+class StudentLifecycleUpdate(BaseModel):
+    status: StudentLifecycleStatus
+    reason: str = Field(..., min_length=5, max_length=500)
+
+
+class CohortRolloverRequest(BaseModel):
+    from_cohort_id: str
+    to_cohort_id: str
+    reason: str = Field(..., min_length=5, max_length=500)
+
+
+class CohortRolloverResponse(BaseModel):
+    from_cohort_id: str
+    to_cohort_id: str
+    promoted_count: int
+    timestamp: datetime
 
 
 class EnrollmentCreate(BaseModel):

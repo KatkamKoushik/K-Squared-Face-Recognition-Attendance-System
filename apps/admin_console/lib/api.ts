@@ -144,6 +144,86 @@ export async function login(email: string, password: string, remember: boolean =
   }
 }
 
+export async function loginWithFirebase(firebaseIdToken: string, remember: boolean = true): Promise<LoginResponse | null> {
+  try {
+    const res = await fetch(`${getApiBase()}/auth/firebase`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "ngrok-skip-browser-warning": "1",
+      },
+      body: JSON.stringify({ id_token: firebaseIdToken }),
+    });
+
+    if (!res.ok) {
+      return null;
+    }
+
+    const json = await res.json();
+    const data = (json && typeof json === "object" && "data" in json) ? json.data : json;
+    if (data && data.access_token) {
+      const loginData = data as LoginResponse;
+      setAuthToken(loginData.access_token, remember);
+      setStoredUser({
+        user_id: loginData.user_id,
+        email: loginData.email,
+        role: loginData.role,
+        department_id: loginData.department_id,
+      }, remember);
+      return loginData;
+    }
+    return null;
+  } catch (error) {
+    console.warn("Firebase login failure:", error);
+    return null;
+  }
+}
+
+export async function refreshApiToken(): Promise<boolean> {
+  try {
+    const token = getAuthToken();
+    if (!token) return false;
+    const res = await fetch(`${getApiBase()}/auth/refresh`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`,
+        "ngrok-skip-browser-warning": "1",
+      },
+    });
+    if (!res.ok) return false;
+    const json = await res.json();
+    const data = (json && typeof json === "object" && "data" in json) ? json.data : json;
+    if (data && data.access_token) {
+      setAuthToken(data.access_token);
+      return true;
+    }
+    return false;
+  } catch {
+    return false;
+  }
+}
+
+export async function logoutApi(): Promise<void> {
+  try {
+    const token = getAuthToken();
+    if (token) {
+      await fetch(`${getApiBase()}/auth/logout`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+          "ngrok-skip-browser-warning": "1",
+        },
+      });
+    }
+  } catch {
+    // Session cleanup continues regardless
+  } finally {
+    logout();
+  }
+}
+
 export function logout(): void {
   setAuthToken(null);
   setStoredUser(null);
@@ -919,5 +999,78 @@ export async function analyzeDemoPhoto(
 
   const envelope = await res.json();
   return envelope.data;
+}
+
+export async function updateDepartment(id: string, data: { name?: string; is_active?: boolean }): Promise<any> {
+  return fetchFromApi(`/academic/departments/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateCohort(
+  id: string,
+  data: { name?: string; admission_year?: number; graduation_year?: number; is_active?: boolean }
+): Promise<any> {
+  return fetchFromApi(`/academic/cohorts/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateSubject(
+  id: string,
+  data: { code?: string; name?: string; credits?: number }
+): Promise<any> {
+  return fetchFromApi(`/academic/subjects/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateOffering(
+  id: string,
+  data: { section?: string; is_active?: boolean }
+): Promise<any> {
+  return fetchFromApi(`/academic/offerings/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateStudentLifecycle(id: string, status: string, reason: string): Promise<any> {
+  return fetchFromApi(`/academic/students/${id}/lifecycle`, {
+    method: "PATCH",
+    body: JSON.stringify({ status, reason }),
+  });
+}
+
+export async function rolloverCohort(fromCohortId: string, toCohortId: string, reason: string): Promise<any> {
+  return fetchFromApi(`/academic/cohorts/rollover`, {
+    method: "POST",
+    body: JSON.stringify({ from_cohort_id: fromCohortId, to_cohort_id: toCohortId, reason }),
+  });
+}
+
+export async function requestStudentDataCorrection(
+  fieldName: string,
+  requestedValue: string,
+  reason: string
+): Promise<any> {
+  return fetchFromApi(`/student/me/data-correction-request`, {
+    method: "POST",
+    body: JSON.stringify({ field_name: fieldName, requested_value: requestedValue, reason }),
+  });
+}
+
+export async function reviewStudentDataCorrection(
+  requestId: string,
+  approved: boolean,
+  reviewNotes: string
+): Promise<any> {
+  return fetchFromApi(`/student/data-corrections/${requestId}/review`, {
+    method: "POST",
+    body: JSON.stringify({ approved, review_notes: reviewNotes }),
+  });
 }
 

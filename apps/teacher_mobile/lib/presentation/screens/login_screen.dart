@@ -27,7 +27,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   void _fillDemoCredentials([String email = 'soujanyavedh@gmail.com']) {
     _emailController.text = email;
-    _passwordController.text = 'KucetFaculty@2026';
+    _passwordController.clear();
   }
 
   void _showCoordinatorsDirectoryDialog() {

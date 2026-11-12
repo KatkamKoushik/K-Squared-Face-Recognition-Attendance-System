@@ -41,7 +41,18 @@ class UserResponse(BaseModel):
     email: str
     role: UserRole
     department_id: Optional[str] = None
+    firebase_uid: Optional[str] = None
     is_active: bool
+
+
+class UserStatusUpdateRequest(BaseModel):
+    is_active: bool
+    reason: Optional[str] = None
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
 
 
 class FacultyProfileResponse(BaseModel):
