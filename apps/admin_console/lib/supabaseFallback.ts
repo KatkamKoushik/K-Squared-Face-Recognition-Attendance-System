@@ -135,21 +135,13 @@ export async function fallbackFromSupabase<T>(endpoint: string): Promise<T | nul
         const cohort = cohorts.find((c: any) => c.id === s.cohort_id);
         const dept = departments.find((d: any) => d.id === cohort?.department_id);
 
-        const displayRoll = isAuth
-          ? s.roll_number
-          : (s.roll_number && s.roll_number.length > 4 ? s.roll_number.slice(0, 4) + "***" : "***");
-        const displayName = isAuth
-          ? s.full_name
-          : (s.full_name ? s.full_name.split(" ")[0] + " " + (s.full_name.split(" ")[1]?.[0] || "*") + "***" : "Enrolled Student");
-        const studentId = isAuth ? s.id : `anon_${s.id.slice(0, 8)}`;
-
         return {
-          student_id: studentId,
-          roll_number: displayRoll,
-          full_name: displayName,
+          student_id: s.id,
+          roll_number: s.roll_number,
+          full_name: s.full_name,
           is_active: s.is_active,
           has_reference_photo: Boolean(sub?.photo_storage_path),
-          photo_url: isAuth ? (sub?.photo_storage_path || undefined) : undefined,
+          photo_url: sub?.photo_storage_path || undefined,
           department_code: dept?.code || "CSE",
         };
       });

@@ -151,5 +151,10 @@ docs/operations/kucet_faculty_coordinators_list.md
 backend/models/*.onnx
 /models/
 
+# ==============================================================================
+# Kaggle Workspaces & Notebooks (Stored locally / untracked per user direction)
+# ==============================================================================
+kaggle/
+
 
 

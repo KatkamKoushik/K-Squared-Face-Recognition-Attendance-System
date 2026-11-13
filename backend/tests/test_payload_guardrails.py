@@ -5,6 +5,7 @@ and correlation ID propagation (Checklist Controls 28-N006, 28-B031, 28-B035).
 """
 
 from fastapi.testclient import TestClient
+from app.core.config import settings
 from app.main import app
 
 client = TestClient(app)
@@ -26,8 +27,8 @@ def test_normal_payload_within_limit_accepted():
 
 def test_oversized_payload_rejected_with_413():
     """Confirms oversized Content-Length is rejected before parsing with 413 (28-N006)."""
-    # 20 MB payload exceeds MAX_UPLOAD_SIZE_MB (15 MB)
-    oversized_bytes = 20 * 1024 * 1024
+    # Payload exceeds MAX_UPLOAD_SIZE_MB
+    oversized_bytes = (settings.MAX_UPLOAD_SIZE_MB + 5) * 1024 * 1024
     response = client.post(
         "/api/v1/auth/login",
         content=b"{}",

@@ -401,7 +401,7 @@ class FrsApiService {
       http.MultipartFile.fromBytes('file', imageBytes, filename: filename),
     );
 
-    final streamed = await _client.send(request).timeout(const Duration(seconds: 30));
+    final streamed = await _client.send(request).timeout(const Duration(seconds: 90));
     final res = await http.Response.fromStream(streamed);
     _checkAuthError(res);
 

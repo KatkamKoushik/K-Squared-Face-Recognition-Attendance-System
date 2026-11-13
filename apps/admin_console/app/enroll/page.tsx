@@ -20,8 +20,10 @@ import {
   Image as ImageIcon,
   SwitchCamera,
   X,
+  LogIn,
 } from "lucide-react";
-import { submitStudentEnrollment, EnrollmentSubmissionItem } from "@/lib/api";
+import { submitStudentEnrollment, EnrollmentSubmissionItem, getStoredUser } from "@/lib/api";
+import { getStoredAdminToken } from "@/lib/session";
 
 const DEPARTMENTS = [
   { code: "CSE", name: "Computer Science & Engineering" },
@@ -48,6 +50,7 @@ export default function StudentEnrollmentPage() {
   const [academicYear, setAcademicYear] = useState(ACADEMIC_YEARS[0]);
   const [sectionCohort, setSectionCohort] = useState("");
   const [consentAcknowledged, setConsentAcknowledged] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   // Photo management state
   const [photoFile, setPhotoFile] = useState<File | null>(null);
@@ -69,6 +72,12 @@ export default function StudentEnrollmentPage() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+
+  useEffect(() => {
+    const user = getStoredUser();
+    const token = getStoredAdminToken();
+    setIsLoggedIn(!!(user || token));
+  }, []);
 
   // Clean up camera stream on unmount
   useEffect(() => {
@@ -188,16 +197,66 @@ export default function StudentEnrollmentPage() {
       return;
     }
 
-    if (file.size > 10 * 1024 * 1024) {
-      setErrorMessage("Photo size exceeds 10MB limit. Please upload an image under 10MB.");
-      return;
-    }
-
-    setPhotoFile(file);
-    setPhotoSource("gallery");
+    // Auto-rescale high-resolution smartphone images using HTML5 Canvas to eliminate resolution/size limits
     const reader = new FileReader();
-    reader.onload = () => {
-      setPhotoPreview(reader.result as string);
+    reader.onload = (event) => {
+      const rawDataUrl = event.target?.result as string;
+      if (!rawDataUrl) return;
+
+      const img = new window.Image();
+      img.onload = () => {
+        let width = img.width;
+        let height = img.height;
+        const MAX_DIM = 2048;
+
+        if (width > MAX_DIM || height > MAX_DIM) {
+          if (width > height) {
+            height = Math.round((height * MAX_DIM) / width);
+            width = MAX_DIM;
+          } else {
+            width = Math.round((width * MAX_DIM) / height);
+            height = MAX_DIM;
+          }
+        }
+
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          canvas.toBlob(
+            (blob) => {
+              if (blob) {
+                const optimizedFile = new File(
+                  [blob],
+                  file.name.replace(/\.[^/.]+$/, ".jpg"),
+                  { type: "image/jpeg", lastModified: Date.now() }
+                );
+                setPhotoFile(optimizedFile);
+                setPhotoPreview(canvas.toDataURL("image/jpeg", 0.92));
+                setPhotoSource("gallery");
+              } else {
+                setPhotoFile(file);
+                setPhotoPreview(rawDataUrl);
+                setPhotoSource("gallery");
+              }
+            },
+            "image/jpeg",
+            0.92
+          );
+        } else {
+          setPhotoFile(file);
+          setPhotoPreview(rawDataUrl);
+          setPhotoSource("gallery");
+        }
+      };
+      img.onerror = () => {
+        setPhotoFile(file);
+        setPhotoPreview(rawDataUrl);
+        setPhotoSource("gallery");
+      };
+      img.src = rawDataUrl;
     };
     reader.readAsDataURL(file);
   };
@@ -302,13 +361,23 @@ export default function StudentEnrollmentPage() {
             </div>
           </div>
           <div className="flex items-center space-x-3">
-            <Link
-              href="/admin"
-              className="inline-flex items-center space-x-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg text-slate-700 hover:text-institutional-navy hover:bg-slate-100 transition-colors"
-            >
-              <Lock className="w-3.5 h-3.5 text-slate-500" />
-              <span>Admin & Faculty Portal</span>
-            </Link>
+            {isLoggedIn ? (
+              <Link
+                href="/"
+                className="inline-flex items-center space-x-2 px-4 py-2 text-xs font-bold rounded-xl text-white bg-institutional-navy hover:bg-institutional-blue transition-all shadow-sm"
+              >
+                <span>Admin Dashboard</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            ) : (
+              <Link
+                href="/login"
+                className="inline-flex items-center space-x-2 px-4 py-2 text-xs font-bold rounded-xl text-white bg-institutional-navy hover:bg-institutional-blue transition-all shadow-sm"
+              >
+                <Lock className="w-3.5 h-3.5" />
+                <span>Faculty / Admin Login</span>
+              </Link>
+            )}
           </div>
         </div>
       </header>

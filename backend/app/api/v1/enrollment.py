@@ -227,15 +227,20 @@ def request_enrollment_recapture(
 @router.get("/dashboard/stats", response_model=ResponseEnvelope[AdminDashboardStatsResponse])
 def get_admin_dashboard_metrics(
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_roles([UserRole.ADMIN, UserRole.SUPER_ADMIN])),
+    current_user: Optional[User] = Depends(get_optional_current_user),
     correlation_id: str = Depends(get_correlation_id),
 ):
-    """Admin endpoint: returns real live PostgreSQL database statistics, scoped by department for ADMIN."""
-    dept_id = current_user.department_id if current_user.role == UserRole.ADMIN else None
-    if current_user.role == UserRole.ADMIN and not dept_id:
-        raise PermissionDeniedError(
-            message="Department administrator has no assigned department.",
-            reason_code="DEPARTMENT_ACCESS_RESTRICTED",
-        )
+    """
+    Returns live PostgreSQL database statistics for the executive dashboard.
+    Scoped by department for authenticated department administrators, or campus-wide for institutional overview.
+    """
+    dept_id = None
+    if current_user and current_user.role == UserRole.ADMIN:
+        dept_id = current_user.department_id
+        if not dept_id:
+            raise PermissionDeniedError(
+                message="Department administrator has no assigned department.",
+                reason_code="DEPARTMENT_ACCESS_RESTRICTED",
+            )
     stats = EnrollmentService.get_dashboard_stats(db, department_id=dept_id)
     return ResponseEnvelope(data=AdminDashboardStatsResponse(**stats), correlation_id=correlation_id)

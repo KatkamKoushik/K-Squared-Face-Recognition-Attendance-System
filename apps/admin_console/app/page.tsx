@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Users,
   BookOpen,
@@ -13,9 +14,12 @@ import {
   RefreshCw,
   Camera,
 } from "lucide-react";
-import { getAdminDashboardMetrics, AdminDashboardMetrics } from "@/lib/api";
+import { getAdminDashboardMetrics, AdminDashboardMetrics, getStoredUser } from "@/lib/api";
+import { getStoredAdminToken } from "@/lib/session";
 
 export default function AdminDashboardPage() {
+  const router = useRouter();
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [metrics, setMetrics] = useState<AdminDashboardMetrics | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
@@ -40,6 +44,13 @@ export default function AdminDashboardPage() {
   }, []);
 
   useEffect(() => {
+    const user = getStoredUser();
+    const token = getStoredAdminToken();
+    if (!user && !token) {
+      router.replace("/enroll");
+      return;
+    }
+    setIsAuthenticated(true);
     fetchMetrics(false);
 
     // Poll every 5 seconds for real-time ledger updates
@@ -48,7 +59,11 @@ export default function AdminDashboardPage() {
     }, 5000);
 
     return () => clearInterval(interval);
-  }, [fetchMetrics]);
+  }, [fetchMetrics, router]);
+
+  if (!isAuthenticated) {
+    return null;
+  }
 
   const recentSessions = metrics?.recent_sessions ?? [];
 

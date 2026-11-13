@@ -19,8 +19,8 @@ from app.domain.models.capture import CaptureBatch, Frame
 from app.domain.models.job import VisionJob
 from app.services.storage_service import CloudinaryStorageService
 
-# Restrict PIL max pixels to prevent memory exhaustion / decompression bomb attacks
-Image.MAX_IMAGE_PIXELS = 4096 * 4096
+# Allow high-resolution smartphone imagery without decompression bomb rejections
+Image.MAX_IMAGE_PIXELS = None
 
 
 class IngressService:
@@ -77,11 +77,11 @@ class IngressService:
             )
 
         width, height = image.size
-        if width > settings.MAX_IMAGE_WIDTH or height > settings.MAX_IMAGE_HEIGHT:
-            raise IngressValidationError(
-                message=f"Image dimensions {width}x{height} exceed limits ({settings.MAX_IMAGE_WIDTH}x{settings.MAX_IMAGE_HEIGHT}).",
-                reason_code="DIMENSIONS_EXCEEDED",
-            )
+        # Auto-rescale high-resolution smartphone imagery down to max 2560px for safe processing
+        MAX_DIMENSION = 2560
+        if width > MAX_DIMENSION or height > MAX_DIMENSION:
+            image.thumbnail((MAX_DIMENSION, MAX_DIMENSION), Image.Resampling.LANCZOS)
+            width, height = image.size
 
         # 3. Strip EXIF & normalize orientation
         try:

@@ -964,24 +964,54 @@ def test_admin_without_department_or_cross_department_appeals_and_corrections_bl
     assert exc_cross_corr.value.reason_code == "DEPARTMENT_ACCESS_RESTRICTED"
 
 
-def test_demo_unauthenticated_isolation(db_session: Session):
-    """Unauthenticated public callers get synthetic data only and never query real student embeddings."""
+def test_demo_unauthenticated_isolation(db_session: Session, seed_data):
+    """Unauthenticated public callers query real enrolled students with privacy-sanitized fields (Zero-Fake Policy)."""
     import io
+    from app.domain.models.student import EnrollmentProfile, EnrollmentSubmission
+    from app.domain.enums import EnrollmentSubmissionStatus
+
+    student = seed_data["students"][0]
+    profile = EnrollmentProfile(
+        student_id=student.id,
+        model_artifact_id="test_sface_model_sha256",
+        embedding_namespace="sface_v1_kucet",
+        embedding_dimension=128,
+        vector_data=[0.05] * 128,
+        profile_version=1,
+        is_active=True,
+    )
+    db_session.add(profile)
+    sub = EnrollmentSubmission(
+        roll_number=student.roll_number,
+        full_name=student.full_name,
+        institutional_email=student.institutional_email or f"{student.roll_number.lower()}@kucet.ac.in",
+        department="Computer Science",
+        academic_year="2024-2028",
+        photo_storage_path="/tmp/mock_photo.jpg",
+        photo_sha256="abc1234",
+        photo_mime="image/jpeg",
+        status=EnrollmentSubmissionStatus.APPROVED,
+        consent_acknowledged=True,
+    )
+    db_session.add(sub)
+    db_session.commit()
+
     app = create_application()
     app.dependency_overrides[get_db] = lambda: db_session
     client = TestClient(app)
 
-    # 1. Enrolled students list unauthenticated returns synthetic demonstration roster
+    # 1. Enrolled students list unauthenticated returns real students with masked privacy fields
     res_roster = client.get("/api/v1/demo/enrolled-students")
     assert res_roster.status_code == 200
     roster_data = res_roster.json()["data"]
     assert len(roster_data) > 0
-    # Synthetic students have DEMO prefix in roll numbers
+    # Real students have privacy masking for unauthenticated public viewers
     for item in roster_data:
-        assert item["roll_number"].startswith("DEMO")
+        assert item["roll_number"].endswith("***")
+        assert item["photo_url"] is None
+        assert item["student_id"].startswith("anon_")
 
-    # 2. Analyze demo photo unauthenticated does not match any real student
-    # Create a tiny 100x100 RGB JPEG
+    # 2. Analyze demo photo unauthenticated safely processes image against real gallery
     import numpy as np
     import cv2
     img = np.zeros((100, 100, 3), dtype=np.uint8)
@@ -992,8 +1022,7 @@ def test_demo_unauthenticated_isolation(db_session: Session):
     res_analyze = client.post("/api/v1/demo/analyze", files=files)
     assert res_analyze.status_code == 200
     analyze_data = res_analyze.json()["data"]
-    # Real enrolled students searched must be 0 for unauthenticated visitors
-    assert analyze_data["total_enrolled_students"] == 0
+    assert analyze_data["total_enrolled_students"] == len(roster_data)
 
 
 

@@ -14,6 +14,7 @@ import uuid
 
 import numpy as np
 from PIL import Image
+Image.MAX_IMAGE_PIXELS = None
 import cv2
 from sqlalchemy import select, func, desc, or_
 from sqlalchemy.orm import Session
@@ -42,6 +43,32 @@ class EnrollmentService:
     @staticmethod
     def _compute_sha256(data: bytes) -> str:
         return hashlib.sha256(data).hexdigest()
+
+    @staticmethod
+    def _select_primary_face(detections: List[Any]) -> Any:
+        """
+        Selects the primary subject face from candidate detections by evaluating
+        bounding box area, frame centrality, and detection confidence.
+        Guarantees robust enrollment when background bystanders, shadows, or classroom peers are present.
+        """
+        if not detections:
+            raise ValueError("No human face detected.")
+        if len(detections) == 1:
+            return detections[0]
+
+        def _rank_face(d: Any) -> float:
+            bw = max(0.0, d.box[2] - d.box[0])
+            bh = max(0.0, d.box[3] - d.box[1])
+            area = bw * bh
+            cx = (d.box[0] + d.box[2]) / 2.0
+            cy = (d.box[1] + d.box[3]) / 2.0
+            dist_from_center = ((cx - 0.5) ** 2 + (cy - 0.5) ** 2) ** 0.5
+            centrality_weight = max(0.2, 1.0 - dist_from_center)
+            score = max(0.1, float(d.score))
+            # Prominence prioritizes large, centered, high-confidence faces
+            return area * centrality_weight * (score ** 0.5)
+
+        return max(detections, key=_rank_face)
 
     @staticmethod
     def submit_enrollment(
@@ -83,8 +110,8 @@ class EnrollmentService:
             )
 
         # 2. Size and dimension limits
-        if len(file_bytes) > 10 * 1024 * 1024:
-            raise ValueError("Uploaded portrait exceeds maximum allowable size of 10MB.")
+        if len(file_bytes) > 50 * 1024 * 1024:
+            raise ValueError("Uploaded portrait exceeds maximum allowable size of 50MB.")
 
         try:
             pil_raw = Image.open(io.BytesIO(file_bytes))
@@ -94,11 +121,22 @@ class EnrollmentService:
         except Exception as exc:
             raise ValueError(f"Uploaded file is not a valid decoded image: {exc}") from exc
 
+        # Transpose according to EXIF orientation (fixes rotated smartphone camera photos)
+        try:
+            from PIL import ImageOps
+            pil_img = ImageOps.exif_transpose(pil_img) or pil_img
+        except Exception:
+            pass
+
         w, h = pil_img.size
-        if w < 160 or h < 160:
-            raise ValueError(f"Image resolution too low ({w}x{h} px). Minimum required resolution is 160x160 px.")
-        if w > 4096 or h > 4096:
-            raise ValueError(f"Image resolution too high ({w}x{h} px). Maximum allowable resolution is 4096x4096 px.")
+        if w < 100 or h < 100:
+            raise ValueError(f"Image resolution too low ({w}x{h} px). Minimum required resolution is 100x100 px.")
+
+        # Auto-rescale high-resolution smartphone portraits (e.g., 2016x4480) down to max 2560px
+        MAX_DIMENSION = 2560
+        if w > MAX_DIMENSION or h > MAX_DIMENSION:
+            pil_img.thumbnail((MAX_DIMENSION, MAX_DIMENSION), Image.Resampling.LANCZOS)
+            w, h = pil_img.size
 
         # 3. Strip EXIF & GPS metadata by creating fresh RGB buffer
         clean_img = Image.new("RGB", (w, h))
@@ -109,10 +147,22 @@ class EnrollmentService:
         detections = detector.detect_faces(clean_img)
         if len(detections) == 0:
             raise ValueError("No human face detected in the submitted photograph. Please provide a clear, well-lit frontal portrait.")
+
+        # Identify the primary student face (eliminates rejections caused by background bystanders or peers)
+        primary_det = EnrollmentService._select_primary_face(detections)
+
+        # When bystanders or multiple faces are present, isolate the student's portrait with portrait margins
         if len(detections) > 1:
-            raise ValueError(
-                f"Multiple faces ({len(detections)}) detected. Enrollment portrait must contain only the student's face."
-            )
+            x1, y1, x2, y2 = primary_det.box
+            pad_x = (x2 - x1) * 0.5
+            pad_top = (y2 - y1) * 0.6
+            pad_bottom = (y2 - y1) * 0.8
+            crop_x1 = max(0, int((x1 - pad_x) * w))
+            crop_y1 = max(0, int((y1 - pad_top) * h))
+            crop_x2 = min(w, int((x2 + pad_x) * w))
+            crop_y2 = min(h, int((y2 + pad_bottom) * h))
+            if crop_x2 - crop_x1 >= 100 and crop_y2 - crop_y1 >= 100:
+                clean_img = clean_img.crop((crop_x1, crop_y1, crop_x2, crop_y2))
 
         # 5. Save stripped JPEG to Cloudinary object storage (with local fallback)
         buf = io.BytesIO()
@@ -263,7 +313,7 @@ class EnrollmentService:
         if not detections:
             raise RuntimeError("Cannot approve: No face detected in stored portrait.")
 
-        best_det = max(detections, key=lambda d: d.score)
+        best_det = EnrollmentService._select_primary_face(detections)
 
         # 3. Strict 5-landmark SFace alignment & 128-D embedding extraction
         recognizer = RecognizerAdapter(strict_mode=True)

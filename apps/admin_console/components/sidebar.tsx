@@ -90,7 +90,7 @@ export function AdminSidebar() {
   const handleSignOut = () => {
     logout();
     setUser(null);
-    router.push("/login");
+    router.push("/enroll");
   };
 
   const navItems = user

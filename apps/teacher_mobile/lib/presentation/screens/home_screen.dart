@@ -233,7 +233,7 @@ class HomeScreen extends ConsumerWidget {
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
-                        '${offeringsAsync.valueOrNull?.length ?? 0} Active',
+                        '${offeringsAsync.asData?.value.length ?? 0} Active',
                         style: const TextStyle(
                           color: AppTheme.secondaryBlue,
                           fontWeight: FontWeight.w600,

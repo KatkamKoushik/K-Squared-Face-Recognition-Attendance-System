@@ -250,8 +250,8 @@ export async function fetchFromApi<T>(endpoint: string, options?: RequestInit): 
     });
 
     if (!res.ok) {
-      if (res.status === 401 || res.status === 403) {
-        // Backend actively denied authorization; fail closed
+      if ((res.status === 401 || res.status === 403) && token) {
+        // Authenticated token actively denied authorization; fail closed
         return null;
       }
       if (typeof window !== "undefined") {

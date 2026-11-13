@@ -76,8 +76,18 @@ def browser(playwright_instance) -> Browser:
 
 @pytest.fixture
 def page(browser: Browser) -> Page:
-    """Provides a fresh isolated browser tab/page for each test."""
+    """Provides an authenticated admin browser tab/page for administrative console tests."""
     context = browser.new_context(viewport={"width": 1280, "height": 800})
+    context.add_init_script("""
+        window.localStorage.setItem('kucet_frs_auth_token', 'mock-developer-token');
+        window.localStorage.setItem('frs_admin_access_token', 'mock-developer-token');
+        window.localStorage.setItem('kucet_frs_auth_user', JSON.stringify({
+            id: 'USR-DEV-001',
+            email: 'developer@kucet.ac.in',
+            full_name: 'Lead System Developer',
+            role: 'DEVELOPER'
+        }));
+    """)
     p = context.new_page()
     yield p
     context.close()

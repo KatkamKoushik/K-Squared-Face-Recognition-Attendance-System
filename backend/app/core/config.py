@@ -94,10 +94,10 @@ class Settings(BaseSettings):
     IMAGE_STORAGE_PROVIDER: Literal["cloudinary", "local"] = "cloudinary"
 
     # Ingress & File Protection
-    MAX_UPLOAD_SIZE_MB: int = 15
+    MAX_UPLOAD_SIZE_MB: int = 50
     ALLOWED_IMAGE_TYPES: List[str] = ["image/jpeg", "image/png"]
-    MAX_IMAGE_WIDTH: int = 4096
-    MAX_IMAGE_HEIGHT: int = 4096
+    MAX_IMAGE_WIDTH: int = 16384
+    MAX_IMAGE_HEIGHT: int = 16384
     STRIP_EXIF_METADATA: bool = True
     STORAGE_DIR: str = Field(
         default=str(Path(tempfile.gettempdir()) / "frs_storage" / "frames"),

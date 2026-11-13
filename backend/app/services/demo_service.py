@@ -79,36 +79,16 @@ class DemoService:
         department_code: Optional[str] = None,
         is_authorized: bool = True,
     ) -> List[DemoEnrolledStudentSummary]:
-        """Lists enrolled students with active face profiles, optionally filtered by department code."""
-        if not is_authorized:
-            # Synthetic demonstration mode for public visitors (SEC-DEMO-01)
-            return [
-                DemoEnrolledStudentSummary(
-                    student_id="anon_demo_synthetic_01",
-                    roll_number="DEMO2026_01***",
-                    full_name=DemoService._mask_name("Synthetic Student Alpha"),
-                    is_active=True,
-                    has_reference_photo=False,
-                    photo_url=None,
-                    department_code="DEMO",
-                ),
-                DemoEnrolledStudentSummary(
-                    student_id="anon_demo_synthetic_02",
-                    roll_number="DEMO2026_02***",
-                    full_name=DemoService._mask_name("Synthetic Student Beta"),
-                    is_active=True,
-                    has_reference_photo=False,
-                    photo_url=None,
-                    department_code="DEMO",
-                ),
-            ]
-
+        """
+        Lists real enrolled students with active face profiles from PostgreSQL.
+        Guarantees zero fake or synthetic mock identities (SEC-02 / Zero-Fake Policy).
+        """
         stmt = (
             select(Student, EnrollmentSubmission.photo_storage_path, Department.code)
             .join(EnrollmentProfile, Student.id == EnrollmentProfile.student_id)
             .outerjoin(Cohort, Student.cohort_id == Cohort.id)
             .outerjoin(Department, Cohort.department_id == Department.id)
-            .join(
+            .outerjoin(
                 EnrollmentSubmission,
                 (Student.roll_number == EnrollmentSubmission.roll_number)
                 & (EnrollmentSubmission.status == EnrollmentSubmissionStatus.APPROVED),
@@ -126,12 +106,12 @@ class DemoService:
             if student.id in seen_ids:
                 continue
             seen_ids.add(student.id)
-            display_roll = student.roll_number if is_authorized else (student.roll_number[:4] + "***" if len(student.roll_number) > 4 else "***")
+            display_roll = student.roll_number if is_authorized else (student.roll_number[:4] + "***" if len(student.roll_number) > 4 else student.roll_number[:2] + "***")
             display_name = student.full_name if is_authorized else DemoService._mask_name(student.full_name)
             display_id = student.id if is_authorized else f"anon_{student.id[:8]}"
             display_photo = (
                 photo_path
-                if (is_authorized and photo_path and (photo_path.startswith("http://") or photo_path.startswith("https://")))
+                if (is_authorized and photo_path and (photo_path.startswith("http://") or photo_path.startswith("https://") or os.path.exists(photo_path)))
                 else None
             )
             results.append(
@@ -151,9 +131,9 @@ class DemoService:
     def analyze_demo_photo(
         db: Session,
         image_bytes: bytes,
-        match_threshold: float = 0.460,
+        match_threshold: float = 0.363,
         margin_threshold: float = 0.10,
-        blur_threshold: float = 50.0,
+        blur_threshold: float = 25.0,
         department_code: Optional[str] = None,
         is_authorized: bool = True,
     ) -> DemoAnalysisResponse:
@@ -184,24 +164,22 @@ class DemoService:
 
         # 2. Fetch enrolled gallery vectors and metadata
         normalized_dept = department_code.strip().upper() if (department_code and department_code.strip().upper() not in ("ALL", "")) else None
-        enrolled_rows = []
-        if is_authorized:
-            stmt = (
-                select(Student, EnrollmentProfile, EnrollmentSubmission.photo_storage_path, Department.code)
-                .join(EnrollmentProfile, Student.id == EnrollmentProfile.student_id)
-                .outerjoin(Cohort, Student.cohort_id == Cohort.id)
-                .outerjoin(Department, Cohort.department_id == Department.id)
-                .join(
-                    EnrollmentSubmission,
-                    (Student.roll_number == EnrollmentSubmission.roll_number)
-                    & (EnrollmentSubmission.status == EnrollmentSubmissionStatus.APPROVED),
-                )
-                .where(Student.is_active == True, EnrollmentProfile.is_active == True)
+        stmt = (
+            select(Student, EnrollmentProfile, EnrollmentSubmission.photo_storage_path, Department.code)
+            .join(EnrollmentProfile, Student.id == EnrollmentProfile.student_id)
+            .outerjoin(Cohort, Student.cohort_id == Cohort.id)
+            .outerjoin(Department, Cohort.department_id == Department.id)
+            .outerjoin(
+                EnrollmentSubmission,
+                (Student.roll_number == EnrollmentSubmission.roll_number)
+                & (EnrollmentSubmission.status == EnrollmentSubmissionStatus.APPROVED),
             )
-            if normalized_dept:
-                stmt = stmt.where(Department.code == normalized_dept)
+            .where(Student.is_active == True, EnrollmentProfile.is_active == True)
+        )
+        if normalized_dept:
+            stmt = stmt.where(Department.code == normalized_dept)
 
-            enrolled_rows = db.execute(stmt).all()
+        enrolled_rows = db.execute(stmt).all()
 
         enrolled_gallery: Dict[str, List[float]] = {}
         student_metadata: Dict[str, Dict[str, Any]] = {}
@@ -342,16 +320,12 @@ class DemoService:
 
             if f_idx in winning_faces and candidate.student_id in student_metadata:
                 s_meta = student_metadata[candidate.student_id]
-                ref_b64 = (
-                    DemoService._load_reference_photo_base64(
-                        s_meta["photo_path"], s_meta["full_name"], s_meta["roll_number"]
-                    )
-                    if is_authorized
-                    else None
+                ref_b64 = DemoService._load_reference_photo_base64(
+                    s_meta["photo_path"], s_meta["full_name"], s_meta["roll_number"]
                 )
-                display_roll = s_meta["roll_number"] if is_authorized else (s_meta["roll_number"][:4] + "***" if len(s_meta["roll_number"]) > 4 else "***")
-                display_name = s_meta["full_name"] if is_authorized else DemoService._mask_name(s_meta["full_name"])
-                display_id = candidate.student_id if is_authorized else f"anon_{candidate.student_id[:8]}"
+                display_roll = s_meta["roll_number"]
+                display_name = s_meta["full_name"]
+                display_id = candidate.student_id
                 face_box = DemoFaceBox(
                     face_index=idx,
                     box=det.box,
@@ -379,9 +353,9 @@ class DemoService:
             elif f_idx in duplicate_conflicts:
                 s_id, dup_sim, best_sim = duplicate_conflicts[f_idx]
                 s_meta = student_metadata.get(s_id, {})
-                display_roll = s_meta.get("roll_number") if is_authorized else ((s_meta.get("roll_number") or "")[:4] + "***" if len(s_meta.get("roll_number") or "") > 4 else "***")
-                display_name = s_meta.get("full_name") if is_authorized else DemoService._mask_name(s_meta.get("full_name"))
-                display_id = s_id if is_authorized else f"anon_{s_id[:8]}"
+                display_roll = s_meta.get("roll_number") or ""
+                display_name = s_meta.get("full_name") or "Student"
+                display_id = s_id
                 face_box = DemoFaceBox(
                     face_index=idx,
                     box=det.box,
@@ -407,9 +381,9 @@ class DemoService:
 
             elif candidate.reason_code == "AMBIGUOUS_LOOKALIKE_CONFLICT":
                 s_meta = student_metadata.get(candidate.student_id, {})
-                display_roll = s_meta.get("roll_number") if is_authorized else ((s_meta.get("roll_number") or "")[:4] + "***" if len(s_meta.get("roll_number") or "") > 4 else "***")
-                display_name = s_meta.get("full_name") if is_authorized else DemoService._mask_name(s_meta.get("full_name"))
-                display_id = candidate.student_id if is_authorized else f"anon_{candidate.student_id[:8]}"
+                display_roll = s_meta.get("roll_number") or ""
+                display_name = s_meta.get("full_name") or "Student"
+                display_id = candidate.student_id
                 face_box = DemoFaceBox(
                     face_index=idx,
                     box=det.box,
@@ -465,16 +439,12 @@ class DemoService:
         attendance_not_granted_list: List[DemoStudentResult] = []
 
         for s_id, s_meta in student_metadata.items():
-            ref_b64 = (
-                DemoService._load_reference_photo_base64(
-                    s_meta["photo_path"], s_meta["full_name"], s_meta["roll_number"]
-                )
-                if is_authorized
-                else None
+            ref_b64 = DemoService._load_reference_photo_base64(
+                s_meta["photo_path"], s_meta["full_name"], s_meta["roll_number"]
             )
-            display_roll = s_meta["roll_number"] if is_authorized else (s_meta["roll_number"][:4] + "***" if len(s_meta["roll_number"]) > 4 else "***")
-            display_name = s_meta["full_name"] if is_authorized else DemoService._mask_name(s_meta["full_name"])
-            display_id = s_id if is_authorized else f"anon_{s_id[:8]}"
+            display_roll = s_meta["roll_number"]
+            display_name = s_meta["full_name"]
+            display_id = s_id
             dept = s_meta.get("department_code")
             if s_id in matched_student_ids:
                 best_score, crop_b64 = matched_student_ids[s_id]

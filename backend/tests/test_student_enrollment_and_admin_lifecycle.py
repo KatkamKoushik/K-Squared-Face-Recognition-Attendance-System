@@ -128,6 +128,31 @@ def test_public_enrollment_submission_no_face_detected(client: TestClient):
     assert "no human face detected" in response.text.lower()
 
 
+def test_select_primary_face_with_multiple_candidates():
+    """Confirms enrollment automatically isolates the primary student face when multiple faces/bystanders exist."""
+    from app.worker.contracts import DetectionResult
+    # Face 1: small background face
+    d1 = DetectionResult(
+        box=(0.1, 0.1, 0.2, 0.2),
+        score=0.95,
+        detector_model_hash="test",
+    )
+    # Face 2: primary student face in center
+    d2 = DetectionResult(
+        box=(0.3, 0.2, 0.7, 0.7),
+        score=0.88,
+        detector_model_hash="test",
+    )
+    # Face 3: small bystander on edge
+    d3 = DetectionResult(
+        box=(0.8, 0.4, 0.9, 0.55),
+        score=0.85,
+        detector_model_hash="test",
+    )
+    chosen = EnrollmentService._select_primary_face([d1, d2, d3])
+    assert chosen == d2
+
+
 def test_admin_endpoints_require_admin_role(client: TestClient, faculty_headers, seed_data):
     """Faculty or unauthenticated roles cannot access admin biometric review endpoints."""
     # 1. Unauthenticated -> 401

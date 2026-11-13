@@ -25,13 +25,32 @@ export default async function StudentsDirectoryPage() {
   const isLive = serverStudents !== null;
   const bioMap = new Map((enrolledBiometrics || []).map((b) => [b.roll_number, b]));
 
-  const students: StudentDirectoryRow[] = (serverStudents || []).map((s) => {
+  const rawList =
+    serverStudents && serverStudents.length > 0
+      ? serverStudents.map((s) => ({
+          id: s.id,
+          roll_number: s.roll_number,
+          full_name: s.full_name,
+          current_term: s.current_term,
+          status: s.status,
+          enrollment_date: s.enrollment_date,
+        }))
+      : (enrolledBiometrics || []).map((b) => ({
+          id: b.student_id,
+          roll_number: b.roll_number,
+          full_name: b.full_name,
+          current_term: 8,
+          status: b.is_active ? "ACTIVE" : "INACTIVE",
+          enrollment_date: "2023-08-01",
+        }));
+
+  const students: StudentDirectoryRow[] = rawList.map((s) => {
     const bio = bioMap.get(s.roll_number);
     return {
       studentId: s.id,
       rollNumber: s.roll_number,
       fullName: s.full_name,
-      department: "Computer Science & Engineering",
+      department: bio?.department_code ? `${bio.department_code} Department` : "Computer Science & Engineering",
       cohort: `Term ${s.current_term}`,
       enrollmentStatus: (s.status as any) || "ACTIVE",
       effectiveStartDate: s.enrollment_date || "2023-08-01",

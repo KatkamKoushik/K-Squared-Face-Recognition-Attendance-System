@@ -148,6 +148,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 runSpacing: 4,
                 children: [
                   ActionChip(
+                    label: const Text('ADB Reverse (Phone)', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
+                    backgroundColor: AppTheme.statusMatched.withValues(alpha: 0.15),
+                    onPressed: () {
+                      setDialogState(() {
+                        urlController.text = 'http://127.0.0.1:8000/api/v1';
+                        testResult = null;
+                      });
+                    },
+                  ),
+                  ActionChip(
                     label: const Text('Ngrok Tunnel', style: TextStyle(fontSize: 11)),
                     onPressed: () {
                       setDialogState(() {
@@ -166,16 +176,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     },
                   ),
                   ActionChip(
-                    label: const Text('ADB Reverse', style: TextStyle(fontSize: 11)),
-                    onPressed: () {
-                      setDialogState(() {
-                        urlController.text = 'http://127.0.0.1:8000/api/v1';
-                        testResult = null;
-                      });
-                    },
-                  ),
-                  ActionChip(
-                    label: const Text('Emulator', style: TextStyle(fontSize: 11)),
+                    label: const Text('PC Emulator Only', style: TextStyle(fontSize: 11)),
                     onPressed: () {
                       setDialogState(() {
                         urlController.text = 'http://10.0.2.2:8000/api/v1';
@@ -184,6 +185,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     },
                   ),
                 ],
+              ),
+              const Padding(
+                padding: EdgeInsets.only(top: 4),
+                child: Text(
+                  'Physical phone (RMX5003): use ADB Reverse or Ngrok Tunnel. 10.0.2.2 is for PC virtual emulator only.',
+                  style: TextStyle(fontSize: 10, color: AppTheme.textMutedLight),
+                ),
               ),
               const SizedBox(height: 12),
               if (isTesting) ...[
@@ -241,11 +249,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       final ok = await api.checkConnection();
                       setDialogState(() {
                         isTesting = false;
+                        final currentUrl = urlController.text.trim();
+                        final is10022 = currentUrl.contains('10.0.2.2');
                         testResult = ok
                             ? 'Connected successfully (HTTP 200)'
-                            : (api.lastConnectionError != null
-                                ? 'Unreachable: ${api.lastConnectionError}'
-                                : 'Server unreachable. Verify host IP & port.');
+                            : (is10022
+                                ? 'Unreachable: 10.0.2.2 is only for PC emulators. On physical phone (RMX5003), tap "ADB Reverse" or "Ngrok Tunnel".'
+                                : (api.lastConnectionError != null
+                                    ? 'Unreachable: ${api.lastConnectionError}'
+                                    : 'Server unreachable. Verify host IP & port.'));
                         if (!ok) api.baseUrl = prev;
                       });
                     },

@@ -63,9 +63,9 @@ def list_demo_students(
 @router.post("/analyze", response_model=ResponseEnvelope[DemoAnalysisResponse])
 async def analyze_demo_image(
     file: UploadFile = File(...),
-    match_threshold: float = Form(0.460),
+    match_threshold: float = Form(0.363),
     margin_threshold: float = Form(0.10),
-    blur_threshold: float = Form(50.0),
+    blur_threshold: float = Form(25.0),
     department_code: Optional[str] = Form(None),
     db: Session = Depends(get_db),
     current_user: Optional[User] = Depends(get_optional_current_user),

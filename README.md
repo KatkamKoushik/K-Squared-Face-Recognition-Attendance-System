@@ -4,7 +4,7 @@
 [![CD Pipeline](https://img.shields.io/badge/CD%20Deployment-GHCR%20%2B%20APK-3b82f6.svg?logo=github-actions&logoColor=white)](.github/workflows/deploy.yml)
 [![Security Audit](https://img.shields.io/badge/Security%20Audit-Automated%20Weekly-8b5cf6.svg?logo=github&logoColor=white)](.github/workflows/security.yml)
 [![Official Wiki](https://img.shields.io/badge/Official%20Wiki-Live%20on%20GitHub-blueviolet.svg?logo=github&logoColor=white)](https://github.com/KatkamKoushik/K-Squared-Face-Recognition-Attendance-System/wiki)
-[![Architecture Version](https://img.shields.io/badge/Architecture-K² FRS%20Canonical-0f172a.svg)](docs/CONTRACT_ARCHITECTURE.md)
+[![Architecture Version](https://img.shields.io/badge/Architecture-K%C2%B2_FRS_Canonical-0f172a.svg)](docs/CONTRACT_ARCHITECTURE.md)
 [![ADRs](https://img.shields.io/badge/ADRs-5%20Accepted-0284c7.svg)](docs/adr/)
 [![Python](https://img.shields.io/badge/Python-3.12+-3776AB?logo=python&logoColor=white)](backend/)
 [![Flutter](https://img.shields.io/badge/Flutter-3.27+-02569B?logo=flutter&logoColor=white)](apps/teacher_mobile/)
