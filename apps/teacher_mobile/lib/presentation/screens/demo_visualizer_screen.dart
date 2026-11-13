@@ -48,9 +48,9 @@ class _DemoVisualizerScreenState extends ConsumerState<DemoVisualizerScreen> wit
   int? _selectedFaceIndex;
   late TabController _tabController;
 
-  double _matchThreshold = 0.460;
+  double _matchThreshold = 0.363;
   double _marginThreshold = 0.10;
-  double _blurThreshold = 50.0;
+  double _blurThreshold = 20.0;
   int _totalEnrolledStudents = 0;
   String _selectedDepartment = 'ALL';
   final List<String> _departmentOptions = const ['ALL', 'CSD', 'CSE', 'ECE', 'MECH', 'EEE', 'CIVIL', 'IT'];
@@ -97,9 +97,9 @@ class _DemoVisualizerScreenState extends ConsumerState<DemoVisualizerScreen> wit
     try {
       final XFile? file = await _picker.pickImage(
         source: ImageSource.camera,
-        maxWidth: 2048,
-        maxHeight: 2048,
-        imageQuality: 92,
+        maxWidth: 3840,
+        maxHeight: 3840,
+        imageQuality: 98,
       );
       if (file == null) return;
 
@@ -132,9 +132,9 @@ class _DemoVisualizerScreenState extends ConsumerState<DemoVisualizerScreen> wit
   Future<void> _pickGalleryImages() async {
     try {
       final List<XFile> pickedFiles = await _picker.pickMultiImage(
-        maxWidth: 1600,
-        maxHeight: 1600,
-        imageQuality: 88,
+        maxWidth: 3840,
+        maxHeight: 3840,
+        imageQuality: 98,
       );
       if (pickedFiles.isEmpty) return;
 

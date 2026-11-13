@@ -206,17 +206,14 @@ class DemoService:
         for idx, det in enumerate(detections, start=1):
             crop = Preprocessor.extract_face_crop(image, det.box)
             crop_base64 = DemoService._pil_to_base64_jpeg(crop, quality=85)
-            quality = recognizer.assess_quality(crop, min_variance=blur_threshold, min_size=24)
+            quality = recognizer.assess_quality(crop, min_variance=blur_threshold, min_size=16)
 
             face_w_px = max(1, int((det.box[2] - det.box[0]) * w))
             face_h_px = max(1, int((det.box[3] - det.box[1]) * h))
 
-            # Resolution-Adaptive Thresholding:
-            # Distant/crowd faces have compressed feature vectors and elevated impostor baseline similarity.
-            if face_w_px < 50:
-                eff_threshold = max(match_threshold, 0.480)
-            elif face_w_px < 90:
-                eff_threshold = max(match_threshold, 0.420)
+            # Calibrated thresholding for classroom group sweeps
+            if face_w_px < 25:
+                eff_threshold = max(match_threshold, 0.370)
             else:
                 eff_threshold = match_threshold
 
