@@ -54,9 +54,9 @@ class RecognizerAdapter:
             return Path(explicit_path)
         try:
             from app.core.config import settings
-            use_finetuned = (os.getenv("USE_FINETUNED_MODEL", "1") == "1") or getattr(settings, "USE_FINETUNED_MODEL", True)
+            use_finetuned = (os.getenv("USE_FINETUNED_MODEL") == "1") or getattr(settings, "USE_FINETUNED_MODEL", False)
         except Exception:
-            use_finetuned = os.getenv("USE_FINETUNED_MODEL", "1") == "1"
+            use_finetuned = os.getenv("USE_FINETUNED_MODEL", "0") == "1"
         preferred_filename = (
             self.FINETUNED_FILENAME
             if use_finetuned
