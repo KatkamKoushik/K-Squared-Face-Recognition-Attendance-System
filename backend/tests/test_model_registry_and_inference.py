@@ -68,7 +68,7 @@ def test_recognizer_5_landmark_alignment_and_embedding():
 
     emb = adapter.align_and_compute_embedding(bgr_img, raw_face)
     assert emb.dimension == 128
-    assert emb.namespace == "sface_128d_v1"
+    assert emb.namespace == adapter.namespace
     vec = np.array(emb.vector, dtype=np.float32)
     assert abs(np.linalg.norm(vec) - 1.0) < 1e-4
 

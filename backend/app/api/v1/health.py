@@ -85,6 +85,9 @@ def readiness_probe(db: Session = Depends(get_db)):
         rec = RecognizerAdapter(strict_mode=True)
         models_verified["yunet_loaded"] = (det._detector is not None)
         models_verified["sface_loaded"] = (rec._recognizer is not None)
+        models_verified["recognizer_artifact"] = rec.model_path.name
+        models_verified["recognizer_namespace"] = rec.namespace
+        models_verified["is_finetuned"] = "finetuned" in rec.model_path.name.lower()
         models_verified["runtime_ready"] = bool(models_verified["yunet_loaded"] and models_verified["sface_loaded"])
     except Exception as exc:
         models_verified["error"] = str(exc)

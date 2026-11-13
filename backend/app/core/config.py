@@ -109,6 +109,7 @@ class Settings(BaseSettings):
     JOB_MAX_RETRIES: int = 3
     JOB_POLL_INTERVAL_SECONDS: int = 2
     STRICT_CUDA_REQUIRED: bool = False
+    USE_FINETUNED_MODEL: bool = True
 
     # Observability
     LOG_LEVEL: str = "INFO"
