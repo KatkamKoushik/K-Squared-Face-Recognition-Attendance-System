@@ -176,10 +176,15 @@ def test_demo_privacy_sanitization_for_unauthenticated_callers(client: TestClien
     from app.domain.models.academic import User
     from app.domain.enums import UserRole
 
-    # 1. Unauthenticated request -> Rejected with 401 TOKEN_MISSING
+    # 1. Unauthenticated request -> masked roll, masked name, redacted ID, and no photo_url
     res_anon = client.get("/api/v1/demo/enrolled-students")
-    assert res_anon.status_code == 401
-    assert res_anon.json()["error"]["reason_code"] == "TOKEN_MISSING"
+    assert res_anon.status_code == 200
+    anon_students = res_anon.json()["data"]
+    assert len(anon_students) > 0
+    assert anon_students[0]["photo_url"] is None
+    assert anon_students[0]["roll_number"].endswith("***")
+    assert anon_students[0]["full_name"].endswith("***")
+    assert anon_students[0]["student_id"].startswith("anon_")
 
     # 2. Authenticated Admin request -> full roll, unmasked name, real ID, and photo_url preserved
     admin = db_session.query(User).filter(User.role == UserRole.ADMIN).first()

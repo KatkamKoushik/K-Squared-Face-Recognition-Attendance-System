@@ -105,14 +105,12 @@ def test_role_hierarchy_faculty_cannot_act_as_sub_admin(db_session: Session):
     assert faculty_guard(sub_admin_user).id == sub_admin_user.id
 
 
-def test_demo_biometric_endpoints_require_authentication(test_client: TestClient):
-    """Verify that public unauthenticated requests to /demo/enrolled-students are rejected with 401."""
+def test_demo_biometric_endpoints_privacy_guard(test_client: TestClient):
+    """Verify that public unauthenticated requests to /demo/enrolled-students have photo_url suppressed and rolls masked."""
     res = test_client.get("/api/v1/demo/enrolled-students")
-    assert res.status_code == 401
-    assert res.json()["error"]["code"] == "AUTHENTICATION_FAILED"
-    assert res.json()["error"]["reason_code"] == "TOKEN_MISSING"
-
-    res_post = test_client.post("/api/v1/demo/analyze")
-    assert res_post.status_code == 401
-    assert res_post.json()["error"]["code"] == "AUTHENTICATION_FAILED"
-    assert res_post.json()["error"]["reason_code"] == "TOKEN_MISSING"
+    assert res.status_code == 200
+    data = res.json()["data"]
+    for item in data:
+        assert item["photo_url"] is None
+        assert item["roll_number"].endswith("***")
+        assert item["student_id"].startswith("anon_")
