@@ -8,7 +8,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
-from app.api.dependencies import get_correlation_id, get_optional_current_user
+from app.api.dependencies import get_correlation_id, get_current_user, require_roles
 from app.core.database import get_db
 from app.core.errors import PermissionDeniedError
 from app.domain.enums import UserRole
@@ -27,25 +27,15 @@ router = APIRouter(prefix="/demo", tags=["Universal Demo Testing"])
 def list_demo_students(
     department_code: Optional[str] = None,
     db: Session = Depends(get_db),
-    current_user: Optional[User] = Depends(get_optional_current_user),
+    current_user: User = Depends(require_roles([UserRole.FACULTY, UserRole.SUB_ADMIN, UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.DEVELOPER])),
     correlation_id: str = Depends(get_correlation_id),
 ):
     """
     Returns the enrolled students with registered face profiles, optionally filtered by department.
-    Sanitizes private biometric portraits and roll numbers for unauthenticated callers (SEC-02).
+    Requires authenticated institutional access (SEC-02).
     """
-    is_authorized = bool(
-        current_user
-        and current_user.role
-        in (
-            UserRole.DEVELOPER,
-            UserRole.SUPER_ADMIN,
-            UserRole.ADMIN,
-            UserRole.SUB_ADMIN,
-            UserRole.FACULTY,
-        )
-    )
-    if current_user and current_user.role in (UserRole.ADMIN, UserRole.SUB_ADMIN, UserRole.FACULTY):
+    is_authorized = True
+    if current_user.role in (UserRole.ADMIN, UserRole.SUB_ADMIN, UserRole.FACULTY):
         if current_user.department:
             if department_code and department_code.strip().upper() not in (current_user.department.code.upper(), "ALL", ""):
                 raise PermissionDeniedError(
@@ -68,7 +58,7 @@ async def analyze_demo_image(
     blur_threshold: float = Form(25.0),
     department_code: Optional[str] = Form(None),
     db: Session = Depends(get_db),
-    current_user: Optional[User] = Depends(get_optional_current_user),
+    current_user: User = Depends(require_roles([UserRole.FACULTY, UserRole.SUB_ADMIN, UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.DEVELOPER])),
     correlation_id: str = Depends(get_correlation_id),
 ):
     """
@@ -78,7 +68,7 @@ async def analyze_demo_image(
     - Applies resolution-adaptive cosine thresholding for distant/crowd faces.
     - Searches against enrolled student identities (optionally scoped to a department).
     - Enforces bipartite mutual exclusivity to eliminate duplicate identity collisions.
-    - Sanitizes reference photographs for unauthenticated callers (SEC-02).
+    - Requires authenticated institutional access (SEC-02).
     """
     file_bytes = await file.read()
     if not file_bytes:
@@ -88,18 +78,8 @@ async def analyze_demo_image(
         )
 
     try:
-        is_authorized = bool(
-            current_user
-            and current_user.role
-            in (
-                UserRole.DEVELOPER,
-                UserRole.SUPER_ADMIN,
-                UserRole.ADMIN,
-                UserRole.SUB_ADMIN,
-                UserRole.FACULTY,
-            )
-        )
-        if current_user and current_user.role in (UserRole.ADMIN, UserRole.SUB_ADMIN, UserRole.FACULTY):
+        is_authorized = True
+        if current_user.role in (UserRole.ADMIN, UserRole.SUB_ADMIN, UserRole.FACULTY):
             if current_user.department:
                 if department_code and department_code.strip().upper() not in (current_user.department.code.upper(), "ALL", ""):
                     raise PermissionDeniedError(

@@ -73,9 +73,15 @@ def create_test_face_jpeg_bytes() -> bytes:
     return buf.getvalue()
 
 
-def test_list_demo_enrolled_students(client: TestClient):
-    """Verifies that the demo endpoint lists all enrolled student identities."""
-    res = client.get("/api/v1/demo/enrolled-students")
+def test_list_demo_enrolled_students(client: TestClient, db_session, seed_data):
+    """Verifies that the demo endpoint lists all enrolled student identities for authenticated faculty."""
+    from app.core.security import create_access_token
+    token = create_access_token(
+        subject=str(seed_data["faculty_user"].id),
+        role=seed_data["faculty_user"].role.value,
+        additional_claims={"email": seed_data["faculty_user"].email, "user_id": seed_data["faculty_user"].id},
+    )
+    res = client.get("/api/v1/demo/enrolled-students", headers={"Authorization": f"Bearer {token}"})
     assert res.status_code == 200
     payload = res.json()
     assert "data" in payload
@@ -92,8 +98,14 @@ from unittest.mock import patch
 from app.worker.contracts import DetectionResult
 
 
-def test_analyze_demo_image_with_synthetic_face(client: TestClient):
+def test_analyze_demo_image_with_synthetic_face(client: TestClient, db_session, seed_data):
     """Verifies that the demo analyze endpoint detects faces, returns normalized boxes, crops, and reconciliation."""
+    from app.core.security import create_access_token
+    token = create_access_token(
+        subject=str(seed_data["faculty_user"].id),
+        role=seed_data["faculty_user"].role.value,
+        additional_claims={"email": seed_data["faculty_user"].email, "user_id": seed_data["faculty_user"].id},
+    )
     img_bytes = create_test_face_jpeg_bytes()
     
     mock_detection = [
@@ -109,6 +121,7 @@ def test_analyze_demo_image_with_synthetic_face(client: TestClient):
     with patch.object(DetectorAdapter, "detect_faces", return_value=mock_detection):
         res = client.post(
             "/api/v1/demo/analyze",
+            headers={"Authorization": f"Bearer {token}"},
             files={"file": ("group_test.jpg", img_bytes, "image/jpeg")},
             data={"match_threshold": 0.363, "margin_threshold": 0.10, "blur_threshold": 20.0},
         )
@@ -131,18 +144,22 @@ def test_analyze_demo_image_with_synthetic_face(client: TestClient):
     assert face["face_crop_base64"].startswith("data:image/jpeg;base64,")
     assert face["color_hex"].startswith("#")
     assert len(face["badge_label"]) > 0
-    assert face["face_crop_base64"].startswith("data:image/jpeg;base64,")
-    assert face["color_hex"].startswith("#")
-    assert len(face["badge_label"]) > 0
 
 
-def test_analyze_demo_image_blank_returns_zero_detections(client: TestClient):
+def test_analyze_demo_image_blank_returns_zero_detections(client: TestClient, db_session, seed_data):
     """Verifies that a blank image with no human faces returns zero detections without errors."""
+    from app.core.security import create_access_token
+    token = create_access_token(
+        subject=str(seed_data["faculty_user"].id),
+        role=seed_data["faculty_user"].role.value,
+        additional_claims={"email": seed_data["faculty_user"].email, "user_id": seed_data["faculty_user"].id},
+    )
     blank = Image.new("RGB", (200, 200), color=(128, 128, 128))
     buf = io.BytesIO()
     blank.save(buf, format="JPEG")
     res = client.post(
         "/api/v1/demo/analyze",
+        headers={"Authorization": f"Bearer {token}"},
         files={"file": ("blank.jpg", buf.getvalue(), "image/jpeg")},
     )
     assert res.status_code == 200
@@ -154,24 +171,23 @@ def test_analyze_demo_image_blank_returns_zero_detections(client: TestClient):
 
 
 def test_demo_privacy_sanitization_for_unauthenticated_callers(client: TestClient, db_session, seed_data):
-    """SEC-02: Public unauthenticated callers must receive masked roll numbers and sanitized portrait URLs."""
+    """SEC-02: Public unauthenticated callers must be rejected with 401; authenticated callers receive profiles."""
     from app.core.security import create_access_token
     from app.domain.models.academic import User
     from app.domain.enums import UserRole
 
-    # 1. Unauthenticated request -> masked roll, masked name, redacted ID, and no photo_url
+    # 1. Unauthenticated request -> Rejected with 401 TOKEN_MISSING
     res_anon = client.get("/api/v1/demo/enrolled-students")
-    assert res_anon.status_code == 200
-    anon_students = res_anon.json()["data"]
-    assert len(anon_students) > 0
-    assert anon_students[0]["photo_url"] is None
-    assert anon_students[0]["roll_number"].endswith("***")
-    assert anon_students[0]["full_name"].endswith("***")
-    assert anon_students[0]["student_id"].startswith("anon_")
+    assert res_anon.status_code == 401
+    assert res_anon.json()["error"]["reason_code"] == "TOKEN_MISSING"
 
     # 2. Authenticated Admin request -> full roll, unmasked name, real ID, and photo_url preserved
     admin = db_session.query(User).filter(User.role == UserRole.ADMIN).first()
-    token = create_access_token(subject=str(admin.id), role=admin.role.value)
+    token = create_access_token(
+        subject=str(admin.id),
+        role=admin.role.value,
+        additional_claims={"email": admin.email, "user_id": admin.id},
+    )
     res_admin = client.get(
         "/api/v1/demo/enrolled-students",
         headers={"Authorization": f"Bearer {token}"},

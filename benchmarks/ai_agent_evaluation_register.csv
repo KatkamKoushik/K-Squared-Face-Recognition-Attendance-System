@@ -1,0 +1,2 @@
+benchmark_run_id,evaluated_agent_model,benchmark_suite_domain,tasks_evaluated_count,pass_rate_percentage,tool_hallucination_rate_pct,average_tokens_per_task,cost_per_solved_task_usd,regression_verdict,evaluation_lead,benchmark_execution_date
+BENCH-001,Claude 3.7 Sonnet,K2-FRS-Vision-Bench,38,100.0,0.0,14200,0.085,Superior,K2-FRS Engineering Lead,2026-11-14

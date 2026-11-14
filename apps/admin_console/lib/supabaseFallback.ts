@@ -73,24 +73,25 @@ export async function fallbackFromSupabase<T>(endpoint: string): Promise<T | nul
         const off = offerings.find((o: any) => o.id === s.offering_id);
         const subj = subjects.find((sb: any) => sb.id === off?.subject_id);
         const fac = faculty.find((f: any) => f.id === s.faculty_id);
+        const cohort = cohorts.find((c: any) => c.id === off?.cohort_id);
         const rec = receipts.find((r: any) => r.session_id === s.id);
         const sessionUnits = units.filter((u: any) => u.session_id === s.id && u.is_conducted);
         const sessionRecords = records.filter((ar: any) => ar.session_id === s.id);
         const presentCount = sessionRecords.filter((ar: any) => ar.status === "PRESENT").length;
-        const totalEnrolled = sessionRecords.length || students.length || 1;
-        const pct = ((presentCount / totalEnrolled) * 100).toFixed(1) + "%";
+        const totalEnrolled = sessionRecords.length || 0;
+        const pct = totalEnrolled > 0 ? ((presentCount / totalEnrolled) * 100).toFixed(1) + "%" : "0.0%";
 
         return {
           session_id: s.id,
-          subject_code: subj?.code || "CS401",
-          subject_name: subj?.name || "Machine Learning & Neural Networks",
-          cohort: "B.Tech CSE - 4th Year",
-          faculty: fac?.full_name || "Dr. K. Soujanya",
-          conducted_units: sessionUnits.length || 2,
+          subject_code: subj?.code || "",
+          subject_name: subj?.name || "Subject",
+          cohort: cohort?.name || "",
+          faculty: fac?.full_name || "Unassigned",
+          conducted_units: sessionUnits.length,
           present_count: presentCount,
           total_enrolled: totalEnrolled,
           attendance_percent: pct,
-          receipt_hash: rec?.receipt_hash || "sha256:verified_receipt",
+          receipt_hash: rec?.receipt_hash || "",
           timestamp: s.session_date || todayStr,
         };
       });
@@ -110,8 +111,13 @@ export async function fallbackFromSupabase<T>(endpoint: string): Promise<T | nul
       return metrics as unknown as T;
     }
 
-    // 2. Demo Visualizer Enrolled Gallery
+    // 2. Demo Visualizer Enrolled Gallery (Requires authenticated session)
     if (cleanEndpoint === "/demo/enrolled-students") {
+      const isAuth = Boolean(getAuthToken());
+      if (!isAuth) {
+        return [] as unknown as T;
+      }
+
       const [studentsRes, submissionsRes, cohortsRes, deptsRes] = await Promise.all([
         supabaseFetch("/rest/v1/students?select=id,roll_number,full_name,is_active,cohort_id&order=roll_number.asc"),
         supabaseFetch("/rest/v1/enrollment_submissions?status=eq.APPROVED&select=roll_number,photo_storage_path"),
@@ -128,8 +134,6 @@ export async function fallbackFromSupabase<T>(endpoint: string): Promise<T | nul
       const params = new URLSearchParams(queryString);
       const deptFilter = params.get("department_code")?.toUpperCase();
 
-      const isAuth = Boolean(getAuthToken());
-
       let gallery: DemoEnrolledStudentSummary[] = students.map((s: any) => {
         const sub = submissions.find((subm: any) => subm.roll_number === s.roll_number);
         const cohort = cohorts.find((c: any) => c.id === s.cohort_id);
@@ -142,7 +146,7 @@ export async function fallbackFromSupabase<T>(endpoint: string): Promise<T | nul
           is_active: s.is_active,
           has_reference_photo: Boolean(sub?.photo_storage_path),
           photo_url: sub?.photo_storage_path || undefined,
-          department_code: dept?.code || "CSE",
+          department_code: dept?.code || "",
         };
       });
 
@@ -156,7 +160,7 @@ export async function fallbackFromSupabase<T>(endpoint: string): Promise<T | nul
     // 3. Academic Student Directory
     if (cleanEndpoint === "/academic/students") {
       const [studentsRes, cohortsRes, deptsRes] = await Promise.all([
-        supabaseFetch("/rest/v1/students?select=id,roll_number,full_name,is_active,cohort_id&order=roll_number.asc"),
+        supabaseFetch("/rest/v1/students?select=id,roll_number,full_name,is_active,cohort_id,created_at&order=roll_number.asc"),
         supabaseFetch("/rest/v1/cohorts?select=id,name,department_id"),
         supabaseFetch("/rest/v1/departments?select=id,name,code"),
       ]);
@@ -174,14 +178,14 @@ export async function fallbackFromSupabase<T>(endpoint: string): Promise<T | nul
           roll_number: s.roll_number,
           full_name: s.full_name,
           department_id: cohort?.department_id || "",
-          current_term: "VII",
+          current_term: s.current_term || "",
           status: s.is_active ? "ACTIVE" : "INACTIVE",
-          consent_signed: true,
-          enrollment_date: "2023-08-01",
+          consent_signed: Boolean(s.consent_signed),
+          enrollment_date: s.created_at ? s.created_at.slice(0, 10) : "",
           is_active: s.is_active,
           cohort_id: s.cohort_id,
-          cohort_name: cohort?.name || "B.Tech CSE - 4th Year",
-          department_name: dept?.name || "Computer Science and Engineering",
+          cohort_name: cohort?.name || "",
+          department_name: dept?.name || "",
         };
       });
 
@@ -230,14 +234,14 @@ export async function fallbackFromSupabase<T>(endpoint: string): Promise<T | nul
 
         return {
           id: o.id,
-          subject_code: subj?.code || "CS401",
-          subject_name: subj?.name || "Machine Learning",
-          faculty_name: fac?.full_name || "Faculty Member",
-          cohort_name: cohort?.name || "B.Tech CSE",
-          section: o.section || "A",
-          term_name: "Fall 2026",
-          enrolled_count: 9,
-          total_sessions: 6,
+          subject_code: subj?.code || "",
+          subject_name: subj?.name || "Subject",
+          faculty_name: fac?.full_name || "Unassigned",
+          cohort_name: cohort?.name || "",
+          section: o.section || "",
+          term_name: "",
+          enrolled_count: 0,
+          total_sessions: 0,
         };
       });
 

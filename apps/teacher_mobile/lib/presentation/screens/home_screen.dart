@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/kucet_faculty_directory.dart';
-import '../../data/mock/mock_teacher_data.dart';
 import '../../logic/auth_provider.dart';
 import '../../logic/session_provider.dart';
 import 'session_setup_screen.dart';
@@ -50,7 +49,7 @@ class HomeScreen extends ConsumerWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        auth.email ?? KucetTeacherData.facultyName,
+                        auth.email ?? 'Faculty Member',
                         style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
                       const SizedBox(height: 4),
@@ -143,7 +142,7 @@ class HomeScreen extends ConsumerWidget {
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              '$facultyDisplayDept\n${KucetTeacherData.collegeName}',
+                              '$facultyDisplayDept\nKU College of Engineering & Technology (KUCET)',
                               style: theme.textTheme.bodyMedium,
                             ),
                           ],

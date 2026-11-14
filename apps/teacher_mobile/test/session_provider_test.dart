@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:frs_teacher_app/core/network/api_service.dart';
 import 'package:frs_teacher_app/logic/session_provider.dart';
 import 'package:frs_teacher_app/data/models/domain_contracts.dart';
-import 'package:frs_teacher_app/data/mock/mock_teacher_data.dart';
+import 'fixtures/mock_test_candidates.dart';
 
 class MockServerSuccessApiService extends FrsApiService {
   @override
@@ -32,8 +32,8 @@ class MockServerSuccessApiService extends FrsApiService {
     Duration interval = const Duration(seconds: 1),
   }) async {
     return {
-      'candidates': MockTeacherData.getInitialCandidates().map((c) => c.toJson()).toList(),
-      'unknown_faces': MockTeacherData.getUnassignedObservations().map((o) => o.toJson()).toList(),
+      'candidates': MockTestCandidates.getInitialCandidates().map((c) => c.toJson()).toList(),
+      'unknown_faces': MockTestCandidates.getUnassignedObservations().map((o) => o.toJson()).toList(),
     };
   }
 
