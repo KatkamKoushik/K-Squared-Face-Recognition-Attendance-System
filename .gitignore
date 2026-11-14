@@ -59,6 +59,8 @@ apps/admin_console/dist/
 .packages
 .pub-cache/
 .pub/
+.kucet_offline/
+*.enc
 /build/
 **/build/
 *.dill

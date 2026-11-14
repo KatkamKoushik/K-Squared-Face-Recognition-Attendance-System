@@ -200,6 +200,13 @@ class ReviewService:
 
         proposed_absent_count = sum(1 for c in candidate_proposals if c.proposal_status == AttendanceStatus.ABSENT_CONFIRMED)
 
+        # Vision processing lifecycle contract: all frames must be in PROCESSED status
+        is_processing_complete = True
+        job_state = "PROPOSAL_READY"
+        if frames and any(f.status != "PROCESSED" for f in frames):
+            is_processing_complete = False
+            job_state = "PROCESSING"
+
         return SessionProposalReviewResponse(
             session_id=session_id,
             total_eligible_students=total_eligible,
@@ -207,6 +214,8 @@ class ReviewService:
             proposed_absent_count=proposed_absent_count,
             uncertain_count=uncertain_count,
             unknown_faces_count=len(unknown_faces),
+            is_processing_complete=is_processing_complete,
+            job_state=job_state,
             candidates=candidate_proposals,
             unknown_faces=unknown_faces,
             recapture_hints=recapture_hints,

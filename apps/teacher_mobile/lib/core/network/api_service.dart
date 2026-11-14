@@ -21,14 +21,22 @@ class FrsApiService {
   String baseUrl;
   final http.Client _client;
   String? authToken;
+  String? currentUserId;
+  String? currentUserEmail;
+  String? currentUserRole;
   bool liveDemoMode;
   String? lastConnectionError;
   void Function()? onSessionExpired;
+
+  String get activeUserId => currentUserId ?? 'FACULTY-KUCET';
 
   FrsApiService({
     String? baseUrl,
     http.Client? client,
     this.authToken,
+    this.currentUserId,
+    this.currentUserEmail,
+    this.currentUserRole,
     this.liveDemoMode = true,
     this.onSessionExpired,
   })  : baseUrl = baseUrl ?? defaultBaseUrl,
@@ -112,6 +120,9 @@ class FrsApiService {
       final payload = _unwrap(res);
       if (payload is Map<String, dynamic>) {
         authToken = payload['access_token'] as String?;
+        currentUserId = payload['user_id'] as String?;
+        currentUserEmail = payload['email'] as String?;
+        currentUserRole = payload['role'] as String?;
         return payload;
       }
     }
@@ -143,6 +154,9 @@ class FrsApiService {
       final payload = _unwrap(res);
       if (payload is Map<String, dynamic>) {
         authToken = payload['access_token'] as String?;
+        currentUserId = payload['user_id'] as String?;
+        currentUserEmail = payload['email'] as String?;
+        currentUserRole = payload['role'] as String?;
         return payload;
       }
     }
@@ -170,15 +184,21 @@ class FrsApiService {
       final payload = _unwrap(res);
       if (payload is Map<String, dynamic>) {
         authToken = payload['access_token'] as String?;
+        currentUserId = payload['user_id'] as String?;
+        currentUserEmail = payload['email'] as String?;
+        currentUserRole = payload['role'] as String?;
         return payload;
       }
     }
     return null;
   }
 
-  /// Clears active JWT session token.
+  /// Clears active JWT session token and user profile context.
   void logout() {
     authToken = null;
+    currentUserId = null;
+    currentUserEmail = null;
+    currentUserRole = null;
   }
 
   /// GET /academic/offerings
@@ -292,9 +312,9 @@ class FrsApiService {
         if (res.statusCode == 200) {
           final payload = _unwrap(res);
           if (payload is Map<String, dynamic>) {
-            final bool isComplete = payload['is_processing_complete'] as bool? ?? true;
+            final bool isComplete = payload['is_processing_complete'] == true;
             final String? jobState = payload['job_state'] as String?;
-            if (isComplete || jobState == 'PROPOSAL_READY' || jobState == 'COMPLETED') {
+            if (isComplete && (jobState == 'PROPOSAL_READY' || jobState == 'COMPLETED')) {
               return payload;
             }
           }

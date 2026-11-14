@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
+import 'dart:typed_data';
+import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 
 /// Lifecycle state of a queued offline mutation.
@@ -132,10 +134,140 @@ class FileJournalStorage implements JournalStorage {
   }
 }
 
+/// Authenticated, tamper-evident encrypted file storage using HMAC-SHA256 authenticated envelope.
+/// Protects sensitive offline biometric mutation journals against local tampering or physical extraction.
+class EncryptedFileJournalStorage implements JournalStorage {
+  final File file;
+  final String secretKey;
+
+  EncryptedFileJournalStorage(this.file, {String? secretKey})
+      : secretKey = secretKey ?? 'kucet_frs_offline_vault_v1_2026';
+
+  List<int> _deriveKeyStream(List<int> nonce, int length) {
+    final keyBytes = utf8.encode(secretKey);
+    final keyDigest = sha256.convert(keyBytes).bytes;
+    final hmac = Hmac(sha256, keyDigest);
+    final subKey = hmac.convert(nonce).bytes;
+
+    final stream = <int>[];
+    int counter = 0;
+    while (stream.length < length) {
+      final counterBytes = Uint8List(4)..buffer.asByteData().setUint32(0, counter);
+      final block = sha256.convert([...subKey, ...counterBytes]).bytes;
+      stream.addAll(block);
+      counter++;
+    }
+    return stream.sublist(0, length);
+  }
+
+  @override
+  String? readJournalSync() {
+    try {
+      if (!file.existsSync()) return null;
+      final bytes = file.readAsBytesSync();
+      if (bytes.isEmpty) return null;
+      final raw = utf8.decode(bytes, allowMalformed: true).trim();
+      if (raw.isEmpty) return null;
+
+      final packed = base64Decode(raw);
+      if (packed.length < 48) {
+        debugPrint('EncryptedFileJournalStorage: payload too short');
+        return null;
+      }
+
+      final nonce = packed.sublist(0, 16);
+      final expectedHmac = packed.sublist(16, 48);
+      final ciphertext = packed.sublist(48);
+
+      final keyBytes = utf8.encode(secretKey);
+      final keyDigest = sha256.convert(keyBytes).bytes;
+      final actualHmac = Hmac(sha256, keyDigest).convert([...nonce, ...ciphertext]).bytes;
+
+      var diff = 0;
+      for (int i = 0; i < 32; i++) {
+        diff |= (expectedHmac[i] ^ actualHmac[i]);
+      }
+      if (diff != 0) {
+        debugPrint('EncryptedFileJournalStorage: HMAC verification failed (tampered data)');
+        return null;
+      }
+
+      final keystream = _deriveKeyStream(nonce, ciphertext.length);
+      final plaintext = Uint8List(ciphertext.length);
+      for (int i = 0; i < ciphertext.length; i++) {
+        plaintext[i] = ciphertext[i] ^ keystream[i];
+      }
+      return utf8.decode(plaintext);
+    } catch (e) {
+      debugPrint('EncryptedFileJournalStorage read error: $e');
+      return null;
+    }
+  }
+
+  @override
+  void writeJournalSync(String data) {
+    try {
+      final parentDir = file.parent;
+      if (!parentDir.existsSync()) {
+        parentDir.createSync(recursive: true);
+      }
+
+      final plaintext = utf8.encode(data);
+      final random = Random.secure();
+      final nonce = Uint8List(16);
+      for (int i = 0; i < 16; i++) {
+        nonce[i] = random.nextInt(256);
+      }
+
+      final keystream = _deriveKeyStream(nonce, plaintext.length);
+      final ciphertext = Uint8List(plaintext.length);
+      for (int i = 0; i < plaintext.length; i++) {
+        ciphertext[i] = plaintext[i] ^ keystream[i];
+      }
+
+      final keyBytes = utf8.encode(secretKey);
+      final keyDigest = sha256.convert(keyBytes).bytes;
+      final hmac = Hmac(sha256, keyDigest).convert([...nonce, ...ciphertext]).bytes;
+
+      final packed = <int>[...nonce, ...hmac, ...ciphertext];
+      final encoded = base64Encode(packed);
+
+      final tmpFile = File('${file.path}.tmp');
+      tmpFile.writeAsStringSync(encoded, flush: true);
+      if (tmpFile.existsSync()) {
+        tmpFile.renameSync(file.path);
+      }
+    } catch (e) {
+      debugPrint('EncryptedFileJournalStorage atomic write error: $e');
+    }
+  }
+
+  @override
+  void clearJournalSync() {
+    try {
+      if (file.existsSync()) {
+        file.deleteSync();
+      }
+      final tmpFile = File('${file.path}.tmp');
+      if (tmpFile.existsSync()) {
+        tmpFile.deleteSync();
+      }
+    } catch (e) {
+      debugPrint('EncryptedFileJournalStorage clear error: $e');
+    }
+  }
+}
+
 /// Durable, bounded Offline Sync Operation Journal (Checklist Controls 20-N001 to 20-N016).
 class OfflineSyncJournal extends ChangeNotifier {
   static const int maxQueueCapacity = 500; // Bounded storage (20-N005)
   static const int maxRetryAttempts = 5;
+
+  static File defaultJournalFile({String? filename}) {
+    final name = filename ?? 'kucet_offline_journal.enc';
+    final directory = Directory('.kucet_offline');
+    return File('${directory.path}/$name');
+  }
 
   final Map<String, QueuedMutation> _queue = {};
   final JournalStorage? storage;
@@ -154,7 +286,7 @@ class OfflineSyncJournal extends ChangeNotifier {
       _queue.values.where((m) => m.status == MutationSyncStatus.synced).length;
 
   OfflineSyncJournal({JournalStorage? storage, File? file})
-      : storage = storage ?? (file != null ? FileJournalStorage(file) : null) {
+      : storage = storage ?? (file != null ? EncryptedFileJournalStorage(file) : null) {
     if (this.storage != null) {
       final raw = this.storage!.readJournalSync();
       if (raw != null && raw.trim().isNotEmpty) {

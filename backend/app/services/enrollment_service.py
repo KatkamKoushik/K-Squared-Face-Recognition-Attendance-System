@@ -224,9 +224,6 @@ class EnrollmentService:
                 consent_acknowledged=True,
             )
             db.add(submission)
-        db.commit()
-        db.refresh(submission)
-
         broadcaster.publish_sync(
             EventMessage(
                 event_type=RealtimeEventType.ENROLLMENT_SUBMITTED,
@@ -237,8 +234,11 @@ class EnrollmentService:
                     "full_name": submission.full_name,
                     "department": submission.department,
                 },
-            )
+            ),
+            db=db,
         )
+        db.commit()
+        db.refresh(submission)
 
         return submission
 
@@ -365,16 +365,16 @@ class EnrollmentService:
         sub.reviewed_at = utc_now()
         sub.rejection_reason = None
 
-        db.commit()
-        db.refresh(sub)
-
         broadcaster.publish_sync(
             EventMessage(
                 event_type=RealtimeEventType.ENROLLMENT_DECIDED,
                 channel="global:admin",
                 payload={"submission_id": sub.id, "status": "APPROVED", "roll_number": sub.roll_number},
-            )
+            ),
+            db=db,
         )
+        db.commit()
+        db.refresh(sub)
 
         return sub
 
@@ -385,16 +385,17 @@ class EnrollmentService:
         sub.reviewed_by_user_id = admin_user_id
         sub.reviewed_at = utc_now()
         sub.rejection_reason = reason or "Administrative rejection based on enrollment guidelines."
-        db.commit()
-        db.refresh(sub)
 
         broadcaster.publish_sync(
             EventMessage(
                 event_type=RealtimeEventType.ENROLLMENT_DECIDED,
                 channel="global:admin",
                 payload={"submission_id": sub.id, "status": "REJECTED", "roll_number": sub.roll_number, "reason": sub.rejection_reason},
-            )
+            ),
+            db=db,
         )
+        db.commit()
+        db.refresh(sub)
 
         return sub
 
@@ -405,16 +406,17 @@ class EnrollmentService:
         sub.reviewed_by_user_id = admin_user_id
         sub.reviewed_at = utc_now()
         sub.rejection_reason = reason or "Photo quality inadequate. Frontal portrait recapture required."
-        db.commit()
-        db.refresh(sub)
 
         broadcaster.publish_sync(
             EventMessage(
                 event_type=RealtimeEventType.ENROLLMENT_DECIDED,
                 channel="global:admin",
                 payload={"submission_id": sub.id, "status": "RECAPTURE_REQUIRED", "roll_number": sub.roll_number, "reason": sub.rejection_reason},
-            )
+            ),
+            db=db,
         )
+        db.commit()
+        db.refresh(sub)
 
         return sub
 

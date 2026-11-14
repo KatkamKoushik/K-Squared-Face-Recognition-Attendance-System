@@ -5,7 +5,8 @@ Manages subscription queues, replay buffer for reconnection, and authenticated f
 
 import asyncio
 from collections import deque
-from datetime import datetime
+from datetime import datetime, timezone
+import logging
 from typing import AsyncGenerator, Dict, List, Optional, Set
 from sqlalchemy.orm import Session
 
@@ -13,6 +14,8 @@ from app.domain.enums import UserRole
 from app.domain.models.academic import SubjectOffering, User
 from app.domain.models.session import AttendanceSession
 from app.schemas.events import EventMessage, RealtimeEventType
+
+logger = logging.getLogger(__name__)
 
 
 class EventBroadcaster:
@@ -24,7 +27,10 @@ class EventBroadcaster:
         self._lock = asyncio.Lock()
 
     def _write_outbox(self, event: EventMessage, db: Session) -> None:
-        """Persist event to transactional outbox table inside current database transaction."""
+        """
+        Persist event to transactional outbox table inside current database transaction.
+        Recorded with is_published=False so that event relay guarantees at-least-once delivery.
+        """
         try:
             from app.domain.models.outbox import OutboxEvent
             outbox_entry = OutboxEvent(
@@ -33,14 +39,55 @@ class EventBroadcaster:
                 channel=event.channel,
                 payload=event.payload,
                 created_at=event.timestamp,
-                is_published=True,
-                published_at=event.timestamp,
+                is_published=False,
+                published_at=None,
             )
             db.add(outbox_entry)
             db.flush()
-        except Exception:
-            # Outbox persistence failure should not crash business transaction
-            pass
+        except Exception as exc:
+            logger.error("Transactional outbox write failed for event %s on channel %s: %s", event.event_id, event.channel, exc, exc_info=True)
+            raise
+
+    def dispatch_pending_outbox_events(self, db: Session, batch_size: int = 50) -> int:
+        """
+        Transactional outbox relay: dispatches pending outbox entries to memory subscribers/queues,
+        marking each entry published upon successful dispatch with timestamp.
+        """
+        from app.domain.models.outbox import OutboxEvent
+
+        pending = (
+            db.query(OutboxEvent)
+            .filter(OutboxEvent.is_published == False)
+            .order_by(OutboxEvent.created_at.asc())
+            .limit(batch_size)
+            .all()
+        )
+        count = 0
+        now = datetime.now(timezone.utc)
+        for entry in pending:
+            try:
+                ev_type = RealtimeEventType(entry.event_type)
+            except ValueError:
+                ev_type = RealtimeEventType.SESSION_STATE_CHANGED
+            event = EventMessage(
+                event_id=entry.id,
+                event_type=ev_type,
+                timestamp=entry.created_at,
+                channel=entry.channel,
+                payload=entry.payload,
+            )
+            self._history.append(event)
+            for q in list(self._subscribers):
+                try:
+                    q.put_nowait(event)
+                except Exception:
+                    pass
+            entry.is_published = True
+            entry.published_at = now
+            count += 1
+        if count > 0:
+            db.flush()
+        return count
 
     async def publish(self, event: EventMessage, db: Optional[Session] = None) -> None:
         """Publish an event to the replay buffer, outbox, and all active subscriber queues."""

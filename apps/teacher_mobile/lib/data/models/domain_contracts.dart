@@ -363,6 +363,16 @@ class CandidateProposalItem {
   }
 
   factory CandidateProposalItem.fromJson(Map<String, dynamic> json) {
+    Map<int, AttendanceStatus> unitMap = const {};
+    if (json['unit_attendance'] is Map) {
+      final rawMap = json['unit_attendance'] as Map<String, dynamic>;
+      unitMap = rawMap.map(
+        (k, v) => MapEntry(
+          int.tryParse(k) ?? 1,
+          AttendanceStatusWireExtension.fromWire(v as String?) ?? AttendanceStatus.presentConfirmed,
+        ),
+      );
+    }
     return CandidateProposalItem(
       studentId: json['student_id'] as String,
       rollNumber: json['roll_number'] as String,
@@ -374,6 +384,7 @@ class CandidateProposalItem {
       sightedFrameIds: (json['sighted_frame_ids'] as List<dynamic>?)?.map((e) => e as String).toList() ?? const [],
       requiresManualAttention: json['requires_manual_attention'] as bool? ?? false,
       uncertaintyReason: json['uncertainty_reason'] as String?,
+      unitAttendance: unitMap,
       frameId: json['frame_id'] as String?,
       detectionId: json['detection_id'] as String?,
       matchThreshold: (json['match_threshold'] as num?)?.toDouble(),
@@ -394,6 +405,7 @@ class CandidateProposalItem {
     'sighted_frame_ids': sightedFrameIds,
     'requires_manual_attention': requiresManualAttention,
     'uncertainty_reason': uncertaintyReason,
+    'unit_attendance': unitAttendance.map((k, v) => MapEntry(k.toString(), v.toWire())),
     'frame_id': frameId,
     'detection_id': detectionId,
     'match_threshold': matchThreshold,

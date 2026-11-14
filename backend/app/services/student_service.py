@@ -315,7 +315,8 @@ class StudentService:
                 event_type=RealtimeEventType.ATTENDANCE_APPEALED,
                 channel=f"user:{student.id}",
                 payload=event_payload,
-            )
+            ),
+            db=db,
         )
         if dept_id:
             broadcaster.publish_sync(
@@ -323,7 +324,8 @@ class StudentService:
                     event_type=RealtimeEventType.ATTENDANCE_APPEALED,
                     channel=f"department:{dept_id}",
                     payload=event_payload,
-                )
+                ),
+                db=db,
             )
 
         return appeal
@@ -449,7 +451,8 @@ class StudentService:
                 event_type=RealtimeEventType.ATTENDANCE_APPEAL_REVIEWED,
                 channel=f"user:{appeal.student_id}",
                 payload=event_payload,
-            )
+            ),
+            db=db,
         )
         if dept_id:
             broadcaster.publish_sync(
@@ -457,7 +460,8 @@ class StudentService:
                     event_type=RealtimeEventType.ATTENDANCE_APPEAL_REVIEWED,
                     channel=f"department:{dept_id}",
                     payload=event_payload,
-                )
+                ),
+                db=db,
             )
 
         return appeal
@@ -514,7 +518,8 @@ class StudentService:
                 event_type=RealtimeEventType.CORRECTION_SUBMITTED,
                 channel=f"user:{student.id}",
                 payload=event_payload,
-            )
+            ),
+            db=db,
         )
         if dept_id:
             broadcaster.publish_sync(
@@ -522,7 +527,8 @@ class StudentService:
                     event_type=RealtimeEventType.CORRECTION_SUBMITTED,
                     channel=f"department:{dept_id}",
                     payload=event_payload,
-                )
+                ),
+                db=db,
             )
 
         return correction
@@ -632,7 +638,8 @@ class StudentService:
                 event_type=RealtimeEventType.CORRECTION_REVIEWED,
                 channel=f"user:{correction.student_id}",
                 payload=event_payload,
-            )
+            ),
+            db=db,
         )
         if dept_id:
             broadcaster.publish_sync(
@@ -640,7 +647,8 @@ class StudentService:
                     event_type=RealtimeEventType.CORRECTION_REVIEWED,
                     channel=f"department:{dept_id}",
                     payload=event_payload,
-                )
+                ),
+                db=db,
             )
 
         return correction

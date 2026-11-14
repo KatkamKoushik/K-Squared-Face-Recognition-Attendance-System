@@ -1009,11 +1009,17 @@ export async function analyzeDemoPhoto(
     formData.append("department_code", departmentCode);
   }
 
+  const token = getAuthToken();
+  const headers: Record<string, string> = {
+    "ngrok-skip-browser-warning": "1",
+  };
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
   const res = await fetch(`${getApiBase()}/demo/analyze`, {
     method: "POST",
-    headers: {
-      "ngrok-skip-browser-warning": "1",
-    },
+    headers,
     body: formData,
   });
 

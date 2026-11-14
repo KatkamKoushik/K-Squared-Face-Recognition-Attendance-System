@@ -199,5 +199,57 @@ void main() {
         }
       }
     });
+
+    test('EncryptedFileJournalStorage encrypts data, rejects tampered bytes, and survives app restarts', () async {
+      final tempDir = await Directory.systemTemp.createTemp('encrypted_journal_test_');
+      final encFile = File('${tempDir.path}/offline_queue.enc');
+
+      try {
+        final storage = EncryptedFileJournalStorage(encFile, secretKey: 'test_secret_key_123');
+        final journal1 = OfflineSyncJournal(storage: storage);
+
+        journal1.enqueueMutation(QueuedMutation(
+          id: 'mut-enc-001',
+          mutationType: 'SESSION_COMMIT',
+          accountId: 'FAC-ENC-99',
+          sessionId: 'SES-ENC-TEST',
+          idempotencyKey: 'idemp-enc-001',
+          payload: {
+            'candidates': [
+              {'student_id': 'STU-100', 'status': 'PRESENT_CONFIRMED'}
+            ]
+          },
+          createdAt: DateTime.now(),
+        ));
+
+        expect(encFile.existsSync(), isTrue);
+        final rawOnDisk = encFile.readAsStringSync();
+        // Encrypted file on disk must NOT contain plaintext JSON substrings
+        expect(rawOnDisk.contains('mut-enc-001'), isFalse);
+        expect(rawOnDisk.contains('PRESENT_CONFIRMED'), isFalse);
+
+        // 2. Recovery across app restart
+        final storage2 = EncryptedFileJournalStorage(encFile, secretKey: 'test_secret_key_123');
+        final journal2 = OfflineSyncJournal(storage: storage2);
+        expect(journal2.queueLength, 1);
+        final recovered = journal2.getPendingMutationsForAccount('FAC-ENC-99').first;
+        expect(recovered.id, 'mut-enc-001');
+        expect(recovered.sessionId, 'SES-ENC-TEST');
+
+        // 3. Tampering detection
+        final tamperedBytes = encFile.readAsBytesSync();
+        tamperedBytes[tamperedBytes.length - 2] ^= 0xFF; // Flip bit in ciphertext
+        encFile.writeAsBytesSync(tamperedBytes);
+
+        final storage3 = EncryptedFileJournalStorage(encFile, secretKey: 'test_secret_key_123');
+        final journal3 = OfflineSyncJournal(storage: storage3);
+        // Tampered payload fails HMAC verification and refuses to load corrupt data
+        expect(journal3.queueLength, 0);
+      } finally {
+        if (tempDir.existsSync()) {
+          tempDir.deleteSync(recursive: true);
+        }
+      }
+    });
   });
 }

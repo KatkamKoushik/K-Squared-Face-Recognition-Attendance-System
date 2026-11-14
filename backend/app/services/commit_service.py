@@ -270,7 +270,8 @@ class CommitService:
                 event_type=RealtimeEventType.RECEIPT_ISSUED,
                 channel=f"session:{session_id}",
                 payload=event_payload,
-            )
+            ),
+            db=db,
         )
         if dept_id:
             broadcaster.publish_sync(
@@ -278,7 +279,8 @@ class CommitService:
                     event_type=RealtimeEventType.DASHBOARD_STATS_UPDATED,
                     channel=f"department:{dept_id}",
                     payload=event_payload,
-                )
+                ),
+                db=db,
             )
 
         return receipt
@@ -430,6 +432,21 @@ class CommitService:
         )
         db.add(audit_event)
         db.flush()
+
+        broadcaster.publish_sync(
+            EventMessage(
+                event_type=RealtimeEventType.SESSION_STATE_CHANGED,
+                channel=f"session:{session_id}",
+                payload={
+                    "session_id": session_id,
+                    "action": action_type,
+                    "student_id": request.student_id,
+                    "unit_index": request.unit_index,
+                    "new_status": new_val,
+                },
+            ),
+            db=db,
+        )
 
         return AttendanceCorrectionResponse(
             record_id=record.id,

@@ -105,12 +105,49 @@ def test_role_hierarchy_faculty_cannot_act_as_sub_admin(db_session: Session):
     assert faculty_guard(sub_admin_user).id == sub_admin_user.id
 
 
-def test_demo_biometric_endpoints_privacy_guard(test_client: TestClient):
-    """Verify that public unauthenticated requests to /demo/enrolled-students have photo_url suppressed and rolls masked."""
-    res = test_client.get("/api/v1/demo/enrolled-students")
-    assert res.status_code == 200
-    data = res.json()["data"]
+def test_demo_biometric_endpoints_privacy_guard(test_client: TestClient, db_session, seed_data):
+    """
+    SEC-02: Public unauthenticated requests to /demo/enrolled-students and /demo/analyze
+    must be rejected with HTTP 401 Unauthorized to protect institutional biometric records.
+    Authenticated faculty callers succeed.
+    """
+    from app.domain.models.student import EnrollmentProfile
+
+    student = seed_data["students"][0]
+    profile = EnrollmentProfile(
+        student_id=student.id,
+        model_artifact_id="test_sface_model_sha256",
+        embedding_namespace="sface_v1_kucet",
+        embedding_dimension=128,
+        vector_data=[0.05] * 128,
+        profile_version=1,
+        is_active=True,
+    )
+    db_session.add(profile)
+    db_session.commit()
+
+    # 1. Unauthenticated request -> HTTP 401
+    res_unauth = test_client.get("/api/v1/demo/enrolled-students")
+    assert res_unauth.status_code == 401
+
+    res_analyze_unauth = test_client.post("/api/v1/demo/analyze")
+    assert res_analyze_unauth.status_code == 401
+
+    # 2. Authenticated Faculty request -> HTTP 200
+    from app.core.security import create_access_token
+    faculty = seed_data["faculty_user"]
+    token = create_access_token(
+        subject=str(faculty.id),
+        role=faculty.role.value,
+        additional_claims={"email": faculty.email, "user_id": faculty.id},
+    )
+    res_auth = test_client.get(
+        "/api/v1/demo/enrolled-students",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert res_auth.status_code == 200
+    data = res_auth.json()["data"]
+    assert len(data) > 0
     for item in data:
-        assert item["photo_url"] is None
-        assert item["roll_number"].endswith("***")
-        assert item["student_id"].startswith("anon_")
+        assert item["student_id"]
+        assert not item["student_id"].startswith("anon_")

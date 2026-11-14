@@ -90,7 +90,8 @@ class SessionService:
                     "state": session.state.value,
                     "planned_units": session.planned_units,
                 },
-            )
+            ),
+            db=db,
         )
 
         return SessionService.get_session_by_id(db, session.id)
