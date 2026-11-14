@@ -96,7 +96,8 @@ async def stream_events(
         count = 0
         subscription = broadcaster.subscribe(
             allowed_channels=requested_channels,
-            last_event_id=effective_last_event_id
+            last_event_id=effective_last_event_id,
+            db=db,
         )
 
         try:

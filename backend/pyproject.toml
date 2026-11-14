@@ -47,6 +47,7 @@ where = ["."]
 include = ["app*"]
 
 [tool.pytest.ini_options]
+addopts = "-p no:playwright"
 asyncio_mode = "auto"
 testpaths = ["tests"]
 python_files = ["test_*.py"]

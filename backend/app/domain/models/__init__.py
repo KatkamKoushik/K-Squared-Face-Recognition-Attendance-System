@@ -22,6 +22,7 @@ from app.domain.models.capture import CaptureBatch, Frame, FaceEvidence
 from app.domain.models.job import VisionJob
 from app.domain.models.attendance import AttendanceRecord, AttendanceAppeal
 from app.domain.models.audit import CommitReceipt, AuditEvent
+from app.domain.models.outbox import OutboxEvent
 from app.domain.models.model_registry import ModelArtifact, PolicyVersion
 
 __all__ = [
@@ -52,6 +53,7 @@ __all__ = [
     "AttendanceAppeal",
     "CommitReceipt",
     "AuditEvent",
+    "OutboxEvent",
     "ModelArtifact",
     "PolicyVersion",
 ]

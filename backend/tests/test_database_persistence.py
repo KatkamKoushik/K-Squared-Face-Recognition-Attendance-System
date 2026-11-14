@@ -241,6 +241,7 @@ def test_all_domain_models_registered_in_base_metadata():
         "faculty_assignments",
         "frames",
         "model_artifacts",
+        "outbox_events",
         "policy_versions",
         "roster_snapshots",
         "snapshot_student_items",

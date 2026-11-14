@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:math';
 import 'package:flutter/foundation.dart';
 
@@ -73,12 +74,71 @@ class QueuedMutation {
       );
 }
 
+/// Storage interface for durable mutation persistence across app lifecycles.
+abstract class JournalStorage {
+  String? readJournalSync();
+  void writeJournalSync(String data);
+  void clearJournalSync();
+}
+
+/// Durable, atomic file storage using atomic rename to prevent corruption on sudden kills.
+class FileJournalStorage implements JournalStorage {
+  final File file;
+
+  FileJournalStorage(this.file);
+
+  @override
+  String? readJournalSync() {
+    try {
+      if (file.existsSync()) {
+        return file.readAsStringSync();
+      }
+    } catch (e) {
+      debugPrint('FileJournalStorage read error: $e');
+    }
+    return null;
+  }
+
+  @override
+  void writeJournalSync(String data) {
+    try {
+      final parentDir = file.parent;
+      if (!parentDir.existsSync()) {
+        parentDir.createSync(recursive: true);
+      }
+      final tmpFile = File('${file.path}.tmp');
+      tmpFile.writeAsStringSync(data, flush: true);
+      if (tmpFile.existsSync()) {
+        tmpFile.renameSync(file.path);
+      }
+    } catch (e) {
+      debugPrint('FileJournalStorage atomic write error: $e');
+    }
+  }
+
+  @override
+  void clearJournalSync() {
+    try {
+      if (file.existsSync()) {
+        file.deleteSync();
+      }
+      final tmpFile = File('${file.path}.tmp');
+      if (tmpFile.existsSync()) {
+        tmpFile.deleteSync();
+      }
+    } catch (e) {
+      debugPrint('FileJournalStorage clear error: $e');
+    }
+  }
+}
+
 /// Durable, bounded Offline Sync Operation Journal (Checklist Controls 20-N001 to 20-N016).
 class OfflineSyncJournal extends ChangeNotifier {
   static const int maxQueueCapacity = 500; // Bounded storage (20-N005)
   static const int maxRetryAttempts = 5;
 
   final Map<String, QueuedMutation> _queue = {};
+  final JournalStorage? storage;
   DateTime? _lastSuccessfulSyncAt;
 
   DateTime? get lastSuccessfulSyncAt => _lastSuccessfulSyncAt;
@@ -93,6 +153,31 @@ class OfflineSyncJournal extends ChangeNotifier {
   int get syncedCount =>
       _queue.values.where((m) => m.status == MutationSyncStatus.synced).length;
 
+  OfflineSyncJournal({JournalStorage? storage, File? file})
+      : storage = storage ?? (file != null ? FileJournalStorage(file) : null) {
+    if (this.storage != null) {
+      final raw = this.storage!.readJournalSync();
+      if (raw != null && raw.trim().isNotEmpty) {
+        try {
+          deserialize(raw);
+        } catch (e) {
+          debugPrint('Failed to deserialize offline journal: $e');
+        }
+      }
+    }
+  }
+
+  void _persist() {
+    if (storage != null) {
+      try {
+        final data = serialize();
+        storage!.writeJournalSync(data);
+      } catch (e) {
+        debugPrint('Failed to persist offline journal: $e');
+      }
+    }
+  }
+
   /// Enqueue an offline mutation bound to the active teacher account (20-N002, 20-N006).
   bool enqueueMutation(QueuedMutation mutation) {
     if (_queue.length >= maxQueueCapacity) {
@@ -100,6 +185,7 @@ class OfflineSyncJournal extends ChangeNotifier {
       return false;
     }
     _queue[mutation.id] = mutation;
+    _persist();
     notifyListeners();
     return true;
   }
@@ -130,6 +216,7 @@ class OfflineSyncJournal extends ChangeNotifier {
     if (mutation != null) {
       mutation.status = MutationSyncStatus.synced;
       _lastSuccessfulSyncAt = DateTime.now();
+      _persist();
       notifyListeners();
     }
   }
@@ -146,6 +233,7 @@ class OfflineSyncJournal extends ChangeNotifier {
       } else {
         mutation.status = MutationSyncStatus.failedRetryable;
       }
+      _persist();
       notifyListeners();
     }
   }
@@ -154,6 +242,9 @@ class OfflineSyncJournal extends ChangeNotifier {
   void purgeOnLogout() {
     _queue.clear();
     _lastSuccessfulSyncAt = null;
+    if (storage != null) {
+      storage!.clearJournalSync();
+    }
     notifyListeners();
   }
 
