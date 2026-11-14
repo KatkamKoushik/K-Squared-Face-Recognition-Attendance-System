@@ -7,13 +7,54 @@ import asyncio
 from typing import Optional, Set
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
 from fastapi.responses import StreamingResponse
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.api.dependencies import get_current_user, get_db
+from app.api.dependencies import get_db, security_scheme
+from app.core.errors import AuthenticationError
+from app.core.security import verify_token
 from app.domain.models.academic import User
 from app.services.event_broadcaster import broadcaster, validate_channel_subscription
 
 router = APIRouter(prefix="/events", tags=["events"])
+
+
+def get_sse_current_user(
+    auth: Optional[HTTPAuthorizationCredentials] = Depends(security_scheme),
+    token: Optional[str] = Query(None, alias="token"),
+    db: Session = Depends(get_db),
+) -> User:
+    """
+    Authenticates SSE stream subscribers.
+    Permits URL token query parameters specifically for browser EventSource API,
+    which does not support custom HTTP Authorization headers in standard HTML5.
+    """
+    raw_token = auth.credentials if (auth and auth.credentials) else token
+    if not raw_token or raw_token in ("null", "undefined"):
+        raise AuthenticationError(
+            "Authorization header or token query parameter required for SSE connection",
+            reason_code="TOKEN_MISSING",
+        )
+
+    payload = verify_token(raw_token)
+    user_id = payload.get("user_id") or payload.get("sub")
+    email = payload.get("email")
+
+    user = None
+    if user_id:
+        user = db.get(User, user_id)
+    if not user and email:
+        user = db.execute(select(User).where(User.email == email)).scalar_one_or_none()
+
+    if not user or not user.is_active:
+        raise AuthenticationError("User is inactive or not found", reason_code="USER_NOT_ACTIVE")
+
+    token_ver = payload.get("token_version")
+    if token_ver is not None and token_ver != user.token_version:
+        raise AuthenticationError("Session has been revoked or expired. Please log in again.", reason_code="TOKEN_REVOKED")
+
+    return user
 
 
 @router.get("/stream", summary="Subscribe to real-time institutional event stream (SSE)")
@@ -22,7 +63,7 @@ async def stream_events(
     last_event_id: Optional[str] = Header(None, alias="Last-Event-ID"),
     query_last_event_id: Optional[str] = Query(None, alias="last_event_id"),
     limit: Optional[int] = Query(None, ge=0, description="Optional maximum number of events to receive"),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_sse_current_user),
     db: Session = Depends(get_db),
 ):
     """
@@ -55,7 +96,8 @@ async def stream_events(
         count = 0
         subscription = broadcaster.subscribe(
             allowed_channels=requested_channels,
-            last_event_id=effective_last_event_id
+            last_event_id=effective_last_event_id,
+            db=db,
         )
 
         try:

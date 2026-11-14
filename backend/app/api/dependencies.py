@@ -5,7 +5,7 @@ Enforces scoped authentication, server-side RBAC, and request correlation tracin
 
 import uuid
 from typing import List, Optional
-from fastapi import Depends, Header, HTTPException, Query, status
+from fastapi import Depends, Header, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -26,13 +26,13 @@ def get_correlation_id(x_correlation_id: Optional[str] = Header(None)) -> str:
 
 def get_current_user(
     auth: Optional[HTTPAuthorizationCredentials] = Depends(security_scheme),
-    token_param: Optional[str] = Query(None, alias="token"),
     db: Session = Depends(get_db),
 ) -> User:
-    """Validates the Bearer token (internal JWT) and returns the authenticated user."""
-    raw_token = auth.credentials if (auth and auth.credentials) else token_param
-    if not raw_token or raw_token in ("null", "undefined"):
-        raise AuthenticationError("Authorization header or token parameter missing or invalid", reason_code="TOKEN_MISSING")
+    """Validates the Bearer token (internal JWT) from Authorization header only."""
+    if not auth or not auth.credentials or auth.credentials in ("null", "undefined"):
+        raise AuthenticationError("Authorization header missing or invalid Bearer token", reason_code="TOKEN_MISSING")
+
+    raw_token = auth.credentials
 
     payload = verify_token(raw_token)
 
@@ -106,10 +106,8 @@ def require_roles(allowed_roles: List[UserRole]):
         elif user_role == UserRole.SUPER_ADMIN:
             if any(r in (UserRole.ADMIN, UserRole.SUB_ADMIN, UserRole.FACULTY) for r in allowed_roles):
                 is_authorized = True
-        # SUB_ADMIN and FACULTY are equivalent faculty tiers
-        elif user_role == UserRole.SUB_ADMIN and (UserRole.FACULTY in allowed_roles or UserRole.SUB_ADMIN in allowed_roles):
-            is_authorized = True
-        elif user_role == UserRole.FACULTY and (UserRole.SUB_ADMIN in allowed_roles or UserRole.FACULTY in allowed_roles):
+        # SUB_ADMIN inherits FACULTY privileges, but FACULTY cannot act as SUB_ADMIN
+        elif user_role == UserRole.SUB_ADMIN and UserRole.FACULTY in allowed_roles:
             is_authorized = True
 
         if not is_authorized:

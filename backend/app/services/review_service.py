@@ -163,7 +163,7 @@ class ReviewService:
                         uncertainty_reason=reason,
                         frame_id=best_sighting.frame_id,
                         detection_id=best_sighting.id,
-                        match_threshold=0.70,
+                        match_threshold=0.363,
                         model_version=best_sighting.model_artifact_hash,
                         quality_score=round(best_sighting.quality_score, 4) if best_sighting.quality_score is not None else None,
                         is_simulated=best_sighting.model_artifact_hash == "baseline_mock" or "mock" in (best_sighting.model_artifact_hash or "").lower(),

@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:frs_teacher_app/core/network/offline_sync_journal.dart';
 
@@ -138,6 +139,65 @@ void main() {
       expect(restored.id, 'mut-006');
       expect(restored.sessionId, 'SES-888');
       expect(restored.payload['test_key'], 'test_val');
+    });
+
+    test('FileJournalStorage persists mutations across app crash/process restarts', () async {
+      final tempDir = await Directory.systemTemp.createTemp('journal_test_');
+      final journalFile = File('${tempDir.path}/offline_queue.wal');
+
+      try {
+        // 1. First app run: create journal, enqueue mutations
+        final initialJournal = OfflineSyncJournal(file: journalFile);
+        expect(initialJournal.queueLength, 0);
+
+        final now = DateTime.now();
+        initialJournal.enqueueMutation(QueuedMutation(
+          id: 'mut-crash-001',
+          mutationType: 'SESSION_COMMIT',
+          accountId: 'FAC-KUCET-101',
+          sessionId: 'SES-CRASH-TEST',
+          idempotencyKey: 'idemp-crash-001',
+          payload: {'conducted_units': 2, 'records_count': 35},
+          createdAt: now,
+        ));
+
+        initialJournal.recordFailure('mut-crash-001', 'Network unreachable 503');
+        expect(initialJournal.queueLength, 1);
+        expect(initialJournal.pendingCount, 1);
+
+        // Verify the file was written
+        expect(journalFile.existsSync(), isTrue);
+
+        // 2. Simulate app kill/process restart: instantiate completely new journal with same file
+        final recoveredJournal = OfflineSyncJournal(file: journalFile);
+        expect(recoveredJournal.queueLength, 1);
+        expect(recoveredJournal.pendingCount, 1);
+
+        final pending = recoveredJournal.getPendingMutationsForAccount('FAC-KUCET-101');
+        expect(pending.length, 1);
+        expect(pending.first.id, 'mut-crash-001');
+        expect(pending.first.sessionId, 'SES-CRASH-TEST');
+        expect(pending.first.status, MutationSyncStatus.failedRetryable);
+        expect(pending.first.attemptCount, 1);
+        expect(pending.first.lastErrorMessage, 'Network unreachable 503');
+
+        // 3. Mark synced in recovered session and verify file update
+        recoveredJournal.markSynced('mut-crash-001');
+        expect(recoveredJournal.syncedCount, 1);
+
+        final thirdRunJournal = OfflineSyncJournal(file: journalFile);
+        expect(thirdRunJournal.syncedCount, 1);
+        expect(thirdRunJournal.pendingCount, 0);
+
+        // 4. Logout purges memory and disk
+        thirdRunJournal.purgeOnLogout();
+        expect(thirdRunJournal.queueLength, 0);
+        expect(journalFile.existsSync(), isFalse);
+      } finally {
+        if (tempDir.existsSync()) {
+          tempDir.deleteSync(recursive: true);
+        }
+      }
     });
   });
 }

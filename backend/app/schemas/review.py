@@ -50,6 +50,8 @@ class SessionProposalReviewResponse(BaseModel):
     proposed_absent_count: int
     uncertain_count: int
     unknown_faces_count: int
+    is_processing_complete: bool = True
+    job_state: str = "PROPOSAL_READY"
     candidates: List[CandidateProposalItem]
     unknown_faces: List[UnknownFaceItem] = []
     recapture_hints: List[RecaptureHint] = []

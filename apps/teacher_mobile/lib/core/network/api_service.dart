@@ -274,11 +274,11 @@ class FrsApiService {
     throw Exception('Proposal retrieval failed on $baseUrl/sessions/$sessionId/proposal (HTTP ${res.statusCode}): ${res.body}');
   }
 
-  /// Polling for vision worker processing completion.
+  /// Explicit completion contract polling for vision worker processing.
   Future<Map<String, dynamic>> pollProposalData({
     required String sessionId,
-    int maxAttempts = 6,
-    Duration interval = const Duration(seconds: 1),
+    int maxAttempts = 12,
+    Duration interval = const Duration(milliseconds: 800),
   }) async {
     Object? lastError;
     for (int i = 0; i < maxAttempts; i++) {
@@ -286,14 +286,15 @@ class FrsApiService {
         final res = await _client.get(
           Uri.parse('$baseUrl/sessions/$sessionId/proposal'),
           headers: _headers(),
-        ).timeout(const Duration(seconds: 4));
+        ).timeout(const Duration(seconds: 5));
         _checkAuthError(res);
 
         if (res.statusCode == 200) {
           final payload = _unwrap(res);
-          if (payload is Map<String, dynamic> && payload['candidates'] != null) {
-            final List<dynamic> list = payload['candidates'];
-            if (list.isNotEmpty || i == maxAttempts - 1) {
+          if (payload is Map<String, dynamic>) {
+            final bool isComplete = payload['is_processing_complete'] as bool? ?? true;
+            final String? jobState = payload['job_state'] as String?;
+            if (isComplete || jobState == 'PROPOSAL_READY' || jobState == 'COMPLETED') {
               return payload;
             }
           }
@@ -310,6 +311,30 @@ class FrsApiService {
     }
     final detail = lastError != null ? ' ($lastError)' : '';
     throw Exception('Vision worker processing timed out for session $sessionId on $baseUrl$detail.');
+  }
+
+  /// POST /sessions/{id}/adjudicate
+  /// Records faculty manual review adjudications in the backend audit ledger.
+  Future<Map<String, dynamic>?> adjudicateSession({
+    required String sessionId,
+    required List<Map<String, dynamic>> adjudications,
+  }) async {
+    final res = await _client.post(
+      Uri.parse('$baseUrl/sessions/$sessionId/adjudicate'),
+      headers: _headers(),
+      body: jsonEncode({
+        'adjudications': adjudications,
+      }),
+    ).timeout(const Duration(seconds: 8));
+    _checkAuthError(res);
+
+    if (res.statusCode == 200 || res.statusCode == 201) {
+      final payload = _unwrap(res);
+      if (payload is Map<String, dynamic>) {
+        return payload;
+      }
+    }
+    throw Exception('Session adjudication failed on $baseUrl (HTTP ${res.statusCode}): ${res.body}');
   }
 
   /// POST /sessions/{id}/commit

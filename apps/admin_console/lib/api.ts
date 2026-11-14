@@ -923,7 +923,11 @@ export async function importStudentsCsv(file: File): Promise<{ imported_count: n
 }
 
 export function getOfferingAttendanceExportUrl(offeringId: string): string {
-  return `${API_BASE}/offerings/${offeringId}/export/csv`;
+  return `${getApiBase()}/offerings/${offeringId}/export/csv`;
+}
+
+export function getOfferingAttendanceXlsxExportUrl(offeringId: string): string {
+  return `${getApiBase()}/offerings/${offeringId}/export/xlsx`;
 }
 
 export interface DemoFaceBox {
