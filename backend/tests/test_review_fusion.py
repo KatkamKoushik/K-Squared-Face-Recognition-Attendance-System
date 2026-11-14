@@ -75,6 +75,8 @@ def review_setup(db_session):
         "stu2": stu2,
         "stu3": stu3,
         "stu4": stu4,
+        "faculty": faculty,
+        "faculty_user": faculty_user,
     }
 
 
@@ -285,3 +287,45 @@ def test_conflict_detection_and_ambiguity_flagging(db_session, review_setup):
     assert candidate_map[stu2.id].evidence_state == EvidenceState.REVIEW
     assert candidate_map[stu2.id].requires_manual_attention is True
     assert candidate_map[stu2.id].uncertainty_reason == "LOW_MARGIN_AMBIGUOUS_CANDIDATE"
+
+
+def test_adjudicate_session_proposal_audit_logging(db_session, review_setup):
+    from app.api.v1.review import adjudicate_session_proposal, SessionAdjudicationRequest, CandidateAdjudicationItem
+    from app.domain.models.audit import AuditEvent
+    from app.domain.enums import AuditAction
+
+    session = review_setup["session"]
+    stu1 = review_setup["stu1"]
+    faculty = review_setup["faculty"]
+    faculty_user = review_setup["faculty_user"]
+
+    req = SessionAdjudicationRequest(
+        adjudications=[
+            CandidateAdjudicationItem(
+                student_id=stu1.id,
+                status=AttendanceStatus.PRESENT_CONFIRMED,
+                reason="VISUALLY_VERIFIED_BY_FACULTY",
+            )
+        ]
+    )
+
+    resp = adjudicate_session_proposal(
+        session_id=session.id,
+        request=req,
+        db=db_session,
+        faculty=faculty,
+        current_user=faculty_user,
+        correlation_id="corr-adj-123",
+    )
+
+    assert resp.data["adjudications_applied"] == 1
+    assert resp.data["status"] == "ADJUDICATIONS_RECORDED"
+
+    # Verify audit event was logged
+    audit_row = db_session.query(AuditEvent).filter(
+        AuditEvent.session_id == session.id,
+        AuditEvent.action == AuditAction.PROPOSAL_REVIEWED,
+    ).first()
+    assert audit_row is not None
+    assert audit_row.actor_id == faculty_user.id
+    assert audit_row.correlation_id == "corr-adj-123"

@@ -66,6 +66,19 @@ BENCHMARK_RUNS = [
         "evaluation_lead": "K2-FRS Distributed Systems Lead",
         "benchmark_execution_date": date.today(),
     },
+    {
+        "benchmark_run_id": "BENCH-003",
+        "evaluated_agent_model": "Claude 3.7 Sonnet",
+        "benchmark_suite_domain": "K2-FRS-Institutional-Product-Bench",
+        "tasks_evaluated_count": 32,
+        "pass_rate_percentage": 100.00,
+        "tool_hallucination_rate_pct": 0.00,
+        "average_tokens_per_task": 10900,
+        "cost_per_solved_task_usd": 0.0650,
+        "regression_verdict": "Superior",
+        "evaluation_lead": "K2-FRS Product Architecture Lead",
+        "benchmark_execution_date": date.today(),
+    },
 ]
 
 

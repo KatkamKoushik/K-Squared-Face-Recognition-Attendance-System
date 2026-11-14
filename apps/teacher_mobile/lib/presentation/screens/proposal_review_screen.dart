@@ -203,18 +203,36 @@ class ProposalReviewScreen extends ConsumerWidget {
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      Text(
-                                        'PROVENANCE: Frame ${candidate.frameId ?? "N/A"} • Detection ${candidate.detectionId ?? "N/A"}',
-                                        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppTheme.textMutedLight),
+                                      Row(
+                                        children: [
+                                          Text(
+                                            'PROVENANCE: Frame ${candidate.frameId ?? "N/A"} • Detection ${candidate.detectionId ?? "N/A"}',
+                                            style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppTheme.textMutedLight),
+                                          ),
+                                          const Spacer(),
+                                          if ((candidate.highestSimilarityScore ?? 0.0) >= (candidate.matchThreshold ?? 0.363))
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                              decoration: BoxDecoration(
+                                                color: AppTheme.statusMatched.withValues(alpha: 0.12),
+                                                borderRadius: BorderRadius.circular(4),
+                                                border: Border.all(color: AppTheme.statusMatched.withValues(alpha: 0.4)),
+                                              ),
+                                              child: const Text(
+                                                'VERIFIED MATCH',
+                                                style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: AppTheme.statusMatched),
+                                              ),
+                                            ),
+                                        ],
                                       ),
                                       const SizedBox(height: 3),
                                       Text(
-                                        'Similarity: ${((candidate.highestSimilarityScore ?? 0.0) * 100).toInt()}% (Threshold: ${((candidate.matchThreshold ?? 0.70) * 100).toInt()}%) • Quality: ${((candidate.qualityScore ?? 1.0) * 100).toInt()}%',
+                                        'Cosine Similarity: ${(candidate.highestSimilarityScore ?? 0.0).toStringAsFixed(3)} (Threshold: ${(candidate.matchThreshold ?? 0.363).toStringAsFixed(3)}) • Quality: ${((candidate.qualityScore ?? 1.0) * 100).toInt()}%',
                                         style: const TextStyle(fontSize: 11, color: AppTheme.primaryNavy, fontWeight: FontWeight.w600),
                                       ),
                                       const SizedBox(height: 2),
                                       Text(
-                                        'Model Lineage: ${candidate.modelVersion ?? "sface_128d_v1"}',
+                                        'Model Lineage: ${candidate.modelVersion ?? "sface_128d_v1"} • Sighted Frames: ${candidate.sightedFrameIds.isEmpty ? "1" : candidate.sightedFrameIds.length.toString()}',
                                         style: const TextStyle(fontSize: 10, color: AppTheme.textMutedLight),
                                       ),
                                     ],
