@@ -58,6 +58,18 @@ class MockServerSuccessApiService extends FrsApiService {
   }
 
   @override
+  Future<Map<String, dynamic>?> adjudicateSession({
+    required String sessionId,
+    required List<Map<String, dynamic>> adjudications,
+  }) async {
+    return {
+      'session_id': sessionId,
+      'adjudications_applied': adjudications.length,
+      'status': 'ADJUDICATIONS_RECORDED',
+    };
+  }
+
+  @override
   Future<CommitReceiptResponse?> getSessionReceipt(String sessionId) async {
     return CommitReceiptResponse(
       id: 'RCP-AUTH-SERVER-001',
@@ -306,6 +318,32 @@ void main() {
       expect(recovered, isNotNull);
       expect(recovered?.id, 'RCP-AUTH-SERVER-001');
       expect(state.state, SessionState.finalized);
+    });
+
+    test('P1: syncAdjudications persists faculty review decisions to audit control plane', () async {
+      final container = ProviderContainer(
+        overrides: [
+          apiProvider.overrideWithValue(MockServerSuccessApiService()),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      final notifier = container.read(sessionProvider.notifier);
+      await notifier.selectOffering({'id': 'OFF-CS401-2026'});
+      notifier.addCapturedFrame(
+        frameId: 'FRM-01',
+        hash: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+        bytes: [1, 2, 3],
+      );
+      await notifier.submitBatchForProcessing();
+
+      // Explicitly adjudicate unconfirmed candidates
+      notifier.markAllUnadjudicatedAsAbsent();
+
+      // Trigger sync
+      await notifier.syncAdjudications();
+      final state = container.read(sessionProvider);
+      expect(state.errorMessage, isNull);
     });
   });
 }

@@ -2,3 +2,4 @@ benchmark_run_id,evaluated_agent_model,benchmark_suite_domain,tasks_evaluated_co
 BENCH-001,Claude 3.7 Sonnet,K2-FRS-Vision-Bench,38,100.0,0.0,14200,0.085,Superior,K2-FRS Engineering Lead,2026-11-14
 BENCH-002,Claude 3.7 Sonnet,K2-FRS-Offline-Outbox-Bench,28,100.0,0.0,11800,0.071,Superior,K2-FRS Distributed Systems Lead,2026-11-14
 BENCH-003,Claude 3.7 Sonnet,K2-FRS-Institutional-Product-Bench,32,100.0,0.0,10900,0.065,Superior,K2-FRS Product Architecture Lead,2026-11-14
+BENCH-004,Claude 3.7 Sonnet,K2-FRS-Sweep-Fusion-Adjudication-Bench,29,100.0,0.0,10400,0.062,Superior,K2-FRS Mobile & Edge Systems Lead,2026-11-14

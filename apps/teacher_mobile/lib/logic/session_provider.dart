@@ -276,6 +276,33 @@ class SessionNotifier extends Notifier<SessionWorkflowState> {
     state = state.copyWith(candidates: updated, errorMessage: null);
   }
 
+  /// Records faculty review adjudications to the backend audit ledger.
+  Future<void> syncAdjudications() async {
+    if (state.sessionId.isEmpty) return;
+    final adjudications = <Map<String, dynamic>>[];
+    for (final c in state.candidates) {
+      if (c.unitAttendance.isNotEmpty) {
+        final primaryStatus = c.unitAttendance[1] ?? c.proposalStatus;
+        if (primaryStatus != null) {
+          adjudications.add({
+            'student_id': c.studentId,
+            'status': primaryStatus.toWire(),
+            'reason': c.uncertaintyReason ?? 'FACULTY_ADJUDICATED',
+          });
+        }
+      }
+    }
+    if (adjudications.isEmpty) return;
+    try {
+      await _api.adjudicateSession(
+        sessionId: state.sessionId,
+        adjudications: adjudications,
+      );
+    } catch (_) {
+      // Non-blocking offline resilience; commit carries authoritative ledger state
+    }
+  }
+
   Future<CommitReceiptResponse?> commitFinalAttendance() async {
     const uuid = Uuid();
     final idempotencyKey = 'IDEMP-${uuid.v4().replaceAll('-', '')}';
@@ -297,6 +324,9 @@ class SessionNotifier extends Notifier<SessionWorkflowState> {
       state = state.copyWith(errorMessage: err);
       return null;
     }
+
+    // Persist faculty adjudication audit log
+    await syncAdjudications();
 
     try {
       final serverReceipt = await _api.commitSession(

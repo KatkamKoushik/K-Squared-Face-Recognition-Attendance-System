@@ -313,6 +313,30 @@ class FrsApiService {
     throw Exception('Vision worker processing timed out for session $sessionId on $baseUrl$detail.');
   }
 
+  /// POST /sessions/{id}/adjudicate
+  /// Records faculty manual review adjudications in the backend audit ledger.
+  Future<Map<String, dynamic>?> adjudicateSession({
+    required String sessionId,
+    required List<Map<String, dynamic>> adjudications,
+  }) async {
+    final res = await _client.post(
+      Uri.parse('$baseUrl/sessions/$sessionId/adjudicate'),
+      headers: _headers(),
+      body: jsonEncode({
+        'adjudications': adjudications,
+      }),
+    ).timeout(const Duration(seconds: 8));
+    _checkAuthError(res);
+
+    if (res.statusCode == 200 || res.statusCode == 201) {
+      final payload = _unwrap(res);
+      if (payload is Map<String, dynamic>) {
+        return payload;
+      }
+    }
+    throw Exception('Session adjudication failed on $baseUrl (HTTP ${res.statusCode}): ${res.body}');
+  }
+
   /// POST /sessions/{id}/commit
   /// P0-G: Strict faculty adjudication. Zero silent defaults to absentConfirmed.
   Future<CommitReceiptResponse?> commitSession({

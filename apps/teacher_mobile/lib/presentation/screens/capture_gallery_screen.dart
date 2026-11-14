@@ -57,6 +57,42 @@ class _CaptureGalleryScreenState extends ConsumerState<CaptureGalleryScreen> {
     }
   }
 
+  Future<void> _pickGalleryPhotos() async {
+    try {
+      final photos = await _picker.pickMultiImage(
+        maxWidth: 3840,
+        maxHeight: 2160,
+        imageQuality: 92,
+      );
+
+      if (photos.isNotEmpty) {
+        for (final photo in photos) {
+          final bytes = await photo.readAsBytes();
+          if (bytes.isNotEmpty) {
+            final hash = sha256.convert(bytes).toString();
+            final frameId = 'FRM-${_uuid.v4().substring(0, 8).toUpperCase()}';
+            ref.read(sessionProvider.notifier).addCapturedFrame(
+              frameId: frameId,
+              hash: hash,
+              path: photo.path,
+              bytes: bytes,
+            );
+          }
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gallery picker failed: ${e.toString().replaceFirst('Exception: ', '')}'),
+            backgroundColor: AppTheme.errorRed,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -142,21 +178,82 @@ class _CaptureGalleryScreenState extends ConsumerState<CaptureGalleryScreen> {
                 const SizedBox(height: 16),
               ],
 
-              // Capture Action Button (Strictly Real Camera in Mobile App)
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton.icon(
-                  icon: const Icon(Icons.camera_alt),
-                  label: const Text('Capture Classroom Sweep Photo'),
-                  style: FilledButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    backgroundColor: AppTheme.primaryNavy,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              // Classroom Capture Actions: Camera Sweep & Multi-Photo Gallery Pick
+              Row(
+                children: [
+                  Expanded(
+                    child: FilledButton.icon(
+                      icon: const Icon(Icons.camera_alt),
+                      label: const Text('Take Photo'),
+                      style: FilledButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        backgroundColor: AppTheme.primaryNavy,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                      onPressed: isProcessing ? null : () => _capturePhoto(),
+                    ),
                   ),
-                  onPressed: isProcessing ? null : () => _capturePhoto(),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      icon: const Icon(Icons.photo_library_outlined),
+                      label: const Text('Pick Sweep Photos'),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        side: const BorderSide(color: AppTheme.primaryNavy),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                      onPressed: isProcessing ? null : () => _pickGalleryPhotos(),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+
+              // Multi-Angle Sweep Coverage Telemetry Card
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: frames.isEmpty
+                      ? AppTheme.surfaceLight
+                      : (frames.length >= 2 ? AppTheme.statusMatched.withValues(alpha: 0.1) : AppTheme.secondaryBlue.withValues(alpha: 0.1)),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: frames.isEmpty
+                        ? AppTheme.borderLight
+                        : (frames.length >= 2 ? AppTheme.statusMatched.withValues(alpha: 0.3) : AppTheme.secondaryBlue.withValues(alpha: 0.3)),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      frames.length >= 2 ? Icons.check_circle_outline : Icons.info_outline,
+                      size: 18,
+                      color: frames.isEmpty
+                          ? AppTheme.textMutedLight
+                          : (frames.length >= 2 ? AppTheme.statusMatched : AppTheme.secondaryBlue),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        frames.isEmpty
+                            ? 'Classroom Sweep: Capture 2-3 overlapping angles for full row coverage'
+                            : (frames.length == 1
+                                ? 'Angle 1 captured. Tap Pick or Take Photo to add side sweeps.'
+                                : 'Multi-angle sweep active (${frames.length} frames). Cross-frame identity fusion enabled.'),
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: frames.isEmpty
+                              ? AppTheme.textMutedLight
+                              : (frames.length >= 2 ? AppTheme.statusMatched : AppTheme.secondaryBlue),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
 
               // Photo List Header
               Row(
