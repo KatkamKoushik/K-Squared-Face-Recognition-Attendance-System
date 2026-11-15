@@ -6,6 +6,8 @@ import '../../logic/auth_provider.dart';
 import '../../logic/session_provider.dart';
 import 'session_setup_screen.dart';
 import 'student_enrollment_screen.dart';
+import 'model_manager_screen.dart';
+import 'class_pack_screen.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -220,6 +222,109 @@ class HomeScreen extends ConsumerWidget {
                       ),
                     ],
                   ),
+                ),
+
+                const SizedBox(height: 12),
+
+                // AI Model Manager & Class Packs Quick Row
+                Row(
+                  children: [
+                    Expanded(
+                      child: InkWell(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const ModelManagerScreen(),
+                            ),
+                          );
+                        },
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: AppTheme.surfaceLight,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: AppTheme.borderLight),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  CircleAvatar(
+                                    radius: 16,
+                                    backgroundColor: AppTheme.primaryNavy.withValues(alpha: 0.1),
+                                    child: const Icon(Icons.memory_rounded, color: AppTheme.primaryNavy, size: 18),
+                                  ),
+                                  const Spacer(),
+                                  const Icon(Icons.arrow_forward_ios, size: 12, color: AppTheme.textMutedLight),
+                                ],
+                              ),
+                              const SizedBox(height: 10),
+                              const Text(
+                                'AI Model Manager',
+                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                              ),
+                              const SizedBox(height: 2),
+                              const Text(
+                                'Packs & Auto-Cascade',
+                                style: TextStyle(fontSize: 11, color: AppTheme.textMutedLight),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: InkWell(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const ClassPackScreen(),
+                            ),
+                          );
+                        },
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: AppTheme.surfaceLight,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: AppTheme.borderLight),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  CircleAvatar(
+                                    radius: 16,
+                                    backgroundColor: AppTheme.statusMatched.withValues(alpha: 0.1),
+                                    child: const Icon(Icons.folder_shared_outlined, color: AppTheme.statusMatched, size: 18),
+                                  ),
+                                  const Spacer(),
+                                  const Icon(Icons.arrow_forward_ios, size: 12, color: AppTheme.textMutedLight),
+                                ],
+                              ),
+                              const SizedBox(height: 10),
+                              const Text(
+                                'Class Data Packs',
+                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                              ),
+                              const SizedBox(height: 2),
+                              const Text(
+                                'Authorized Offline Rosters',
+                                style: TextStyle(fontSize: 11, color: AppTheme.textMutedLight),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
 
                 // Offline Sync Pending Banner

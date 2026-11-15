@@ -7,6 +7,7 @@ import '../../core/theme/app_theme.dart';
 import '../../data/models/domain_contracts.dart';
 import '../../logic/session_provider.dart';
 import 'student_enrollment_screen.dart';
+import 'model_manager_screen.dart';
 
 enum OverlayDisplayMode {
   clean,     // Clean focus: compact student name pill on matched, minimal ? dot on unknown
@@ -270,6 +271,31 @@ class _DemoVisualizerScreenState extends ConsumerState<DemoVisualizerScreen> wit
                     ),
                   );
                 }),
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppTheme.primaryNavy,
+                      side: const BorderSide(color: AppTheme.primaryNavy),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                    icon: const Icon(Icons.tune_rounded, size: 18),
+                    label: const Text(
+                      'Manage & Download AI Model Packs',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                    ),
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const ModelManagerScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                ),
               ],
             ),
           ),
