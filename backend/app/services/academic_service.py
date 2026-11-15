@@ -4,7 +4,7 @@ K² FRS — Academic Administration & Eligibility Service.
 
 from datetime import date, datetime, timezone
 from typing import List, Optional
-from sqlalchemy import select, and_, delete
+from sqlalchemy import select, and_, delete, text
 from sqlalchemy.orm import Session
 from app.core.errors import PermissionDeniedError, ResourceNotFoundError
 from app.domain.enums import EnrollmentStatus, UserRole, StudentLifecycleStatus, AuditAction, EnrollmentSubmissionStatus
@@ -876,12 +876,19 @@ class AcademicService:
 
         roll = student.roll_number
         name = student.full_name
+        sid = student.id
 
-        # Delete dependent records
-        db.execute(delete(EnrollmentProfile).where(EnrollmentProfile.student_id == student.id))
-        db.execute(delete(EnrollmentSubmission).where(EnrollmentSubmission.roll_number == roll))
-        db.execute(delete(Enrollment).where(Enrollment.student_id == student.id))
-        db.delete(student)
+        # Delete dependent records across all referencing foreign key tables
+        db.execute(text("DELETE FROM snapshot_student_items WHERE student_id = :sid"), {"sid": sid})
+        db.execute(text("UPDATE face_evidences SET candidate_student_id = NULL WHERE candidate_student_id = :sid"), {"sid": sid})
+        db.execute(text("DELETE FROM attendance_records WHERE student_id = :sid"), {"sid": sid})
+        db.execute(text("DELETE FROM attendance_appeals WHERE student_id = :sid"), {"sid": sid})
+        db.execute(text("DELETE FROM student_data_corrections WHERE student_id = :sid"), {"sid": sid})
+        db.execute(text("DELETE FROM enrollment_profiles WHERE student_id = :sid"), {"sid": sid})
+        db.execute(text("DELETE FROM enrollments WHERE student_id = :sid"), {"sid": sid})
+        db.execute(text("DELETE FROM users WHERE student_id = :sid"), {"sid": sid})
+        db.execute(text("DELETE FROM enrollment_submissions WHERE roll_number = :roll"), {"roll": roll})
+        db.execute(text("DELETE FROM students WHERE id = :sid"), {"sid": sid})
 
         audit = AuditEvent(
             session_id=None,
