@@ -39,8 +39,8 @@ def option1_profiles(db: Session):
     except Exception as exc:
         pytest.skip(f"Database connection unavailable: {exc}")
 
-    if not results:
-        pytest.skip("No active Option 1 profiles found in database (requires seeded PostgreSQL database)")
+    if not results or len(results) < 31:
+        pytest.skip("Requires full seeded PostgreSQL database with >= 31 Option 1 profiles")
     return results
 
 

@@ -706,7 +706,7 @@ class _StudentEditSheetState extends ConsumerState<_StudentEditSheet> {
               children: [
                 Expanded(
                   child: DropdownButtonFormField<String>(
-                    initialValue: _selectedDept,
+                    value: _selectedDept,
                     decoration: const InputDecoration(labelText: 'Branch / Dept', border: OutlineInputBorder(), isDense: true),
                     items: widget.departments.map((d) => DropdownMenuItem(value: d, child: Text(d))).toList(),
                     onChanged: (val) {
@@ -717,7 +717,7 @@ class _StudentEditSheetState extends ConsumerState<_StudentEditSheet> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: DropdownButtonFormField<String>(
-                    initialValue: _selectedYear,
+                    value: _selectedYear,
                     decoration: const InputDecoration(labelText: 'Batch / Year', border: OutlineInputBorder(), isDense: true),
                     items: widget.academicYears.map((y) => DropdownMenuItem(value: y, child: Text(y))).toList(),
                     onChanged: (val) {

@@ -256,7 +256,7 @@ class _ModelManagerScreenState extends State<ModelManagerScreen> {
                   const SizedBox(width: 8),
                   Switch(
                     value: _manager.isAutoModeEnabled,
-                    activeThumbColor: AppTheme.primaryNavy,
+                    activeColor: AppTheme.primaryNavy,
                     onChanged: (val) => _manager.toggleAutoMode(val),
                   ),
                 ],

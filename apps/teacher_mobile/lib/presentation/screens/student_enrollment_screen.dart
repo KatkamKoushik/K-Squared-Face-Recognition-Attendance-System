@@ -316,7 +316,7 @@ class _StudentEnrollmentScreenState extends ConsumerState<StudentEnrollmentScree
                         Expanded(
                           flex: 5,
                           child: DropdownButtonFormField<String>(
-                            initialValue: _selectedDepartment,
+                            value: _selectedDepartment,
                             decoration: const InputDecoration(
                               labelText: 'Department *',
                               prefixIcon: Icon(Icons.apartment_outlined),
@@ -341,7 +341,7 @@ class _StudentEnrollmentScreenState extends ConsumerState<StudentEnrollmentScree
                         Expanded(
                           flex: 6,
                           child: DropdownButtonFormField<String>(
-                            initialValue: _selectedAcademicYear,
+                            value: _selectedAcademicYear,
                             decoration: const InputDecoration(
                               labelText: 'Batch / Year',
                               prefixIcon: Icon(Icons.calendar_today_outlined),

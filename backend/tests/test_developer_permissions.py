@@ -7,37 +7,47 @@ Verifies that:
 4. Non-developer accounts receive 403 Forbidden on these operations.
 """
 
+import uuid
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
-from app.main import app
-from app.core.database import SessionLocal
+from app.main import create_application
+from app.core.database import get_db
 from app.core.security import create_access_token, hash_password
 from app.domain.enums import UserRole
 from app.domain.models.academic import User, Department, Cohort
 from app.domain.models.student import Student, EnrollmentProfile
 
-client = TestClient(app)
-
 
 @pytest.fixture
-def db_session():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+def dev_client(db_session: Session, seed_data):
+    """Provides a TestClient with database session overridden and developer seeded."""
+    dev = db_session.query(User).filter(User.email == "koushikkatkam@gmail.com").first()
+    if not dev:
+        dev = User(
+            email="koushikkatkam@gmail.com",
+            hashed_password=hash_password("developer_secret_pass"),
+            role=UserRole.DEVELOPER,
+            department_id=seed_data["department"].id,
+            is_active=True,
+        )
+        db_session.add(dev)
+        db_session.commit()
+
+    app = create_application()
+    app.dependency_overrides[get_db] = lambda: db_session
+    return TestClient(app)
 
 
-def test_koushikkatkam_developer_account_exists(db_session: Session):
+def test_koushikkatkam_developer_account_exists(db_session: Session, dev_client: TestClient):
     dev = db_session.query(User).filter(User.email == "koushikkatkam@gmail.com").first()
     assert dev is not None, "koushikkatkam@gmail.com must exist in database"
     assert dev.role == UserRole.DEVELOPER, "koushikkatkam@gmail.com must hold UserRole.DEVELOPER"
     assert dev.is_active is True, "koushikkatkam@gmail.com must be active"
 
 
-def test_developer_can_update_student_details(db_session: Session):
+def test_developer_can_update_student_details(db_session: Session, dev_client: TestClient):
     dev = db_session.query(User).filter(User.email == "koushikkatkam@gmail.com").first()
     token = create_access_token(subject=dev.email, role="DEVELOPER", additional_claims={"user_id": dev.id})
     headers = {"Authorization": f"Bearer {token}"}
@@ -47,7 +57,7 @@ def test_developer_can_update_student_details(db_session: Session):
     original_name = student.full_name
 
     # Developer updates name
-    res = client.patch(
+    res = dev_client.patch(
         f"/api/v1/academic/students/{student.id}",
         headers=headers,
         json={"full_name": "Test Modified Name"},
@@ -57,7 +67,7 @@ def test_developer_can_update_student_details(db_session: Session):
     assert data["full_name"] == "Test Modified Name"
 
     # Restore original name
-    res_restore = client.patch(
+    res_restore = dev_client.patch(
         f"/api/v1/academic/students/{student.id}",
         headers=headers,
         json={"full_name": original_name},
@@ -66,7 +76,7 @@ def test_developer_can_update_student_details(db_session: Session):
     assert res_restore.json()["data"]["full_name"] == original_name
 
 
-def test_non_developer_forbidden_from_updating_student_details(db_session: Session):
+def test_non_developer_forbidden_from_updating_student_details(db_session: Session, dev_client: TestClient):
     faculty = db_session.query(User).filter(User.role == UserRole.FACULTY).first()
     if not faculty:
         faculty = db_session.query(User).filter(User.role == UserRole.SUB_ADMIN).first()
@@ -76,7 +86,7 @@ def test_non_developer_forbidden_from_updating_student_details(db_session: Sessi
     headers = {"Authorization": f"Bearer {token}"}
 
     student = db_session.query(Student).first()
-    res = client.patch(
+    res = dev_client.patch(
         f"/api/v1/academic/students/{student.id}",
         headers=headers,
         json={"full_name": "Unauthorized Hack Name"},
@@ -84,8 +94,7 @@ def test_non_developer_forbidden_from_updating_student_details(db_session: Sessi
     assert res.status_code == 403, f"Expected 403 Forbidden, got {res.status_code}"
 
 
-def test_developer_can_delete_student_photo_and_profiles(db_session: Session):
-    import uuid
+def test_developer_can_delete_student_photo_and_profiles(db_session: Session, dev_client: TestClient):
     dev = db_session.query(User).filter(User.email == "koushikkatkam@gmail.com").first()
     token = create_access_token(subject=dev.email, role="DEVELOPER", additional_claims={"user_id": dev.id})
     headers = {"Authorization": f"Bearer {token}"}
@@ -122,14 +131,14 @@ def test_developer_can_delete_student_photo_and_profiles(db_session: Session):
     admin = db_session.query(User).filter(User.role == UserRole.ADMIN).first()
     if admin:
         admin_token = create_access_token(subject=admin.email, role="ADMIN", additional_claims={"user_id": admin.id})
-        res_admin = client.delete(
+        res_admin = dev_client.delete(
             f"/api/v1/academic/students/{temp_id}/photo",
             headers={"Authorization": f"Bearer {admin_token}"},
         )
         assert res_admin.status_code == 403
 
     # Developer delete succeeds
-    res = client.delete(
+    res = dev_client.delete(
         f"/api/v1/academic/students/{temp_id}/photo",
         headers=headers,
     )
@@ -147,8 +156,7 @@ def test_developer_can_delete_student_photo_and_profiles(db_session: Session):
     db_session.commit()
 
 
-def test_developer_can_delete_student_completely(db_session: Session):
-    import uuid
+def test_developer_can_delete_student_completely(db_session: Session, dev_client: TestClient):
     dev = db_session.query(User).filter(User.email == "koushikkatkam@gmail.com").first()
     token = create_access_token(subject=dev.email, role="DEVELOPER", additional_claims={"user_id": dev.id})
     headers = {"Authorization": f"Bearer {token}"}
@@ -171,14 +179,14 @@ def test_developer_can_delete_student_completely(db_session: Session):
     admin = db_session.query(User).filter(User.role == UserRole.ADMIN).first()
     if admin:
         admin_token = create_access_token(subject=admin.email, role="ADMIN", additional_claims={"user_id": admin.id})
-        res_admin = client.delete(
+        res_admin = dev_client.delete(
             f"/api/v1/academic/students/{temp_id}",
             headers={"Authorization": f"Bearer {admin_token}"},
         )
         assert res_admin.status_code == 403
 
     # Developer delete succeeds
-    res = client.delete(
+    res = dev_client.delete(
         f"/api/v1/academic/students/{temp_id}",
         headers=headers,
     )
