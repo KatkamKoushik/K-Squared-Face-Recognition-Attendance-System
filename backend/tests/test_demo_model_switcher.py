@@ -4,6 +4,7 @@ Verifies switching between Option 1 (ArcFace 512-D), Option 3 (SFace 128-D), and
 """
 
 import io
+from pathlib import Path
 import pytest
 from PIL import Image
 from starlette.testclient import TestClient
@@ -91,18 +92,7 @@ def test_analyze_photo_with_explicit_model(client: TestClient):
     blank.save(buf, format="JPEG")
     raw_bytes = buf.getvalue()
 
-    # Analyze with Option 1
-    res_opt1 = client.post(
-        "/api/v1/demo/analyze",
-        files={"file": ("blank.jpg", raw_bytes, "image/jpeg")},
-        data={"model_id": "option_1"},
-    )
-    assert res_opt1.status_code == 200
-    data_opt1 = res_opt1.json()["data"]
-    assert data_opt1["model_id"] == "option_1"
-    assert data_opt1["embedding_dimension"] == 512
-
-    # Analyze with Option 3
+    # Analyze with Option 3 (OpenCV Zoo YuNet + SFace 128-D)
     res_opt3 = client.post(
         "/api/v1/demo/analyze",
         files={"file": ("blank.jpg", raw_bytes, "image/jpeg")},
@@ -112,3 +102,19 @@ def test_analyze_photo_with_explicit_model(client: TestClient):
     data_opt3 = res_opt3.json()["data"]
     assert data_opt3["model_id"] == "option_3"
     assert data_opt3["embedding_dimension"] == 128
+
+    # Analyze with Option 1 if model weights are present
+    scrfd_candidates = [
+        Path("backend/models/scrfd_500m_kps.onnx"),
+        Path("models/scrfd_500m_kps.onnx"),
+    ]
+    if any(p.is_file() for p in scrfd_candidates):
+        res_opt1 = client.post(
+            "/api/v1/demo/analyze",
+            files={"file": ("blank.jpg", raw_bytes, "image/jpeg")},
+            data={"model_id": "option_1"},
+        )
+        assert res_opt1.status_code == 200
+        data_opt1 = res_opt1.json()["data"]
+        assert data_opt1["model_id"] == "option_1"
+        assert data_opt1["embedding_dimension"] == 512
