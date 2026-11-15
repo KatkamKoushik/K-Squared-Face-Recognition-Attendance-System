@@ -147,11 +147,19 @@ class _StudentEnrollmentScreenState extends ConsumerState<StudentEnrollmentScree
       appBar: AppBar(
         title: const Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Text('Direct Student Enrollment', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            Text(
+              'Direct Student Enrollment',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
             Text(
               'RMX5003 Mobile Biometric Provisioning',
-              style: TextStyle(fontSize: 11, color: Colors.white70),
+              style: TextStyle(fontSize: 10.5, color: Colors.white70),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),
@@ -317,15 +325,18 @@ class _StudentEnrollmentScreenState extends ConsumerState<StudentEnrollmentScree
                           flex: 5,
                           child: DropdownButtonFormField<String>(
                             value: _selectedDepartment,
+                            isDense: true,
+                            isExpanded: true,
                             decoration: const InputDecoration(
-                              labelText: 'Department *',
-                              prefixIcon: Icon(Icons.apartment_outlined),
+                              labelText: 'Dept *',
+                              prefixIcon: Icon(Icons.apartment_outlined, size: 20),
                               border: OutlineInputBorder(),
+                              contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 10),
                             ),
                             items: _departments.map((dept) {
                               return DropdownMenuItem<String>(
                                 value: dept,
-                                child: Text(dept),
+                                child: Text(dept, style: const TextStyle(fontSize: 13.5)),
                               );
                             }).toList(),
                             onChanged: (val) {
@@ -335,22 +346,25 @@ class _StudentEnrollmentScreenState extends ConsumerState<StudentEnrollmentScree
                             },
                           ),
                         ),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: 10),
 
                         // Academic Year Dropdown
                         Expanded(
                           flex: 6,
                           child: DropdownButtonFormField<String>(
                             value: _selectedAcademicYear,
+                            isDense: true,
+                            isExpanded: true,
                             decoration: const InputDecoration(
                               labelText: 'Batch / Year',
-                              prefixIcon: Icon(Icons.calendar_today_outlined),
+                              prefixIcon: Icon(Icons.calendar_today_outlined, size: 20),
                               border: OutlineInputBorder(),
+                              contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 10),
                             ),
                             items: _academicYears.map((yr) {
                               return DropdownMenuItem<String>(
                                 value: yr,
-                                child: Text(yr),
+                                child: Text(yr, style: const TextStyle(fontSize: 13.5)),
                               );
                             }).toList(),
                             onChanged: (val) {

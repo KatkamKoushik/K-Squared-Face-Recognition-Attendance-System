@@ -687,45 +687,51 @@ class _DemoVisualizerScreenState extends ConsumerState<DemoVisualizerScreen> wit
     return Scaffold(
       backgroundColor: Colors.grey.shade50,
       appBar: AppBar(
-        title: const Text('Face Visualizer', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-        actions: [
-          InkWell(
-            onTap: _showModelPickerSheet,
-            borderRadius: BorderRadius.circular(20),
-            child: Container(
-              margin: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: const Color(0xFF10B981).withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: const Color(0xFF10B981), width: 1.2),
-              ),
-              child: Row(
+        leadingWidth: 40,
+        titleSpacing: 4,
+        title: InkWell(
+          onTap: _showModelPickerSheet,
+          borderRadius: BorderRadius.circular(8),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
                 mainAxisSize: MainAxisSize.min,
-                children: [
+                children: const [
                   Text(
-                    _currentModelOption['title']!,
-                    style: const TextStyle(
-                      fontSize: 11.5,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF065F46),
-                    ),
+                    'Face Visualizer',
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white),
                   ),
-                  const SizedBox(width: 3),
-                  const Icon(Icons.arrow_drop_down, size: 16, color: Color(0xFF065F46)),
+                  SizedBox(width: 2),
+                  Icon(Icons.arrow_drop_down, size: 16, color: Colors.white70),
                 ],
               ),
-            ),
+              Text(
+                '${_currentModelOption['title']} (${_currentModelOption['dim']})',
+                style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600, color: Color(0xFF34D399)),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
           ),
+        ),
+        actions: [
           if (_sweepFrames.isNotEmpty)
             IconButton(
               icon: const Icon(Icons.add_photo_alternate_outlined),
               tooltip: 'Add Sweep Shot',
+              visualDensity: VisualDensity.compact,
+              padding: const EdgeInsets.all(6),
+              constraints: const BoxConstraints(),
               onPressed: () => _pickGalleryImages(),
             ),
           IconButton(
-            icon: const Icon(Icons.admin_panel_settings_rounded, color: Color(0xFF10B981)),
-            tooltip: 'Developer Database Control (koushikkatkam@gmail.com)',
+            icon: const Icon(Icons.admin_panel_settings_rounded, color: Color(0xFF10B981), size: 21),
+            tooltip: 'Developer Database Control',
+            visualDensity: VisualDensity.compact,
+            padding: const EdgeInsets.all(6),
+            constraints: const BoxConstraints(),
             onPressed: () {
               Navigator.push(
                 context,
@@ -739,8 +745,11 @@ class _DemoVisualizerScreenState extends ConsumerState<DemoVisualizerScreen> wit
             },
           ),
           IconButton(
-            icon: const Icon(Icons.person_add_alt_1_rounded),
+            icon: const Icon(Icons.person_add_alt_1_rounded, size: 21),
             tooltip: 'Direct Student Enrollment',
+            visualDensity: VisualDensity.compact,
+            padding: const EdgeInsets.all(6),
+            constraints: const BoxConstraints(),
             onPressed: () {
               Navigator.push(
                 context,
@@ -753,18 +762,25 @@ class _DemoVisualizerScreenState extends ConsumerState<DemoVisualizerScreen> wit
             },
           ),
           IconButton(
-            icon: const Icon(Icons.refresh),
+            icon: const Icon(Icons.refresh, size: 21),
             tooltip: 'Refresh Gallery & Re-Analyze',
+            visualDensity: VisualDensity.compact,
+            padding: const EdgeInsets.all(6),
+            constraints: const BoxConstraints(),
             onPressed: () {
               _loadEnrolledGalleryCount();
               _reanalyzeAllFrames();
             },
           ),
           IconButton(
-            icon: const Icon(Icons.tune),
+            icon: const Icon(Icons.tune, size: 21),
             tooltip: 'Calibration Settings',
+            visualDensity: VisualDensity.compact,
+            padding: const EdgeInsets.all(6),
+            constraints: const BoxConstraints(),
             onPressed: _showSettingsModal,
           ),
+          const SizedBox(width: 4),
         ],
       ),
       body: _buildBody(),
@@ -1347,7 +1363,7 @@ class _DemoVisualizerScreenState extends ConsumerState<DemoVisualizerScreen> wit
             ),
             const SizedBox(height: 12),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
                 color: const Color(0xFFECFDF5),
                 borderRadius: BorderRadius.circular(8),
@@ -1355,12 +1371,17 @@ class _DemoVisualizerScreenState extends ConsumerState<DemoVisualizerScreen> wit
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.verified_user_outlined, size: 18, color: Color(0xFF10B981)),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Active Gallery: $_totalEnrolledStudents Enrolled Identities (${_currentModelOption['dim']})',
-                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF065F46)),
+                  const Icon(Icons.verified_user_outlined, size: 16, color: Color(0xFF10B981)),
+                  const SizedBox(width: 6),
+                  Flexible(
+                    child: Text(
+                      'Active Gallery: $_totalEnrolledStudents Enrolled Identities (${_currentModelOption['dim']})',
+                      style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFF065F46)),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
                 ],
               ),
