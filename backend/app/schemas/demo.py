@@ -63,3 +63,29 @@ class DemoAnalysisResponse(BaseModel):
     attendance_granted: List[DemoStudentResult]
     attendance_not_granted: List[DemoStudentResult]
     unidentified_faces: List[DemoFaceBox]
+    model_id: Optional[str] = None
+    model_name: Optional[str] = None
+    embedding_dimension: Optional[int] = None
+
+
+class DemoModelOption(BaseModel):
+    id: str
+    name: str
+    short_name: str
+    dimension: int
+    detector: str
+    recognizer: str
+    default_threshold: float
+    namespace: str
+    badge: str
+    description: str
+
+
+class DemoModelsResponse(BaseModel):
+    active_model_id: str
+    models: List[DemoModelOption]
+
+
+class DemoSelectModelRequest(BaseModel):
+    model_id: str
+

@@ -4,10 +4,10 @@ K² FRS — Academic Administration & Eligibility Service.
 
 from datetime import date, datetime, timezone
 from typing import List, Optional
-from sqlalchemy import select, and_
+from sqlalchemy import select, and_, delete
 from sqlalchemy.orm import Session
 from app.core.errors import PermissionDeniedError, ResourceNotFoundError
-from app.domain.enums import EnrollmentStatus, UserRole, StudentLifecycleStatus, AuditAction
+from app.domain.enums import EnrollmentStatus, UserRole, StudentLifecycleStatus, AuditAction, EnrollmentSubmissionStatus
 from app.domain.models.academic import (
     User,
     Department,
@@ -21,7 +21,7 @@ from app.domain.models.academic import (
     Faculty,
     FacultyAssignment,
 )
-from app.domain.models.student import Student, Enrollment
+from app.domain.models.student import Student, Enrollment, EnrollmentProfile, EnrollmentSubmission
 from app.domain.models.audit import AuditEvent
 from app.schemas.academic import (
     DepartmentCreate,
@@ -39,6 +39,7 @@ from app.schemas.academic import (
     AuthorizedClassGroupCreate,
     FacultyAssignmentCreate,
     StudentCreate,
+    StudentUpdate,
     StudentLifecycleUpdate,
     CohortRolloverRequest,
     CohortRolloverResponse,
@@ -620,4 +621,149 @@ class AcademicService:
             "to_cohort_id": to_cohort_id,
             "promoted_count": len(students),
             "timestamp": datetime.now(timezone.utc),
+        }
+
+    @staticmethod
+    def update_student(
+        db: Session,
+        student_id: str,
+        data: StudentUpdate,
+        user: User,
+        correlation_id: str,
+    ) -> Student:
+        """
+        Absolute developer permission to rewrite student names, roll numbers, emails,
+        and database details. Restricted exclusively to koushikkatkam@gmail.com / DEVELOPER.
+        """
+        if user.email != "koushikkatkam@gmail.com" and user.role != UserRole.DEVELOPER:
+            raise PermissionDeniedError(
+                message="Absolute student database modifications are restricted exclusively to koushikkatkam@gmail.com.",
+                reason_code="DEVELOPER_PRIVILEGE_REQUIRED",
+            )
+
+        student = db.get(Student, student_id)
+        if not student:
+            student = db.execute(select(Student).where(Student.roll_number == student_id)).scalar_one_or_none()
+        if not student:
+            raise ResourceNotFoundError(resource="Student", identifier=student_id)
+
+        before_state = {
+            "full_name": student.full_name,
+            "roll_number": student.roll_number,
+            "institutional_email": student.institutional_email,
+            "cohort_id": student.cohort_id,
+            "lifecycle_status": student.lifecycle_status.value if hasattr(student.lifecycle_status, "value") else str(student.lifecycle_status),
+            "is_active": student.is_active,
+        }
+
+        old_roll = student.roll_number
+
+        if data.full_name is not None and data.full_name.strip():
+            student.full_name = data.full_name.strip()
+        if data.roll_number is not None and data.roll_number.strip():
+            student.roll_number = data.roll_number.strip()
+        if data.institutional_email is not None:
+            student.institutional_email = data.institutional_email.strip() or None
+        if data.cohort_id is not None and data.cohort_id.strip():
+            student.cohort_id = data.cohort_id.strip()
+        if data.lifecycle_status is not None:
+            student.lifecycle_status = data.lifecycle_status
+        if data.is_active is not None:
+            student.is_active = data.is_active
+
+        # If department_code is provided, resolve department & assign first matching cohort
+        if data.department_code:
+            dept = db.execute(select(Department).where(Department.code == data.department_code.strip().upper())).scalar_one_or_none()
+            if dept:
+                cohort = db.execute(select(Cohort).where(Cohort.department_id == dept.id)).scalars().first()
+                if cohort:
+                    student.cohort_id = cohort.id
+
+        # Keep matching enrollment submissions in sync if roll number or full name was rewritten
+        subs = list(db.execute(select(EnrollmentSubmission).where(EnrollmentSubmission.roll_number == old_roll)).scalars().all())
+        for s in subs:
+            s.roll_number = student.roll_number
+            s.full_name = student.full_name
+            if student.institutional_email:
+                s.institutional_email = student.institutional_email
+
+        after_state = {
+            "full_name": student.full_name,
+            "roll_number": student.roll_number,
+            "institutional_email": student.institutional_email,
+            "cohort_id": student.cohort_id,
+            "lifecycle_status": student.lifecycle_status.value if hasattr(student.lifecycle_status, "value") else str(student.lifecycle_status),
+            "is_active": student.is_active,
+        }
+
+        audit = AuditEvent(
+            session_id=None,
+            actor_id=user.id,
+            action=AuditAction.DEVELOPER_STUDENT_MODIFIED,
+            reason=f"Developer {user.email} rewrote student record {student.roll_number}",
+            before_state=before_state,
+            after_state=after_state,
+            correlation_id=correlation_id,
+        )
+        db.add(audit)
+        db.commit()
+        db.refresh(student)
+        return student
+
+    @staticmethod
+    def delete_student_photo(
+        db: Session,
+        student_id: str,
+        user: User,
+        correlation_id: str,
+    ) -> dict:
+        """
+        Deletes all biometric face embeddings and portraits from the database for a student.
+        Restricted exclusively to koushikkatkam@gmail.com / DEVELOPER.
+        """
+        if user.email != "koushikkatkam@gmail.com" and user.role != UserRole.DEVELOPER:
+            raise PermissionDeniedError(
+                message="Deleting student photos from the database is restricted exclusively to koushikkatkam@gmail.com.",
+                reason_code="DEVELOPER_PRIVILEGE_REQUIRED",
+            )
+
+        student = db.get(Student, student_id)
+        if not student:
+            student = db.execute(select(Student).where(Student.roll_number == student_id)).scalar_one_or_none()
+        if not student:
+            raise ResourceNotFoundError(resource="Student", identifier=student_id)
+
+        # 1. Delete all EnrollmentProfile vectors across all namespaces
+        profiles_deleted = db.execute(
+            delete(EnrollmentProfile).where(EnrollmentProfile.student_id == student.id)
+        ).rowcount
+
+        # 2. Update matching EnrollmentSubmission records: clear storage path & mark RECAPTURE_REQUIRED
+        subs = list(db.execute(select(EnrollmentSubmission).where(EnrollmentSubmission.roll_number == student.roll_number)).scalars().all())
+        submissions_updated = 0
+        for s in subs:
+            s.status = EnrollmentSubmissionStatus.RECAPTURE_REQUIRED
+            s.photo_storage_path = ""
+            s.rejection_reason = "Biometric photograph purged by Developer request."
+            submissions_updated += 1
+
+        audit = AuditEvent(
+            session_id=None,
+            actor_id=user.id,
+            action=AuditAction.DEVELOPER_PHOTO_DELETED,
+            reason=f"Developer {user.email} purged biometric photo and profiles for student {student.roll_number}",
+            before_state={"student_id": student.id, "roll_number": student.roll_number},
+            after_state={"profiles_deleted": profiles_deleted, "submissions_updated": submissions_updated},
+            correlation_id=correlation_id,
+        )
+        db.add(audit)
+        db.commit()
+
+        return {
+            "success": True,
+            "student_id": student.id,
+            "roll_number": student.roll_number,
+            "profiles_deleted": profiles_deleted,
+            "submissions_updated": submissions_updated,
+            "message": f"Biometric photos and {profiles_deleted} face embedding profile(s) successfully deleted from database.",
         }

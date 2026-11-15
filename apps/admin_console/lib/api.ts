@@ -314,6 +314,7 @@ export interface StudentListItem {
   id: string;
   roll_number: string;
   full_name: string;
+  institutional_email?: string;
   department_id: string;
   current_term: string;
   status: string;
@@ -442,6 +443,36 @@ export async function getAuditEvents(): Promise<AuditEventItem[] | null> {
 
 export async function getStudents(): Promise<StudentListItem[] | null> {
   return fetchFromApi<StudentListItem[]>("/academic/students");
+}
+
+export async function updateStudent(
+  studentId: string,
+  data: {
+    full_name?: string;
+    roll_number?: string;
+    institutional_email?: string;
+    department_code?: string;
+    status?: string;
+  }
+): Promise<StudentListItem | null> {
+  return fetchFromApi<StudentListItem>(`/academic/students/${studentId}`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteStudentPhoto(
+  studentId: string
+): Promise<{ success: boolean; message: string; profiles_deleted: number } | null> {
+  return fetchFromApi<{ success: boolean; message: string; profiles_deleted: number }>(
+    `/academic/students/${studentId}/photo`,
+    {
+      method: "DELETE",
+    }
+  );
 }
 
 export async function getOfferingAnalytics(offeringId: string): Promise<OfferingAttendanceAnalytics | null> {

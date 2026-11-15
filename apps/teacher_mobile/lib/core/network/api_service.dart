@@ -420,7 +420,7 @@ class FrsApiService {
   }
 
   /// POST /demo/analyze
-  /// Universal demo photo analysis with visual bounding boxes, resolution-adaptive thresholding, and optional department scoping.
+  /// Universal demo photo analysis with visual bounding boxes, resolution-adaptive thresholding, and optional department/model scoping.
   Future<DemoAnalysisResponse> analyzeDemoImage({
     required List<int> imageBytes,
     required String filename,
@@ -428,6 +428,7 @@ class FrsApiService {
     double marginThreshold = 0.10,
     double blurThreshold = 50.0,
     String? departmentCode,
+    String? modelId,
   }) async {
     final uri = Uri.parse('$baseUrl/demo/analyze');
     final request = http.MultipartRequest('POST', uri);
@@ -441,6 +442,9 @@ class FrsApiService {
     request.fields['blur_threshold'] = blurThreshold.toString();
     if (departmentCode != null && departmentCode.isNotEmpty && departmentCode != 'ALL') {
       request.fields['department_code'] = departmentCode;
+    }
+    if (modelId != null && modelId.isNotEmpty) {
+      request.fields['model_id'] = modelId;
     }
     request.files.add(
       http.MultipartFile.fromBytes('file', imageBytes, filename: filename),
@@ -460,10 +464,20 @@ class FrsApiService {
   }
 
   /// GET /demo/enrolled-students
-  Future<List<Map<String, dynamic>>> getDemoEnrolledStudents({String? departmentCode}) async {
-    String url = '$baseUrl/demo/enrolled-students';
+  Future<List<Map<String, dynamic>>> getDemoEnrolledStudents({
+    String? departmentCode,
+    String? modelId,
+  }) async {
+    final params = <String>[];
     if (departmentCode != null && departmentCode.isNotEmpty && departmentCode != 'ALL') {
-      url += '?department_code=$departmentCode';
+      params.add('department_code=$departmentCode');
+    }
+    if (modelId != null && modelId.isNotEmpty) {
+      params.add('model_id=$modelId');
+    }
+    String url = '$baseUrl/demo/enrolled-students';
+    if (params.isNotEmpty) {
+      url += '?${params.join('&')}';
     }
     final res = await _client.get(
       Uri.parse(url),
@@ -479,4 +493,81 @@ class FrsApiService {
     }
     throw Exception('Failed to load demo enrolled students (HTTP ${res.statusCode}): ${res.body}');
   }
+
+  /// GET /demo/models
+  Future<Map<String, dynamic>> getDemoModels() async {
+    final res = await _client.get(
+      Uri.parse('$baseUrl/demo/models'),
+      headers: _headers(),
+    ).timeout(const Duration(seconds: 6));
+    _checkAuthError(res);
+
+    if (res.statusCode == 200) {
+      final payload = _unwrap(res);
+      if (payload is Map<String, dynamic>) {
+        return payload;
+      }
+    }
+    throw Exception('Failed to load demo recognition models (HTTP ${res.statusCode}): ${res.body}');
+  }
+
+  /// POST /demo/models/select
+  Future<void> selectDemoModel(String modelId) async {
+    final res = await _client.post(
+      Uri.parse('$baseUrl/demo/models/select'),
+      headers: _headers(),
+      body: jsonEncode({'model_id': modelId}),
+    ).timeout(const Duration(seconds: 6));
+    _checkAuthError(res);
+
+    if (res.statusCode != 200) {
+      throw Exception('Failed to set active demo model (HTTP ${res.statusCode}): ${res.body}');
+    }
+  }
+
+  /// POST /enrollment/mobile/direct-enroll
+  /// Direct student enrollment from mobile device (RMX5003).
+  /// Saves photo to Cloudinary and computes multi-model embeddings (Option 1, Option 3, Fine-Tuned).
+  Future<Map<String, dynamic>> directEnrollStudent({
+    required String rollNumber,
+    required String fullName,
+    required String department,
+    String? academicYear,
+    String? institutionalEmail,
+    required List<int> photoBytes,
+    required String filename,
+  }) async {
+    final uri = Uri.parse('$baseUrl/enrollment/mobile/direct-enroll');
+    final request = http.MultipartRequest('POST', uri);
+    request.headers['Accept'] = 'application/json';
+    request.headers['ngrok-skip-browser-warning'] = 'true';
+    if (authToken != null && authToken!.isNotEmpty) {
+      request.headers['Authorization'] = 'Bearer $authToken';
+    }
+    request.fields['roll_number'] = rollNumber.trim().toUpperCase();
+    request.fields['full_name'] = fullName.trim();
+    request.fields['department'] = department.trim().toUpperCase();
+    if (academicYear != null && academicYear.isNotEmpty) {
+      request.fields['academic_year'] = academicYear.trim();
+    }
+    if (institutionalEmail != null && institutionalEmail.isNotEmpty) {
+      request.fields['institutional_email'] = institutionalEmail.trim();
+    }
+    request.files.add(
+      http.MultipartFile.fromBytes('photo', photoBytes, filename: filename),
+    );
+
+    final streamed = await _client.send(request).timeout(const Duration(seconds: 45));
+    final res = await http.Response.fromStream(streamed);
+    _checkAuthError(res);
+
+    if (res.statusCode == 200 || res.statusCode == 201) {
+      final payload = _unwrap(res);
+      if (payload is Map<String, dynamic>) {
+        return payload;
+      }
+    }
+    throw Exception('Student direct enrollment failed (HTTP ${res.statusCode}): ${res.body}');
+  }
 }
+

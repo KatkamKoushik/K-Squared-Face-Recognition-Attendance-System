@@ -34,6 +34,7 @@ from app.schemas.academic import (
     FacultyAssignmentCreate,
     FacultyAssignmentResponse,
     StudentCreate,
+    StudentUpdate,
     StudentResponse,
     StudentLifecycleUpdate,
     CohortRolloverRequest,
@@ -502,5 +503,47 @@ def rollover_cohort(
         correlation_id=correlation_id,
     )
     return ResponseEnvelope(data=CohortRolloverResponse(**result), correlation_id=correlation_id)
+
+
+@router.patch("/students/{student_id}", response_model=ResponseEnvelope[StudentResponse])
+def update_student_details(
+    student_id: str,
+    data: StudentUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles([UserRole.DEVELOPER])),
+    correlation_id: str = Depends(get_correlation_id),
+):
+    """
+    Developer-only endpoint: rewrites student names, roll numbers, emails, or status.
+    Strictly restricted to koushikkatkam@gmail.com / DEVELOPER.
+    """
+    student = AcademicService.update_student(
+        db=db,
+        student_id=student_id,
+        data=data,
+        user=current_user,
+        correlation_id=correlation_id,
+    )
+    return ResponseEnvelope(data=StudentResponse.model_validate(student), correlation_id=correlation_id)
+
+
+@router.delete("/students/{student_id}/photo", response_model=ResponseEnvelope[dict])
+def delete_student_biometric_photo(
+    student_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles([UserRole.DEVELOPER])),
+    correlation_id: str = Depends(get_correlation_id),
+):
+    """
+    Developer-only endpoint: purges biometric face templates and portraits for a student.
+    Strictly restricted to koushikkatkam@gmail.com / DEVELOPER.
+    """
+    res = AcademicService.delete_student_photo(
+        db=db,
+        student_id=student_id,
+        user=current_user,
+        correlation_id=correlation_id,
+    )
+    return ResponseEnvelope(data=res, correlation_id=correlation_id)
 
 

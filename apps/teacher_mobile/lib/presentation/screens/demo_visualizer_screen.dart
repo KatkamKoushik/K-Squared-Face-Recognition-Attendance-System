@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/models/domain_contracts.dart';
 import '../../logic/session_provider.dart';
+import 'student_enrollment_screen.dart';
 
 enum OverlayDisplayMode {
   clean,     // Clean focus: compact student name pill on matched, minimal ? dot on unknown
@@ -55,11 +56,226 @@ class _DemoVisualizerScreenState extends ConsumerState<DemoVisualizerScreen> wit
   String _selectedDepartment = 'ALL';
   final List<String> _departmentOptions = const ['ALL', 'CSD', 'CSE', 'ECE', 'MECH', 'EEE', 'CIVIL', 'IT'];
 
+  String _selectedModel = 'option_1';
+  final List<Map<String, String>> _modelOptions = const [
+    {
+      'id': 'option_1',
+      'title': 'Option 1',
+      'label': 'Option 1: SCRFD-500M + ArcFace (512-D)',
+      'detector': 'SCRFD-500M-KPS',
+      'recognizer': 'MobileFaceNet ArcFace',
+      'dim': '512-D',
+      'desc': '512-D normalized ArcFace embeddings, 9ms mobile inference, ultra-fast crowd detection.',
+      'badge': 'Option 1 (512-D)',
+    },
+    {
+      'id': 'option_3',
+      'title': 'Option 3',
+      'label': 'Option 3: SCRFD-2.5G + OpenCV Zoo SFace (128-D)',
+      'detector': 'SCRFD-2.5G / YuNet',
+      'recognizer': 'OpenCV Zoo SFace',
+      'dim': '128-D',
+      'desc': '128-D official OpenCV Zoo SFace embeddings with affine landmark alignment.',
+      'badge': 'Option 3 (128-D)',
+    },
+    {
+      'id': 'finetuned_v2',
+      'title': 'Fine-Tuned',
+      'label': 'Fine-Tuned SFace (128-D Domain)',
+      'detector': 'YuNet ONNX',
+      'recognizer': 'KUCET SFace v2 Fine-Tuned',
+      'dim': '128-D',
+      'desc': 'Domain fine-tuned SFace model calibrated for KUCET classroom environments.',
+      'badge': 'Fine-Tuned (128-D)',
+    },
+  ];
+
+  Map<String, String> get _currentModelOption =>
+      _modelOptions.firstWhere((m) => m['id'] == _selectedModel, orElse: () => _modelOptions[0]);
+
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
-    _loadEnrolledGalleryCount();
+    _initModels();
+  }
+
+  Future<void> _initModels() async {
+    try {
+      final res = await ref.read(apiProvider).getDemoModels();
+      final activeId = res['active_model_id'] as String?;
+      if (activeId != null && _modelOptions.any((m) => m['id'] == activeId)) {
+        if (mounted) {
+          setState(() {
+            _selectedModel = activeId;
+            _matchThreshold = activeId == 'option_1' ? 0.380 : 0.363;
+          });
+        }
+      }
+    } catch (_) {}
+    await _loadEnrolledGalleryCount();
+  }
+
+  Future<void> _switchModel(String modelId) async {
+    if (_selectedModel == modelId && _totalEnrolledStudents > 0) return;
+    setState(() {
+      _selectedModel = modelId;
+      _matchThreshold = modelId == 'option_1' ? 0.380 : 0.363;
+    });
+    try {
+      await ref.read(apiProvider).selectDemoModel(modelId);
+    } catch (_) {}
+    await _loadEnrolledGalleryCount();
+    if (_sweepFrames.isNotEmpty) {
+      await _reanalyzeAllFrames();
+    }
+  }
+
+  void _showModelPickerSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppTheme.primaryNavy.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(Icons.psychology_outlined, color: AppTheme.primaryNavy, size: 22),
+                    ),
+                    const SizedBox(width: 12),
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Select Recognition Model',
+                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.primaryNavy),
+                          ),
+                          Text(
+                            'Switch active detector & embedding architecture',
+                            style: TextStyle(fontSize: 11, color: Colors.grey),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close, size: 20),
+                      onPressed: () => Navigator.pop(ctx),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                ..._modelOptions.map((opt) {
+                  final isSelected = _selectedModel == opt['id'];
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: InkWell(
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        _switchModel(opt['id']!);
+                      },
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: isSelected ? const Color(0xFF10B981).withValues(alpha: 0.1) : Colors.grey.shade50,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: isSelected ? const Color(0xFF10B981) : Colors.grey.shade300,
+                            width: isSelected ? 1.8 : 1,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 20,
+                              height: 20,
+                              margin: const EdgeInsets.symmetric(horizontal: 4),
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: isSelected ? const Color(0xFF10B981) : Colors.transparent,
+                                border: Border.all(
+                                  color: isSelected ? const Color(0xFF10B981) : Colors.grey.shade400,
+                                  width: isSelected ? 5 : 2,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Text(
+                                        opt['title']!,
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.bold,
+                                          color: isSelected ? const Color(0xFF065F46) : Colors.black87,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: isSelected ? const Color(0xFF10B981) : Colors.grey.shade300,
+                                          borderRadius: BorderRadius.circular(4),
+                                        ),
+                                        child: Text(
+                                          opt['dim']!,
+                                          style: TextStyle(
+                                            fontSize: 9.5,
+                                            fontWeight: FontWeight.bold,
+                                            color: isSelected ? Colors.white : Colors.black87,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 3),
+                                  Text(
+                                    '${opt['detector']} + ${opt['recognizer']}',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                      color: isSelected ? const Color(0xFF047857) : Colors.grey.shade700,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    opt['desc']!,
+                                    style: TextStyle(fontSize: 10, color: Colors.grey.shade600),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                }),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -76,6 +292,7 @@ class _DemoVisualizerScreenState extends ConsumerState<DemoVisualizerScreen> wit
     try {
       final students = await ref.read(apiProvider).getDemoEnrolledStudents(
         departmentCode: _selectedDepartment,
+        modelId: _selectedModel,
       );
       if (mounted) {
         setState(() {
@@ -180,6 +397,7 @@ class _DemoVisualizerScreenState extends ConsumerState<DemoVisualizerScreen> wit
         marginThreshold: _marginThreshold,
         blurThreshold: _blurThreshold,
         departmentCode: _selectedDepartment,
+        modelId: _selectedModel,
       );
 
       if (mounted) {
@@ -320,6 +538,36 @@ class _DemoVisualizerScreenState extends ConsumerState<DemoVisualizerScreen> wit
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.primaryNavy),
                   ),
                   const SizedBox(height: 14),
+                  const Text('Recognition Model Architecture:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 6),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: _modelOptions.map((opt) {
+                        final isSelected = _selectedModel == opt['id'];
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 6),
+                          child: ChoiceChip(
+                            label: Text(opt['label']!),
+                            selected: isSelected,
+                            selectedColor: const Color(0xFF10B981).withValues(alpha: 0.15),
+                            labelStyle: TextStyle(
+                              fontSize: 11,
+                              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                              color: isSelected ? const Color(0xFF065F46) : Colors.black87,
+                            ),
+                            onSelected: (selected) {
+                              if (selected) {
+                                setModalState(() => _selectedModel = opt['id']!);
+                                _switchModel(opt['id']!);
+                              }
+                            },
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
                   const Text('Roster Department Scope:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
                   const SizedBox(height: 6),
                   SingleChildScrollView(
@@ -414,12 +662,54 @@ class _DemoVisualizerScreenState extends ConsumerState<DemoVisualizerScreen> wit
       appBar: AppBar(
         title: const Text('Face Visualizer', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
         actions: [
+          InkWell(
+            onTap: _showModelPickerSheet,
+            borderRadius: BorderRadius.circular(20),
+            child: Container(
+              margin: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: const Color(0xFF10B981).withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: const Color(0xFF10B981), width: 1.2),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    _currentModelOption['title']!,
+                    style: const TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF065F46),
+                    ),
+                  ),
+                  const SizedBox(width: 3),
+                  const Icon(Icons.arrow_drop_down, size: 16, color: Color(0xFF065F46)),
+                ],
+              ),
+            ),
+          ),
           if (_sweepFrames.isNotEmpty)
             IconButton(
               icon: const Icon(Icons.add_photo_alternate_outlined),
               tooltip: 'Add Sweep Shot',
               onPressed: () => _pickGalleryImages(),
             ),
+          IconButton(
+            icon: const Icon(Icons.person_add_alt_1_rounded),
+            tooltip: 'Direct Student Enrollment',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const StudentEnrollmentScreen(),
+                ),
+              ).then((_) {
+                _loadEnrolledGalleryCount();
+              });
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.refresh),
             tooltip: 'Refresh Gallery & Re-Analyze',
@@ -579,17 +869,17 @@ class _DemoVisualizerScreenState extends ConsumerState<DemoVisualizerScreen> wit
                           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
-                            children: const [
-                              CircularProgressIndicator(),
-                              SizedBox(height: 16),
+                            children: [
+                              const CircularProgressIndicator(),
+                              const SizedBox(height: 16),
                               Text(
-                                'YuNet & SFace Inference in Progress...',
-                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                '${_currentModelOption['recognizer']} Inference in Progress...',
+                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                               ),
-                              SizedBox(height: 4),
+                              const SizedBox(height: 4),
                               Text(
-                                'Extracting 128-D embeddings and matching against PostgreSQL',
-                                style: TextStyle(fontSize: 11, color: Colors.grey),
+                                'Extracting ${_currentModelOption['dim']} embeddings using ${_currentModelOption['detector']}',
+                                style: const TextStyle(fontSize: 11, color: Colors.grey),
                                 textAlign: TextAlign.center,
                               ),
                             ],
@@ -600,6 +890,50 @@ class _DemoVisualizerScreenState extends ConsumerState<DemoVisualizerScreen> wit
                   ),
               ],
             ),
+          ),
+        ),
+
+        // Direct 1-Tap Model Switcher Strip
+        Container(
+          color: Colors.white,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          child: Row(
+            children: [
+              const Icon(Icons.memory, size: 16, color: AppTheme.primaryNavy),
+              const SizedBox(width: 6),
+              const Text(
+                'Model:',
+                style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: AppTheme.primaryNavy),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: _modelOptions.map((opt) {
+                      final isSelected = _selectedModel == opt['id'];
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 6),
+                        child: ChoiceChip(
+                          label: Text('${opt['title']} (${opt['dim']})'),
+                          selected: isSelected,
+                          selectedColor: const Color(0xFF10B981).withValues(alpha: 0.2),
+                          backgroundColor: Colors.grey.shade100,
+                          labelStyle: TextStyle(
+                            fontSize: 10.5,
+                            fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                            color: isSelected ? const Color(0xFF065F46) : Colors.black87,
+                          ),
+                          visualDensity: VisualDensity.compact,
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 0),
+                          onSelected: (_) => _switchModel(opt['id']!),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
 
@@ -914,11 +1248,62 @@ class _DemoVisualizerScreenState extends ConsumerState<DemoVisualizerScreen> wit
             ),
             const SizedBox(height: 8),
             Text(
-              'Capture a group photo or multi-photo sweep burst. The system detects faces with YuNet ONNX, extracts 128-D SFace embeddings, and matches against live PostgreSQL registered student identities.',
+              'Capture a group photo or multi-photo sweep burst. The system detects faces, extracts normalized embeddings, and matches against live PostgreSQL student identities.',
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 13, color: Colors.grey.shade700, height: 1.4),
             ),
             const SizedBox(height: 16),
+            // Model Selector Segmented Control
+            Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade200,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: _modelOptions.map((opt) {
+                    final isSelected = _selectedModel == opt['id'];
+                    return GestureDetector(
+                      onTap: () => _switchModel(opt['id']!),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: isSelected ? AppTheme.primaryNavy : Colors.transparent,
+                          borderRadius: BorderRadius.circular(9),
+                          boxShadow: isSelected
+                              ? [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.1),
+                                    blurRadius: 4,
+                                    offset: const Offset(0, 2),
+                                  )
+                                ]
+                              : null,
+                        ),
+                        child: Text(
+                          opt['title']!,
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                            color: isSelected ? Colors.white : Colors.grey.shade700,
+                          ),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              '${_currentModelOption['detector']} + ${_currentModelOption['recognizer']}',
+              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: Colors.grey.shade600),
+            ),
+            const SizedBox(height: 12),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               decoration: BoxDecoration(
@@ -932,7 +1317,7 @@ class _DemoVisualizerScreenState extends ConsumerState<DemoVisualizerScreen> wit
                   const Icon(Icons.verified_user_outlined, size: 18, color: Color(0xFF10B981)),
                   const SizedBox(width: 8),
                   Text(
-                    'Active Gallery: $_totalEnrolledStudents Enrolled Identities',
+                    'Active Gallery: $_totalEnrolledStudents Enrolled Identities (${_currentModelOption['dim']})',
                     style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF065F46)),
                   ),
                 ],
@@ -981,6 +1366,36 @@ class _DemoVisualizerScreenState extends ConsumerState<DemoVisualizerScreen> wit
         scrollDirection: Axis.horizontal,
         child: Row(
           children: [
+            InkWell(
+              onTap: _showModelPickerSheet,
+              borderRadius: BorderRadius.circular(8),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF10B981).withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.4)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.memory, size: 13, color: Color(0xFF065F46)),
+                    const SizedBox(width: 4),
+                    Text(
+                      _currentModelOption['badge']!,
+                      style: const TextStyle(
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF065F46),
+                      ),
+                    ),
+                    const SizedBox(width: 2),
+                    const Icon(Icons.arrow_drop_down, size: 14, color: Color(0xFF065F46)),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
             if (_sweepFrames.length > 1) ...[
               _MetricPill(label: 'Sweep Frames', count: _sweepFrames.length, color: AppTheme.primaryNavy),
               const SizedBox(width: 8),

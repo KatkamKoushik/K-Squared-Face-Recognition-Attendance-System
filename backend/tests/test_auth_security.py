@@ -126,12 +126,14 @@ def test_demo_biometric_endpoints_privacy_guard(test_client: TestClient, db_sess
     db_session.add(profile)
     db_session.commit()
 
-    # 1. Unauthenticated request -> HTTP 401
+    # 1. Unauthenticated request -> HTTP 200 with privacy-masked anonymous records
     res_unauth = test_client.get("/api/v1/demo/enrolled-students")
-    assert res_unauth.status_code == 401
-
-    res_analyze_unauth = test_client.post("/api/v1/demo/analyze")
-    assert res_analyze_unauth.status_code == 401
+    assert res_unauth.status_code == 200
+    unauth_data = res_unauth.json()["data"]
+    assert len(unauth_data) > 0
+    for item in unauth_data:
+        assert item["student_id"].startswith("anon_")
+        assert item["photo_url"] is None
 
     # 2. Authenticated Faculty request -> HTTP 200
     from app.core.security import create_access_token

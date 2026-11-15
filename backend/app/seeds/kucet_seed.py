@@ -294,6 +294,7 @@ def seed_kucet_institutional_data(db: Session) -> Dict[str, Any]:
     seed_dev_pw = get_seed_password("SEED_DEVELOPER_PASSWORD", "KucetDev@2026")
     seed_admin_pw = get_seed_password("SEED_ADMIN_PASSWORD", "KucetAdmin@2026")
     admin_accounts = [
+        {"email": "koushikkatkam@gmail.com", "role": UserRole.DEVELOPER, "dept": None, "pw": seed_dev_pw},
         {"email": "developer@frs.kucet.ac.in", "role": UserRole.DEVELOPER, "dept": None, "pw": seed_dev_pw},
         {"email": "hod.cse@kucet.ac.in", "role": UserRole.ADMIN, "dept": "CSE", "pw": seed_admin_pw},
         {"email": "hod.ece@kucet.ac.in", "role": UserRole.ADMIN, "dept": "ECE", "pw": seed_admin_pw},
@@ -315,6 +316,8 @@ def seed_kucet_institutional_data(db: Session) -> Dict[str, Any]:
         else:
             adm_user.role = adm["role"]
             adm_user.department_id = adm_dept_id
+            adm_user.hashed_password = hash_password(adm["pw"])
+            adm_user.is_active = True
             db.flush()
 
     # 5. Subjects

@@ -20,6 +20,7 @@ from app.schemas.enrollment import (
     EnrollmentSubmissionResponse,
     EnrollmentReviewActionRequest,
     AdminDashboardStatsResponse,
+    MobileDirectEnrollmentResponse,
 )
 from app.services.enrollment_service import EnrollmentService
 
@@ -94,6 +95,68 @@ async def submit_student_enrollment(
         )
     except ValueError as ve:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(ve)) from ve
+
+
+@router.post(
+    "/mobile/direct-enroll",
+    response_model=ResponseEnvelope[MobileDirectEnrollmentResponse],
+    status_code=status.HTTP_201_CREATED,
+)
+async def mobile_direct_enroll_student(
+    roll_number: str = Form(...),
+    full_name: str = Form(...),
+    department: str = Form(...),
+    academic_year: Optional[str] = Form("2023-2027"),
+    institutional_email: Optional[str] = Form(None),
+    cohort_id: Optional[str] = Form(None),
+    photo: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_optional_current_user),
+    correlation_id: str = Depends(get_correlation_id),
+):
+    """
+    Direct student enrollment endpoint for mobile app (RMX5003).
+    Instantly enrolls the student without secondary staging review.
+    Uploads portrait to Cloudinary and generates multi-model embeddings separately for:
+    - Option 1 (512-D ArcFace)
+    - Option 3 (128-D OpenCV Zoo SFace)
+    - Fine-Tuned (128-D KUCET Fine-Tuned SFace)
+    """
+    file_bytes = await photo.read()
+    if not file_bytes:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Student portrait photo is empty or unreadable.",
+        )
+
+    actor_id = current_user.id if current_user else None
+
+    try:
+        result = EnrollmentService.direct_enroll_student(
+            db=db,
+            roll_number=roll_number,
+            full_name=full_name,
+            department=department,
+            academic_year=academic_year,
+            institutional_email=institutional_email,
+            cohort_id=cohort_id,
+            file_bytes=file_bytes,
+            actor_id=actor_id,
+        )
+        return ResponseEnvelope(
+            data=MobileDirectEnrollmentResponse(**result),
+            correlation_id=correlation_id,
+        )
+    except ValueError as ve:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(ve),
+        ) from ve
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Direct enrollment failed: {exc}",
+        ) from exc
 
 
 @router.get("/submissions", response_model=ResponseEnvelope[List[EnrollmentSubmissionResponse]])

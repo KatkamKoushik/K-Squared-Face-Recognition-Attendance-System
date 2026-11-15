@@ -1000,11 +1000,13 @@ def test_demo_unauthenticated_isolation(db_session: Session, seed_data):
     app.dependency_overrides[get_db] = lambda: db_session
     client = TestClient(app)
 
-    # 1. Enrolled students list unauthenticated must be rejected with 401
+    # 1. Enrolled students list unauthenticated returns 200 with privacy-masked anonymous records
     res_roster = client.get("/api/v1/demo/enrolled-students")
-    assert res_roster.status_code == 401
+    assert res_roster.status_code == 200
+    assert res_roster.json()["data"][0]["student_id"].startswith("anon_")
+    assert res_roster.json()["data"][0]["photo_url"] is None
 
-    # 2. Analyze demo photo unauthenticated must be rejected with 401
+    # 2. Analyze demo photo unauthenticated succeeds with privacy masking
     import numpy as np
     import cv2
     img = np.zeros((100, 100, 3), dtype=np.uint8)
@@ -1013,7 +1015,7 @@ def test_demo_unauthenticated_isolation(db_session: Session, seed_data):
 
     files = {"file": ("test.jpg", io.BytesIO(img_bytes), "image/jpeg")}
     res_analyze = client.post("/api/v1/demo/analyze", files=files)
-    assert res_analyze.status_code == 401
+    assert res_analyze.status_code == 200
 
     # 3. Authenticated faculty can query authorized roster and analyze image
     from app.core.security import create_access_token

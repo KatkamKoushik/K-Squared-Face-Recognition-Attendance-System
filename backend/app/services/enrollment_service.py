@@ -13,7 +13,7 @@ from typing import Optional, List, Dict, Any
 import uuid
 
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageOps
 Image.MAX_IMAGE_PIXELS = None
 import cv2
 from sqlalchemy import select, func, desc, or_
@@ -21,8 +21,8 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.errors import ResourceNotFoundError, StateTransitionError, ConflictError
-from app.domain.enums import EnrollmentSubmissionStatus, AuditAction, SessionState
-from app.domain.models.academic import Cohort
+from app.domain.enums import EnrollmentSubmissionStatus, AuditAction, SessionState, StudentLifecycleStatus
+from app.domain.models.academic import Cohort, Department
 from app.domain.models.audit import AuditEvent
 from app.domain.models.student import Student, EnrollmentProfile, EnrollmentSubmission
 from app.domain.models.session import AttendanceSession
@@ -32,6 +32,7 @@ from app.services.event_broadcaster import broadcaster
 from app.services.storage_service import CloudinaryStorageService
 from app.worker.adapters.detector_adapter import DetectorAdapter
 from app.worker.adapters.recognizer_adapter import RecognizerAdapter
+from app.worker.adapters.arcface_adapter import SCRFD500MDetector, ArcFaceMobileNetRecognizer
 
 
 def utc_now() -> datetime:
@@ -69,6 +70,29 @@ class EnrollmentService:
             return area * centrality_weight * (score ** 0.5)
 
         return max(detections, key=_rank_face)
+
+    @staticmethod
+    def _select_primary_face_scrfd(boxes: np.ndarray, scores: np.ndarray, kpss: np.ndarray, img_shape: tuple) -> int:
+        """Select primary subject face from SCRFD candidate detections."""
+        if len(boxes) == 1:
+            return 0
+        h, w = img_shape[:2]
+        best_idx = 0
+        max_rank = -1.0
+        for i in range(len(boxes)):
+            bw = boxes[i, 2] - boxes[i, 0]
+            bh = boxes[i, 3] - boxes[i, 1]
+            area = max(0.0, bw * bh)
+            cx = (boxes[i, 0] + boxes[i, 2]) / (2.0 * w)
+            cy = (boxes[i, 1] + boxes[i, 3]) / (2.0 * h)
+            dist = np.sqrt((cx - 0.5) ** 2 + (cy - 0.5) ** 2)
+            centrality = max(0.2, 1.0 - dist)
+            score = max(0.1, float(scores[i]))
+            rank = area * centrality * (score ** 0.5)
+            if rank > max_rank:
+                max_rank = rank
+                best_idx = i
+        return best_idx
 
     @staticmethod
     def submit_enrollment(
@@ -419,6 +443,269 @@ class EnrollmentService:
         db.refresh(sub)
 
         return sub
+
+    @staticmethod
+    def direct_enroll_student(
+        db: Session,
+        roll_number: str,
+        full_name: str,
+        department: str,
+        academic_year: Optional[str] = "2023-2027",
+        institutional_email: Optional[str] = None,
+        cohort_id: Optional[str] = None,
+        file_bytes: bytes = b"",
+        actor_id: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """
+        Direct mobile student biometric enrollment for RMX5003.
+        Bypasses two-step staging review:
+        1. Validates and normalizes uploaded portrait face image.
+        2. Uploads portrait directly to Cloudinary (folder: k2_frs/enrollments).
+        3. Creates/activates Student and approved EnrollmentSubmission records.
+        4. Extracts and persists multi-model embeddings for ALL models separately:
+           - Option 1 (512-D ArcFace MobileFaceNet, namespace: mobilefacenet_512d_v1)
+           - Option 3 (128-D OpenCV Zoo SFace, namespace: sface_128d_v1)
+           - Fine-Tuned (128-D KUCET Fine-Tuned SFace, namespace: kucet_frs_sface_finetuned_v2)
+        5. Commits and broadcasts approval event.
+        """
+        clean_roll = roll_number.strip().upper()
+        clean_name = full_name.strip()
+        clean_dept = department.strip().upper()
+        clean_year = (academic_year or "2023-2027").strip()
+        clean_email = (institutional_email or f"{clean_roll.lower()}@kucet.ac.in").strip().lower()
+
+        if not clean_roll or len(clean_roll) < 3:
+            raise ValueError("Valid student roll number is required (min 3 characters).")
+        if not clean_name or len(clean_name) < 2:
+            raise ValueError("Valid student full name is required.")
+        if not clean_dept:
+            raise ValueError("Valid department code is required.")
+        if not file_bytes or len(file_bytes) < 1000:
+            raise ValueError("Student portrait photo file is empty or corrupted.")
+        if len(file_bytes) > 50 * 1024 * 1024:
+            raise ValueError("Uploaded portrait exceeds maximum allowable size of 50MB.")
+
+        # 1. Decode image and normalize orientation
+        try:
+            pil_raw = Image.open(io.BytesIO(file_bytes))
+            pil_raw.verify()
+            pil_img = Image.open(io.BytesIO(file_bytes))
+            pil_img = ImageOps.exif_transpose(pil_img).convert("RGB")
+        except Exception as exc:
+            raise ValueError(f"Uploaded photo is not a valid decodable image: {exc}")
+
+        w, h = pil_img.size
+        if w < 64 or h < 64:
+            raise ValueError(f"Image resolution too low ({w}x{h} px). Frontal portrait required.")
+
+        cv_img = cv2.cvtColor(np.array(pil_img), cv2.COLOR_RGB2BGR)
+
+        # 2. Detect face using SCRFD and YuNet
+        scrfd = SCRFD500MDetector()
+        boxes, scores, kpss, _ = scrfd.detect(cv_img, target_size=640, score_thresh=0.25)
+        if len(boxes) == 0:
+            boxes, scores, kpss, _ = scrfd.detect(cv_img, target_size=1280, score_thresh=0.20)
+
+        yunet = DetectorAdapter(strict_mode=True)
+        yunet_dets = yunet.detect_faces(pil_img)
+
+        if len(boxes) == 0 and len(yunet_dets) == 0:
+            raise ValueError("No human face detected in portrait. Ensure a clear, upright frontal portrait.")
+
+        # 3. Upload photo to Cloudinary
+        cloudinary_url = CloudinaryStorageService.upload_enrollment_portrait(
+            file_bytes=file_bytes,
+            roll_number=clean_roll,
+        )
+        photo_sha256 = hashlib.sha256(file_bytes).hexdigest()
+
+        # 4. Resolve Cohort
+        assigned_cohort_id = cohort_id
+        if not assigned_cohort_id:
+            cohort_match = db.execute(
+                select(Cohort)
+                .join(Department, Cohort.department_id == Department.id)
+                .where(Department.code.ilike(clean_dept))
+            ).scalars().first()
+            if cohort_match:
+                assigned_cohort_id = cohort_match.id
+            else:
+                fallback_cohort = db.execute(select(Cohort)).scalars().first()
+                assigned_cohort_id = fallback_cohort.id if fallback_cohort else str(uuid.uuid4())
+
+        # 5. Create or update Student record
+        student = db.execute(
+            select(Student).where(Student.roll_number == clean_roll)
+        ).scalar_one_or_none()
+
+        if not student:
+            student = Student(
+                roll_number=clean_roll,
+                full_name=clean_name,
+                institutional_email=clean_email,
+                cohort_id=assigned_cohort_id,
+                is_active=True,
+                lifecycle_status=StudentLifecycleStatus.ACTIVE,
+            )
+            db.add(student)
+            db.flush()
+        else:
+            student.full_name = clean_name
+            student.is_active = True
+            student.lifecycle_status = StudentLifecycleStatus.ACTIVE
+            if clean_email:
+                student.institutional_email = clean_email
+            if assigned_cohort_id:
+                student.cohort_id = assigned_cohort_id
+            db.flush()
+
+        # 6. Create or update EnrollmentSubmission record
+        sub = db.execute(
+            select(EnrollmentSubmission).where(EnrollmentSubmission.roll_number == clean_roll)
+        ).scalar_one_or_none()
+
+        if sub:
+            sub.full_name = clean_name
+            sub.institutional_email = clean_email
+            sub.department = clean_dept
+            sub.academic_year = clean_year
+            sub.cohort_id = student.cohort_id
+            sub.photo_storage_path = cloudinary_url
+            sub.photo_sha256 = photo_sha256
+            sub.photo_mime = "image/jpeg"
+            sub.status = EnrollmentSubmissionStatus.APPROVED
+            sub.consent_acknowledged = True
+            sub.reviewed_at = utc_now()
+            sub.reviewed_by_user_id = actor_id
+            sub.rejection_reason = None
+        else:
+            sub = EnrollmentSubmission(
+                roll_number=clean_roll,
+                full_name=clean_name,
+                institutional_email=clean_email,
+                department=clean_dept,
+                academic_year=clean_year,
+                cohort_id=student.cohort_id,
+                photo_storage_path=cloudinary_url,
+                photo_sha256=photo_sha256,
+                photo_mime="image/jpeg",
+                status=EnrollmentSubmissionStatus.APPROVED,
+                consent_acknowledged=True,
+                reviewed_at=utc_now(),
+                reviewed_by_user_id=actor_id,
+            )
+            db.add(sub)
+        db.flush()
+
+        # 7. Extract multi-model embeddings separately for all models
+        models_enrolled: List[str] = []
+        namespaces: List[str] = []
+
+        def _upsert_profile(ns: str, model_hash: str, dim: int, vec: List[float]):
+            existing_prof = db.execute(
+                select(EnrollmentProfile).where(
+                    EnrollmentProfile.student_id == student.id,
+                    EnrollmentProfile.embedding_namespace == ns,
+                )
+            ).scalar_one_or_none()
+            rounded_vec = [round(float(v), 6) for v in vec]
+            if existing_prof:
+                existing_prof.vector_data = rounded_vec
+                existing_prof.model_artifact_id = model_hash
+                existing_prof.embedding_dimension = dim
+                existing_prof.is_active = True
+                existing_prof.profile_version += 1
+            else:
+                new_prof = EnrollmentProfile(
+                    student_id=student.id,
+                    model_artifact_id=model_hash,
+                    embedding_namespace=ns,
+                    embedding_dimension=dim,
+                    vector_data=rounded_vec,
+                    profile_version=1,
+                    is_active=True,
+                )
+                db.add(new_prof)
+
+        # 7A. Option 1: SCRFD-500M + ArcFace MobileFaceNet (512-D)
+        if len(boxes) > 0:
+            best_kps_idx = EnrollmentService._select_primary_face_scrfd(boxes, scores, kpss, cv_img.shape)
+            arcface = ArcFaceMobileNetRecognizer()
+            opt1_emb = arcface.align_and_extract(cv_img, kpss[best_kps_idx])
+            norm = float(np.linalg.norm(opt1_emb))
+            if abs(norm - 1.0) > 1e-4:
+                opt1_emb = opt1_emb / norm
+            _upsert_profile(
+                ns="mobilefacenet_512d_v1",
+                model_hash="9cc6e4a75f0e2bf0b1aed94578f144d15175f357bdc05e815e5c4a02b319eb4f",
+                dim=512,
+                vec=opt1_emb.tolist(),
+            )
+            models_enrolled.append("Option 1 (512-D ArcFace)")
+            namespaces.append("mobilefacenet_512d_v1")
+
+        # 7B. Option 3: OpenCV Zoo SFace (128-D)
+        primary_yunet = None
+        if len(yunet_dets) > 0:
+            primary_yunet = EnrollmentService._select_primary_face(yunet_dets)
+            sface_zoo = RecognizerAdapter(strict_mode=False)
+            opt3_emb = sface_zoo.align_and_compute_embedding(cv_img, primary_yunet.raw_face)
+            _upsert_profile(
+                ns="sface_128d_v1",
+                model_hash="0ba9fbfa01b5270c96627c4ef784da859931e02f04419c829e83484087c34e79",
+                dim=128,
+                vec=opt3_emb.vector,
+            )
+            models_enrolled.append("Option 3 (128-D SFace)")
+            namespaces.append("sface_128d_v1")
+
+        # 7C. Fine-Tuned: KUCET SFace Fine-Tuned (128-D)
+        if primary_yunet is not None:
+            ft_path = Path("backend/models/kucet_frs_sface_finetuned.onnx").resolve()
+            sface_ft = RecognizerAdapter(model_path=ft_path, strict_mode=False)
+            ft_emb = sface_ft.align_and_compute_embedding(cv_img, primary_yunet.raw_face)
+            _upsert_profile(
+                ns="kucet_frs_sface_finetuned_v2",
+                model_hash="0d980b104c783bc4230b074d5b44b9bf329b6cc5d457ba92416b5d6b7000755f",
+                dim=128,
+                vec=ft_emb.vector,
+            )
+            models_enrolled.append("Fine-Tuned SFace (128-D)")
+            namespaces.append("kucet_frs_sface_finetuned_v2")
+
+        # 8. Commit and broadcast
+        db.commit()
+        db.refresh(student)
+        db.refresh(sub)
+
+        broadcaster.publish_sync(
+            EventMessage(
+                event_type=RealtimeEventType.ENROLLMENT_DECIDED,
+                channel="global:admin",
+                payload={
+                    "student_id": student.id,
+                    "roll_number": student.roll_number,
+                    "full_name": student.full_name,
+                    "department": clean_dept,
+                    "status": "APPROVED",
+                    "source": "MOBILE_DIRECT_ENROLL",
+                },
+            ),
+            db=db,
+        )
+
+        return {
+            "success": True,
+            "message": f"Student {clean_name} ({clean_roll}) enrolled directly with Cloudinary storage and multi-model embeddings.",
+            "student_id": student.id,
+            "roll_number": student.roll_number,
+            "full_name": student.full_name,
+            "department": clean_dept,
+            "cloudinary_photo_url": cloudinary_url,
+            "models_enrolled": models_enrolled,
+            "namespaces": namespaces,
+        }
+
 
     @staticmethod
     def get_dashboard_stats(db: Session, department_id: Optional[str] = None) -> Dict[str, Any]:

@@ -5,6 +5,7 @@ import '../../data/kucet_faculty_directory.dart';
 import '../../logic/auth_provider.dart';
 import '../../logic/session_provider.dart';
 import 'session_setup_screen.dart';
+import 'student_enrollment_screen.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -30,6 +31,18 @@ class HomeScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('KUCET Faculty Portal'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.person_add_alt_1_rounded),
+            tooltip: 'Direct Student Enrollment',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const StudentEnrollmentScreen(),
+                ),
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.refresh),
             tooltip: 'Refresh Offerings',
@@ -147,6 +160,63 @@ class HomeScreen extends ConsumerWidget {
                             ),
                           ],
                         ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+
+                // Student Direct Enrollment Quick Action Card
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppTheme.surfaceLight,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppTheme.borderLight),
+                  ),
+                  child: Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 24,
+                        backgroundColor: AppTheme.secondaryBlue.withValues(alpha: 0.1),
+                        child: const Icon(Icons.person_add_rounded, color: AppTheme.secondaryBlue, size: 26),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Student Direct Enrollment',
+                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: AppTheme.textMainLight),
+                            ),
+                            const SizedBox(height: 2),
+                            const Text(
+                              'Capture & enroll directly to Cloudinary with Option 1, Option 3 & Fine-Tuned AI.',
+                              style: TextStyle(fontSize: 12, color: AppTheme.textMutedLight),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.primaryNavy,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        ),
+                        icon: const Icon(Icons.add, size: 16),
+                        label: const Text('Enroll', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const StudentEnrollmentScreen(),
+                            ),
+                          );
+                        },
                       ),
                     ],
                   ),

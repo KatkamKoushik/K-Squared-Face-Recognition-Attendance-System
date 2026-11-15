@@ -1007,6 +1007,9 @@ class DemoAnalysisResponse {
   final List<DemoStudentResult> attendanceGranted;
   final List<DemoStudentResult> attendanceNotGranted;
   final List<DemoFaceBox> unidentifiedFaces;
+  final String? modelId;
+  final String? modelName;
+  final int? embeddingDimension;
 
   const DemoAnalysisResponse({
     required this.totalDetectedFaces,
@@ -1021,6 +1024,9 @@ class DemoAnalysisResponse {
     required this.attendanceGranted,
     required this.attendanceNotGranted,
     required this.unidentifiedFaces,
+    this.modelId,
+    this.modelName,
+    this.embeddingDimension,
   });
 
   factory DemoAnalysisResponse.fromJson(Map<String, dynamic> json) {
@@ -1045,6 +1051,9 @@ class DemoAnalysisResponse {
       unidentifiedFaces: (json['unidentified_faces'] as List)
           .map((e) => DemoFaceBox.fromJson(e as Map<String, dynamic>))
           .toList(),
+      modelId: json['model_id'] as String?,
+      modelName: json['model_name'] as String?,
+      embeddingDimension: json['embedding_dimension'] as int?,
     );
   }
 }
