@@ -17,8 +17,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     pathname === "/admin/login" ||
     pathname === "/enroll" ||
     pathname === "/enrollment" ||
-    pathname === "/student/login" ||
-    pathname.startsWith("/student");
+    pathname === "/student" ||
+    pathname.startsWith("/student/");
 
   useEffect(() => {
     const user = getStoredUser();

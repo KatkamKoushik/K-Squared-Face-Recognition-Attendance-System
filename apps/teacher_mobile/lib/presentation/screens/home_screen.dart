@@ -8,6 +8,7 @@ import 'session_setup_screen.dart';
 import 'student_enrollment_screen.dart';
 import 'model_manager_screen.dart';
 import 'class_pack_screen.dart';
+import 'developer_student_manager_screen.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -33,6 +34,18 @@ class HomeScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('KUCET Faculty Portal'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.admin_panel_settings_rounded, color: AppTheme.accentGold),
+            tooltip: 'Developer Database Control (koushikkatkam@gmail.com)',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const DeveloperStudentManagerScreen(),
+                ),
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.person_add_alt_1_rounded),
             tooltip: 'Direct Student Enrollment',
@@ -168,6 +181,79 @@ class HomeScreen extends ConsumerWidget {
                 ),
 
                 const SizedBox(height: 16),
+
+                // Developer Database Control Card (koushikkatkam@gmail.com)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppTheme.accentGold.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppTheme.accentGold.withValues(alpha: 0.4), width: 1.5),
+                  ),
+                  child: Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 24,
+                        backgroundColor: AppTheme.primaryNavy,
+                        child: const Icon(Icons.admin_panel_settings_rounded, color: AppTheme.accentGold, size: 26),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                const Text(
+                                  'Developer Database Control',
+                                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.5, color: AppTheme.primaryNavy),
+                                ),
+                                const SizedBox(width: 6),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                                  decoration: BoxDecoration(
+                                    color: AppTheme.primaryNavy,
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: const Text(
+                                    'ROOT',
+                                    style: TextStyle(color: AppTheme.accentGold, fontSize: 9, fontWeight: FontWeight.bold),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 3),
+                            const Text(
+                              'koushikkatkam@gmail.com • Rewrite details, replace photos in Cloudinary, purge biometrics, or delete records.',
+                              style: TextStyle(fontSize: 11.5, color: AppTheme.textMainLight),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.primaryNavy,
+                          foregroundColor: AppTheme.accentGold,
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        ),
+                        icon: const Icon(Icons.tune_rounded, size: 16),
+                        label: const Text('Manage', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const DeveloperStudentManagerScreen(),
+                            ),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 12),
 
                 // Student Direct Enrollment Quick Action Card
                 Container(

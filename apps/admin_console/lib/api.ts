@@ -234,10 +234,15 @@ export async function fetchFromApi<T>(endpoint: string, options?: RequestInit): 
   try {
     const token = getAuthToken();
     const headers: Record<string, string> = {
-      "Content-Type": "application/json",
       "ngrok-skip-browser-warning": "1",
       ...(options?.headers as Record<string, string> || {}),
     };
+
+    if (typeof FormData !== "undefined" && options?.body instanceof FormData) {
+      delete headers["Content-Type"];
+    } else if (!headers["Content-Type"]) {
+      headers["Content-Type"] = "application/json";
+    }
 
     if (token && !headers["Authorization"]) {
       headers["Authorization"] = `Bearer ${token}`;
@@ -452,6 +457,7 @@ export async function updateStudent(
     roll_number?: string;
     institutional_email?: string;
     department_code?: string;
+    academic_year?: string;
     status?: string;
   }
 ): Promise<StudentListItem | null> {
@@ -462,6 +468,32 @@ export async function updateStudent(
     },
     body: JSON.stringify(data),
   });
+}
+
+export async function updateStudentPhoto(
+  studentId: string,
+  file: File
+): Promise<{ success: boolean; message: string; cloudinary_photo_url: string; models_enrolled: string[] } | null> {
+  const formData = new FormData();
+  formData.append("photo", file);
+  return fetchFromApi<{ success: boolean; message: string; cloudinary_photo_url: string; models_enrolled: string[] }>(
+    `/academic/students/${studentId}/photo`,
+    {
+      method: "POST",
+      body: formData,
+    }
+  );
+}
+
+export async function deleteStudent(
+  studentId: string
+): Promise<{ success: boolean; message: string } | null> {
+  return fetchFromApi<{ success: boolean; message: string }>(
+    `/academic/students/${studentId}`,
+    {
+      method: "DELETE",
+    }
+  );
 }
 
 export async function deleteStudentPhoto(

@@ -15,6 +15,28 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
+  const handleDeveloperLogin = async () => {
+    setEmail("koushikkatkam@gmail.com");
+    setPassword("KucetDev@2026");
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await login("koushikkatkam@gmail.com", "KucetDev@2026", true);
+      if (res && res.access_token) {
+        setSuccess(true);
+        setTimeout(() => {
+          router.push("/students");
+        }, 500);
+      } else {
+        setError("Developer login failed. Ensure control plane is running.");
+      }
+    } catch {
+      setError("Unable to connect to FastAPI control plane.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) {
@@ -76,6 +98,33 @@ export default function LoginPage() {
             <span>Authentication verified. Redirecting to workspace...</span>
           </div>
         )}
+
+        {/* Developer One-Click Access Card */}
+        <div className="p-4 rounded-xl bg-gradient-to-br from-emerald-50 to-teal-50 border-2 border-emerald-400 shadow-xs">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center space-x-1.5">
+              <ShieldCheck className="w-4 h-4 text-emerald-700" />
+              <span className="font-bold text-xs text-emerald-900 tracking-wide uppercase">
+                Developer Authority Access
+              </span>
+            </div>
+            <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-200 text-emerald-900">
+              Tier 1 Root
+            </span>
+          </div>
+          <p className="text-[11px] text-emerald-800 leading-snug mb-3">
+            Absolute permission to rewrite names, change photos, reassign departments, and delete database records.
+          </p>
+          <button
+            type="button"
+            onClick={handleDeveloperLogin}
+            disabled={loading || success}
+            className="w-full flex items-center justify-center space-x-2 py-2 px-3 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white rounded-lg text-xs font-bold transition-all shadow-sm hover:shadow cursor-pointer disabled:opacity-50"
+          >
+            <span>One-Click Sign In as koushikkatkam@gmail.com</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </button>
+        </div>
 
         {/* Form */}
         <form onSubmit={handleLogin} className="space-y-4">

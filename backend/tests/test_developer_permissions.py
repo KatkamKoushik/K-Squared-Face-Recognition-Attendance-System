@@ -145,3 +145,46 @@ def test_developer_can_delete_student_photo_and_profiles(db_session: Session):
     # Clean up temp student
     db_session.delete(temp_student)
     db_session.commit()
+
+
+def test_developer_can_delete_student_completely(db_session: Session):
+    import uuid
+    dev = db_session.query(User).filter(User.email == "koushikkatkam@gmail.com").first()
+    token = create_access_token(subject=dev.email, role="DEVELOPER", additional_claims={"user_id": dev.id})
+    headers = {"Authorization": f"Bearer {token}"}
+
+    cohort = db_session.query(Cohort).first()
+    assert cohort is not None
+
+    temp_id = str(uuid.uuid4())
+    temp_student = Student(
+        id=temp_id,
+        roll_number=f"TEST_STUD_DEL_{temp_id[:6]}",
+        full_name="Temp Complete Delete Student",
+        cohort_id=cohort.id,
+        is_active=True,
+    )
+    db_session.add(temp_student)
+    db_session.commit()
+
+    # Non-developer delete attempt fails with 403
+    admin = db_session.query(User).filter(User.role == UserRole.ADMIN).first()
+    if admin:
+        admin_token = create_access_token(subject=admin.email, role="ADMIN", additional_claims={"user_id": admin.id})
+        res_admin = client.delete(
+            f"/api/v1/academic/students/{temp_id}",
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        assert res_admin.status_code == 403
+
+    # Developer delete succeeds
+    res = client.delete(
+        f"/api/v1/academic/students/{temp_id}",
+        headers=headers,
+    )
+    assert res.status_code == 200
+    assert res.json()["data"]["success"] is True
+
+    # Verify student is removed from database
+    check = db_session.query(Student).filter(Student.id == temp_id).first()
+    assert check is None, "Student must be completely deleted from database"

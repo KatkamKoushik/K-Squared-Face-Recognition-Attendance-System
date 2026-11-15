@@ -189,6 +189,7 @@ class StudentUpdate(BaseModel):
     institutional_email: Optional[str] = None
     cohort_id: Optional[str] = None
     department_code: Optional[str] = None
+    academic_year: Optional[str] = None
     lifecycle_status: Optional[StudentLifecycleStatus] = None
     is_active: Optional[bool] = None
 

@@ -569,5 +569,125 @@ class FrsApiService {
     }
     throw Exception('Student direct enrollment failed (HTTP ${res.statusCode}): ${res.body}');
   }
+
+  /// GET /academic/students
+  /// Retrieves enrolled students from the central database.
+  Future<List<Map<String, dynamic>>> getAllStudents({int limit = 200}) async {
+    final res = await _client.get(
+      Uri.parse('$baseUrl/academic/students?limit=$limit'),
+      headers: _headers(),
+    ).timeout(const Duration(seconds: 8));
+    _checkAuthError(res);
+
+    if (res.statusCode == 200) {
+      final payload = _unwrap(res);
+      if (payload is List) {
+        return payload.cast<Map<String, dynamic>>();
+      }
+    }
+    throw Exception('Failed to load students (HTTP ${res.statusCode}): ${res.body}');
+  }
+
+  /// PATCH /academic/students/{studentId}
+  /// Developer rewrite of student details (name, roll, branch/department, year, email).
+  Future<Map<String, dynamic>> updateStudentDetails({
+    required String studentId,
+    String? fullName,
+    String? rollNumber,
+    String? departmentCode,
+    String? academicYear,
+    String? institutionalEmail,
+    String? status,
+  }) async {
+    final body = <String, dynamic>{};
+    if (fullName != null) body['full_name'] = fullName.trim();
+    if (rollNumber != null) body['roll_number'] = rollNumber.trim().toUpperCase();
+    if (departmentCode != null) body['department_code'] = departmentCode.trim().toUpperCase();
+    if (academicYear != null) body['academic_year'] = academicYear.trim();
+    if (institutionalEmail != null) body['institutional_email'] = institutionalEmail.trim();
+    if (status != null) body['lifecycle_status'] = status;
+
+    final res = await _client.patch(
+      Uri.parse('$baseUrl/academic/students/$studentId'),
+      headers: _headers(),
+      body: jsonEncode(body),
+    ).timeout(const Duration(seconds: 10));
+    _checkAuthError(res);
+
+    if (res.statusCode == 200) {
+      final payload = _unwrap(res);
+      if (payload is Map<String, dynamic>) {
+        return payload;
+      }
+    }
+    throw Exception('Failed to update student details (HTTP ${res.statusCode}): ${res.body}');
+  }
+
+  /// POST /academic/students/{studentId}/photo
+  /// Developer replaces/changes student photo. Saves to Cloudinary & recalculates AI embeddings.
+  Future<Map<String, dynamic>> updateStudentPhoto({
+    required String studentId,
+    required List<int> photoBytes,
+    required String filename,
+  }) async {
+    final uri = Uri.parse('$baseUrl/academic/students/$studentId/photo');
+    final request = http.MultipartRequest('POST', uri);
+    request.headers['Accept'] = 'application/json';
+    request.headers['ngrok-skip-browser-warning'] = 'true';
+    if (authToken != null && authToken!.isNotEmpty) {
+      request.headers['Authorization'] = 'Bearer $authToken';
+    }
+    request.files.add(
+      http.MultipartFile.fromBytes('photo', photoBytes, filename: filename),
+    );
+
+    final streamed = await _client.send(request).timeout(const Duration(seconds: 45));
+    final res = await http.Response.fromStream(streamed);
+    _checkAuthError(res);
+
+    if (res.statusCode == 200) {
+      final payload = _unwrap(res);
+      if (payload is Map<String, dynamic>) {
+        return payload;
+      }
+    }
+    throw Exception('Failed to update student photo (HTTP ${res.statusCode}): ${res.body}');
+  }
+
+  /// DELETE /academic/students/{studentId}/photo
+  /// Purges student face photo and all model embeddings from database.
+  Future<Map<String, dynamic>> deleteStudentPhoto({required String studentId}) async {
+    final res = await _client.delete(
+      Uri.parse('$baseUrl/academic/students/$studentId/photo'),
+      headers: _headers(),
+    ).timeout(const Duration(seconds: 10));
+    _checkAuthError(res);
+
+    if (res.statusCode == 200) {
+      final payload = _unwrap(res);
+      if (payload is Map<String, dynamic>) {
+        return payload;
+      }
+    }
+    throw Exception('Failed to delete student photo (HTTP ${res.statusCode}): ${res.body}');
+  }
+
+  /// DELETE /academic/students/{studentId}
+  /// Permanently deletes student record from database.
+  Future<Map<String, dynamic>> deleteStudent({required String studentId}) async {
+    final res = await _client.delete(
+      Uri.parse('$baseUrl/academic/students/$studentId'),
+      headers: _headers(),
+    ).timeout(const Duration(seconds: 10));
+    _checkAuthError(res);
+
+    if (res.statusCode == 200) {
+      final payload = _unwrap(res);
+      if (payload is Map<String, dynamic>) {
+        return payload;
+      }
+    }
+    throw Exception('Failed to delete student (HTTP ${res.statusCode}): ${res.body}');
+  }
 }
 

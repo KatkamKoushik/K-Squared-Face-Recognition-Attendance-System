@@ -671,21 +671,31 @@ class AcademicService:
         if data.is_active is not None:
             student.is_active = data.is_active
 
-        # If department_code is provided, resolve department & assign first matching cohort
-        if data.department_code:
-            dept = db.execute(select(Department).where(Department.code == data.department_code.strip().upper())).scalar_one_or_none()
-            if dept:
-                cohort = db.execute(select(Cohort).where(Cohort.department_id == dept.id)).scalars().first()
-                if cohort:
-                    student.cohort_id = cohort.id
+        # If department_code or academic_year is provided, resolve department & assign matching cohort
+        target_dept = data.department_code.strip().upper() if data.department_code else None
+        target_year = data.academic_year.strip() if data.academic_year else None
 
-        # Keep matching enrollment submissions in sync if roll number or full name was rewritten
+        if target_dept or target_year:
+            cohort_stmt = select(Cohort).join(Department, Cohort.department_id == Department.id)
+            if target_dept:
+                cohort_stmt = cohort_stmt.where(Department.code == target_dept)
+            if target_year:
+                cohort_stmt = cohort_stmt.where(Cohort.academic_year == target_year)
+            matching_cohort = db.execute(cohort_stmt).scalars().first()
+            if matching_cohort:
+                student.cohort_id = matching_cohort.id
+
+        # Keep matching enrollment submissions in sync if roll number, name, dept, or year was rewritten
         subs = list(db.execute(select(EnrollmentSubmission).where(EnrollmentSubmission.roll_number == old_roll)).scalars().all())
         for s in subs:
             s.roll_number = student.roll_number
             s.full_name = student.full_name
             if student.institutional_email:
                 s.institutional_email = student.institutional_email
+            if target_dept:
+                s.department = target_dept
+            if target_year:
+                s.academic_year = target_year
 
         after_state = {
             "full_name": student.full_name,
@@ -766,4 +776,123 @@ class AcademicService:
             "profiles_deleted": profiles_deleted,
             "submissions_updated": submissions_updated,
             "message": f"Biometric photos and {profiles_deleted} face embedding profile(s) successfully deleted from database.",
+        }
+
+    @staticmethod
+    def update_student_photo(
+        db: Session,
+        student_id: str,
+        file_bytes: bytes,
+        user: User,
+        correlation_id: str,
+    ) -> dict:
+        """
+        Absolute developer permission to upload/change any student's portrait photo
+        and recompute embeddings for Option 1, Option 3, and Fine-Tuned models.
+        Restricted exclusively to koushikkatkam@gmail.com / DEVELOPER.
+        """
+        if user.email != "koushikkatkam@gmail.com" and user.role != UserRole.DEVELOPER:
+            raise PermissionDeniedError(
+                message="Updating student photos in the database is restricted exclusively to koushikkatkam@gmail.com.",
+                reason_code="DEVELOPER_PRIVILEGE_REQUIRED",
+            )
+
+        student = db.get(Student, student_id)
+        if not student:
+            student = db.execute(select(Student).where(Student.roll_number == student_id)).scalar_one_or_none()
+        if not student:
+            raise ResourceNotFoundError(resource="Student", identifier=student_id)
+
+        dept_code = "CSE"
+        if student.cohort and student.cohort.department:
+            dept_code = student.cohort.department.code
+        else:
+            sub = db.execute(select(EnrollmentSubmission).where(EnrollmentSubmission.roll_number == student.roll_number)).scalars().first()
+            if sub and sub.department:
+                dept_code = sub.department
+
+        year = "2023-2027"
+        if student.cohort and student.cohort.academic_year:
+            year = student.cohort.academic_year
+        else:
+            sub = db.execute(select(EnrollmentSubmission).where(EnrollmentSubmission.roll_number == student.roll_number)).scalars().first()
+            if sub and sub.academic_year:
+                year = sub.academic_year
+
+        from app.services.enrollment_service import EnrollmentService
+        res = EnrollmentService.direct_enroll_student(
+            db=db,
+            roll_number=student.roll_number,
+            full_name=student.full_name,
+            department=dept_code,
+            academic_year=year,
+            institutional_email=student.institutional_email,
+            cohort_id=student.cohort_id,
+            file_bytes=file_bytes,
+            actor_id=user.id,
+        )
+
+        audit = AuditEvent(
+            session_id=None,
+            actor_id=user.id,
+            action=AuditAction.DEVELOPER_STUDENT_MODIFIED,
+            reason=f"Developer {user.email} changed portrait photo for student {student.roll_number}",
+            before_state={"student_id": student.id, "roll_number": student.roll_number},
+            after_state={"cloudinary_photo_url": res.get("cloudinary_photo_url"), "models_enrolled": res.get("models_enrolled")},
+            correlation_id=correlation_id,
+        )
+        db.add(audit)
+        db.commit()
+
+        return res
+
+    @staticmethod
+    def delete_student(
+        db: Session,
+        student_id: str,
+        user: User,
+        correlation_id: str,
+    ) -> dict:
+        """
+        Deletes a student record, face templates, and submissions completely from the database.
+        Restricted exclusively to koushikkatkam@gmail.com / DEVELOPER.
+        """
+        if user.email != "koushikkatkam@gmail.com" and user.role != UserRole.DEVELOPER:
+            raise PermissionDeniedError(
+                message="Deleting students from the database is restricted exclusively to koushikkatkam@gmail.com.",
+                reason_code="DEVELOPER_PRIVILEGE_REQUIRED",
+            )
+
+        student = db.get(Student, student_id)
+        if not student:
+            student = db.execute(select(Student).where(Student.roll_number == student_id)).scalar_one_or_none()
+        if not student:
+            raise ResourceNotFoundError(resource="Student", identifier=student_id)
+
+        roll = student.roll_number
+        name = student.full_name
+
+        # Delete dependent records
+        db.execute(delete(EnrollmentProfile).where(EnrollmentProfile.student_id == student.id))
+        db.execute(delete(EnrollmentSubmission).where(EnrollmentSubmission.roll_number == roll))
+        db.execute(delete(Enrollment).where(Enrollment.student_id == student.id))
+        db.delete(student)
+
+        audit = AuditEvent(
+            session_id=None,
+            actor_id=user.id,
+            action=AuditAction.DEVELOPER_STUDENT_MODIFIED,
+            reason=f"Developer {user.email} deleted student {roll} ({name}) completely from database",
+            before_state={"student_id": student_id, "roll_number": roll, "full_name": name},
+            after_state={"deleted": True},
+            correlation_id=correlation_id,
+        )
+        db.add(audit)
+        db.commit()
+
+        return {
+            "success": True,
+            "roll_number": roll,
+            "full_name": name,
+            "message": f"Student {name} ({roll}) deleted permanently from the database.",
         }

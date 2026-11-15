@@ -8,6 +8,7 @@ import '../../data/models/domain_contracts.dart';
 import '../../logic/session_provider.dart';
 import 'student_enrollment_screen.dart';
 import 'model_manager_screen.dart';
+import 'developer_student_manager_screen.dart';
 
 enum OverlayDisplayMode {
   clean,     // Clean focus: compact student name pill on matched, minimal ? dot on unknown
@@ -722,6 +723,21 @@ class _DemoVisualizerScreenState extends ConsumerState<DemoVisualizerScreen> wit
               tooltip: 'Add Sweep Shot',
               onPressed: () => _pickGalleryImages(),
             ),
+          IconButton(
+            icon: const Icon(Icons.admin_panel_settings_rounded, color: Color(0xFF10B981)),
+            tooltip: 'Developer Database Control (koushikkatkam@gmail.com)',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const DeveloperStudentManagerScreen(),
+                ),
+              ).then((_) {
+                _loadEnrolledGalleryCount();
+                _reanalyzeAllFrames();
+              });
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.person_add_alt_1_rounded),
             tooltip: 'Direct Student Enrollment',

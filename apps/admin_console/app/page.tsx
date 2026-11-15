@@ -13,6 +13,7 @@ import {
   ShieldAlert,
   RefreshCw,
   Camera,
+  Database,
 } from "lucide-react";
 import { getAdminDashboardMetrics, AdminDashboardMetrics, getStoredUser } from "@/lib/api";
 import { getStoredAdminToken } from "@/lib/session";
@@ -104,8 +105,15 @@ export default function AdminDashboardPage() {
             <span>Student Portal</span>
           </Link>
           <Link
-            href="/demo"
+            href="/students"
             className="inline-flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition-colors shadow-xs"
+          >
+            <Database className="w-4 h-4" />
+            <span>Developer Database Control</span>
+          </Link>
+          <Link
+            href="/demo"
+            className="inline-flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-semibold bg-slate-800 text-white hover:bg-slate-900 transition-colors shadow-xs"
           >
             <Camera className="w-4 h-4" />
             <span>Demo Face Visualizer</span>
@@ -116,6 +124,37 @@ export default function AdminDashboardPage() {
           >
             <ShieldAlert className="w-4 h-4 text-institutional-gold" />
             <span>Biometric Queue</span>
+            <ArrowUpRight className="w-4 h-4" />
+          </Link>
+        </div>
+      </div>
+
+      {/* Developer Quick-Action Authority Banner */}
+      <div className="bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-50 border-2 border-emerald-400/80 rounded-2xl p-5 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div className="flex items-start space-x-3">
+          <div className="p-2.5 rounded-xl bg-emerald-600 text-white shadow-xs shrink-0 mt-0.5">
+            <Database className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="flex items-center space-x-2">
+              <h2 className="font-bold text-sm text-emerald-950">
+                Developer Database Control (koushikkatkam@gmail.com)
+              </h2>
+              <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-200 text-emerald-900 border border-emerald-300">
+                Tier 1 Absolute Authority
+              </span>
+            </div>
+            <p className="text-xs text-emerald-800 mt-1 max-w-2xl leading-relaxed">
+              Unrestricted permission to rewrite student names, change roll numbers, reassign departments, change/upload photos directly to Cloudinary, and permanently purge or delete database records.
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center space-x-3 shrink-0">
+          <Link
+            href="/students"
+            className="inline-flex items-center space-x-2 px-4 py-2.5 rounded-xl text-xs font-bold bg-emerald-700 text-white hover:bg-emerald-800 transition-all shadow-sm"
+          >
+            <span>Manage All Students & Photos</span>
             <ArrowUpRight className="w-4 h-4" />
           </Link>
         </div>
