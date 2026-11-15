@@ -43,6 +43,7 @@ MODEL_REGISTRY: Dict[str, Dict[str, Any]] = {
         "detector": "SCRFD-500M-KPS",
         "recognizer": "MobileFaceNet ArcFace",
         "default_threshold": 0.380,
+        "default_margin_threshold": 0.10,
         "namespace": "mobilefacenet_512d_v1",
         "badge": "512-D High Speed",
         "description": "512-D normalized ArcFace embeddings with SCRFD 5-keypoint affine alignment.",
@@ -55,6 +56,7 @@ MODEL_REGISTRY: Dict[str, Dict[str, Any]] = {
         "detector": "SCRFD-2.5G-KPS",
         "recognizer": "OpenCV Zoo SFace",
         "default_threshold": 0.363,
+        "default_margin_threshold": 0.10,
         "namespace": "sface_128d_v1",
         "badge": "128-D OpenCV Zoo",
         "description": "128-D official OpenCV Zoo SFace embeddings with SCRFD-2.5G face detection.",
@@ -67,6 +69,7 @@ MODEL_REGISTRY: Dict[str, Dict[str, Any]] = {
         "detector": "YuNet ONNX",
         "recognizer": "KUCET SFace v2 Fine-Tuned",
         "default_threshold": 0.363,
+        "default_margin_threshold": 0.008,
         "namespace": "kucet_frs_sface_finetuned_v2",
         "badge": "128-D Domain Fine-Tuned",
         "description": "Domain fine-tuned SFace model calibrated for KUCET classroom environments.",
@@ -272,6 +275,9 @@ class DemoService:
             target_dim = None
             target_model_id = None
 
+        calibrated_margin = model_info.get("default_margin_threshold", 0.10) if model_info else 0.10
+        eff_margin = calibrated_margin if (margin_threshold == 0.10 or margin_threshold is None) else margin_threshold
+
         # 1. Decode image and apply EXIF rotation
         try:
             pil_raw = Image.open(io.BytesIO(image_bytes))
@@ -397,7 +403,7 @@ class DemoService:
                     query_vector=emb_vec.tolist(),
                     enrolled_profiles=enrolled_gallery,
                     match_threshold=eff_threshold,
-                    margin_threshold=margin_threshold,
+                    margin_threshold=eff_margin,
                 )
 
                 extracted_faces.append({
@@ -462,7 +468,7 @@ class DemoService:
                     query_vector=emb.vector,
                     enrolled_profiles=enrolled_gallery,
                     match_threshold=eff_threshold,
-                    margin_threshold=margin_threshold,
+                    margin_threshold=eff_margin,
                 )
 
                 extracted_faces.append({
@@ -521,7 +527,7 @@ class DemoService:
                     query_vector=emb.vector,
                     enrolled_profiles=enrolled_gallery,
                     match_threshold=eff_threshold,
-                    margin_threshold=margin_threshold,
+                    margin_threshold=eff_margin,
                 )
 
                 extracted_faces.append({
@@ -674,7 +680,7 @@ class DemoService:
                     similarity_score=candidate.similarity_score,
                     margin=candidate.margin_to_second,
                     color_hex="#F59E0B",  # Amber orange
-                    badge_label=f"Ambiguous Lookalike (Margin < {margin_threshold})",
+                    badge_label=f"Ambiguous Lookalike (Margin < {eff_margin})",
                     face_width_px=face_w,
                     face_height_px=face_h,
                     effective_threshold=eff_thresh,

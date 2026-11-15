@@ -111,6 +111,7 @@ class _DemoVisualizerScreenState extends ConsumerState<DemoVisualizerScreen> wit
           setState(() {
             _selectedModel = activeId;
             _matchThreshold = activeId == 'option_1' ? 0.380 : 0.363;
+            _marginThreshold = activeId == 'finetuned_v2' ? 0.010 : 0.10;
           });
         }
       }
@@ -123,6 +124,7 @@ class _DemoVisualizerScreenState extends ConsumerState<DemoVisualizerScreen> wit
     setState(() {
       _selectedModel = modelId;
       _matchThreshold = modelId == 'option_1' ? 0.380 : 0.363;
+      _marginThreshold = modelId == 'finetuned_v2' ? 0.010 : 0.10;
     });
     try {
       await ref.read(apiProvider).selectDemoModel(modelId);
@@ -638,13 +640,13 @@ class _DemoVisualizerScreenState extends ConsumerState<DemoVisualizerScreen> wit
                       setState(() => _matchThreshold = v);
                     },
                   ),
-                  Text('Separation Margin (\u0394s): ${_marginThreshold.toStringAsFixed(2)}'),
+                  Text('Separation Margin (\u0394s): ${_marginThreshold.toStringAsFixed(3)}'),
                   Slider(
-                    value: _marginThreshold,
-                    min: 0.05,
+                    value: _marginThreshold.clamp(0.005, 0.25),
+                    min: 0.005,
                     max: 0.25,
-                    divisions: 20,
-                    label: _marginThreshold.toStringAsFixed(2),
+                    divisions: 49,
+                    label: _marginThreshold.toStringAsFixed(3),
                     onChanged: (v) {
                       setModalState(() => _marginThreshold = v);
                       setState(() => _marginThreshold = v);
