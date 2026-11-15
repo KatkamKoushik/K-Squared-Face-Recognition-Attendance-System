@@ -414,7 +414,12 @@ class DemoService:
         elif target_model_id == "finetuned_v2":
             # Domain Fine-Tuned SFace (kucet_frs_sface_finetuned_v2)
             detector = DetectorAdapter(strict_mode=True)
-            finetuned_path = Path("backend/models/kucet_frs_sface_finetuned.onnx").resolve()
+            ft_candidates = [
+                Path(__file__).resolve().parent.parent.parent / "models" / "kucet_frs_sface_finetuned.onnx",
+                Path("backend/models/kucet_frs_sface_finetuned.onnx").resolve(),
+                Path("models/kucet_frs_sface_finetuned.onnx").resolve(),
+            ]
+            finetuned_path = next((p for p in ft_candidates if p.exists()), ft_candidates[0])
             sface_recognizer = RecognizerAdapter(model_path=finetuned_path, strict_mode=False)
             detections = detector.detect_faces(image)
 

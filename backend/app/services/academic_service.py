@@ -812,8 +812,13 @@ class AcademicService:
                 dept_code = sub.department
 
         year = "2023-2027"
-        if student.cohort and student.cohort.academic_year:
-            year = student.cohort.academic_year
+        if student.cohort:
+            adm = getattr(student.cohort, "admission_year", None)
+            grad = getattr(student.cohort, "graduation_year", None)
+            if adm and grad:
+                year = f"{adm}-{grad}"
+            elif hasattr(student.cohort, "academic_year") and student.cohort.academic_year:
+                year = str(student.cohort.academic_year)
         else:
             sub = db.execute(select(EnrollmentSubmission).where(EnrollmentSubmission.roll_number == student.roll_number)).scalars().first()
             if sub and sub.academic_year:

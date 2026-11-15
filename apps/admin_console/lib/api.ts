@@ -474,37 +474,88 @@ export async function updateStudentPhoto(
   studentId: string,
   file: File
 ): Promise<{ success: boolean; message: string; cloudinary_photo_url: string; models_enrolled: string[] } | null> {
+  const token = getAuthToken();
   const formData = new FormData();
   formData.append("photo", file);
-  return fetchFromApi<{ success: boolean; message: string; cloudinary_photo_url: string; models_enrolled: string[] }>(
-    `/academic/students/${studentId}/photo`,
-    {
-      method: "POST",
-      body: formData,
+
+  const headers: Record<string, string> = {
+    "ngrok-skip-browser-warning": "1",
+  };
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  const res = await fetch(`${getApiBase()}/academic/students/${studentId}/photo`, {
+    method: "POST",
+    headers,
+    body: formData,
+  });
+
+  if (!res.ok) {
+    let errDetail = `Server responded with status ${res.status}`;
+    try {
+      const errJson = await res.json();
+      errDetail = errJson.detail || errJson.message || errJson.error?.message || errDetail;
+    } catch {
+      // Non-JSON error
     }
-  );
+    throw new Error(errDetail);
+  }
+
+  const json = await res.json();
+  return (json && typeof json === "object" && "data" in json) ? json.data : json;
 }
 
 export async function deleteStudent(
   studentId: string
 ): Promise<{ success: boolean; message: string } | null> {
-  return fetchFromApi<{ success: boolean; message: string }>(
-    `/academic/students/${studentId}`,
-    {
-      method: "DELETE",
-    }
-  );
+  const token = getAuthToken();
+  const headers: Record<string, string> = {
+    "ngrok-skip-browser-warning": "1",
+  };
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+  const res = await fetch(`${getApiBase()}/academic/students/${studentId}`, {
+    method: "DELETE",
+    headers,
+  });
+  if (!res.ok) {
+    let errDetail = `Failed to delete student (HTTP ${res.status})`;
+    try {
+      const errJson = await res.json();
+      errDetail = errJson.detail || errJson.message || errDetail;
+    } catch {}
+    throw new Error(errDetail);
+  }
+  const json = await res.json();
+  return (json && typeof json === "object" && "data" in json) ? json.data : json;
 }
 
 export async function deleteStudentPhoto(
   studentId: string
 ): Promise<{ success: boolean; message: string; profiles_deleted: number } | null> {
-  return fetchFromApi<{ success: boolean; message: string; profiles_deleted: number }>(
-    `/academic/students/${studentId}/photo`,
-    {
-      method: "DELETE",
-    }
-  );
+  const token = getAuthToken();
+  const headers: Record<string, string> = {
+    "ngrok-skip-browser-warning": "1",
+  };
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+  const res = await fetch(`${getApiBase()}/academic/students/${studentId}/photo`, {
+    method: "DELETE",
+    headers,
+  });
+  if (!res.ok) {
+    let errDetail = `Failed to purge student photo (HTTP ${res.status})`;
+    try {
+      const errJson = await res.json();
+      errDetail = errJson.detail || errJson.message || errDetail;
+    } catch {}
+    throw new Error(errDetail);
+  }
+  const json = await res.json();
+  return (json && typeof json === "object" && "data" in json) ? json.data : json;
 }
 
 export async function getOfferingAnalytics(offeringId: string): Promise<OfferingAttendanceAnalytics | null> {

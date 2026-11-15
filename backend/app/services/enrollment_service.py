@@ -661,7 +661,12 @@ class EnrollmentService:
 
         # 7C. Fine-Tuned: KUCET SFace Fine-Tuned (128-D)
         if primary_yunet is not None:
-            ft_path = Path("backend/models/kucet_frs_sface_finetuned.onnx").resolve()
+            ft_candidates = [
+                Path(__file__).resolve().parent.parent.parent / "models" / "kucet_frs_sface_finetuned.onnx",
+                Path("backend/models/kucet_frs_sface_finetuned.onnx").resolve(),
+                Path("models/kucet_frs_sface_finetuned.onnx").resolve(),
+            ]
+            ft_path = next((p for p in ft_candidates if p.exists()), ft_candidates[0])
             sface_ft = RecognizerAdapter(model_path=ft_path, strict_mode=False)
             ft_emb = sface_ft.align_and_compute_embedding(cv_img, primary_yunet.raw_face)
             _upsert_profile(
