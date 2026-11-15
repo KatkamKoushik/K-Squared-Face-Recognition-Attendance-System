@@ -701,9 +701,12 @@ class _DemoVisualizerScreenState extends ConsumerState<DemoVisualizerScreen> wit
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: const [
-                  Text(
-                    'Face Visualizer',
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white),
+                  Flexible(
+                    child: Text(
+                      'Face Visualizer',
+                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white),
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
                   SizedBox(width: 2),
                   Icon(Icons.arrow_drop_down, size: 16, color: Colors.white70),
@@ -719,15 +722,6 @@ class _DemoVisualizerScreenState extends ConsumerState<DemoVisualizerScreen> wit
           ),
         ),
         actions: [
-          if (_sweepFrames.isNotEmpty)
-            IconButton(
-              icon: const Icon(Icons.add_photo_alternate_outlined),
-              tooltip: 'Add Sweep Shot',
-              visualDensity: VisualDensity.compact,
-              padding: const EdgeInsets.all(6),
-              constraints: const BoxConstraints(),
-              onPressed: () => _pickGalleryImages(),
-            ),
           IconButton(
             icon: const Icon(Icons.admin_panel_settings_rounded, color: Color(0xFF10B981), size: 21),
             tooltip: 'Developer Database Control',
