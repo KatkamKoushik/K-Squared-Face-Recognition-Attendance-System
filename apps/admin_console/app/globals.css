@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   --color-institutional-navy: #1E3A5F;
   --color-institutional-blue: #0284C7;
@@ -30,6 +32,104 @@
   --color-border: #cbd5e1;
   --color-text-main: #0f172a;
   --color-text-muted: #475569;
+}
+
+.dark {
+  --color-primary: #38bdf8;
+  --color-secondary: #38bdf8;
+  --color-background: #0b1329;
+  --color-surface: #111c38;
+  --color-border: #1e293b;
+  --color-text-main: #f8fafc;
+  --color-text-muted: #94a3b8;
+}
+
+html.dark {
+  color-scheme: dark;
+}
+
+html.dark body {
+  background-color: #0b1329;
+  color: #f8fafc;
+}
+
+/* Comprehensive dark mode styling for admin console components */
+html.dark .bg-white {
+  background-color: #111c38;
+}
+
+html.dark .bg-slate-50 {
+  background-color: #0b1329;
+}
+
+html.dark .bg-slate-100 {
+  background-color: #192648;
+}
+
+html.dark .bg-slate-200 {
+  background-color: #1f305c;
+}
+
+html.dark .border-slate-200 {
+  border-color: #1f2f55;
+}
+
+html.dark .border-slate-300 {
+  border-color: #2b3e6d;
+}
+
+html.dark .text-slate-900 {
+  color: #f8fafc;
+}
+
+html.dark .text-slate-800 {
+  color: #f1f5f9;
+}
+
+html.dark .text-slate-700 {
+  color: #e2e8f0;
+}
+
+html.dark .text-slate-600 {
+  color: #cbd5e1;
+}
+
+html.dark .text-slate-500 {
+  color: #94a3b8;
+}
+
+html.dark .hover\:bg-slate-50:hover {
+  background-color: #192648;
+}
+
+html.dark .hover\:bg-slate-100:hover {
+  background-color: #1e2f5b;
+}
+
+html.dark input:not([type="checkbox"]):not([type="radio"]), 
+html.dark select, 
+html.dark textarea {
+  background-color: #111c38;
+  color: #f8fafc;
+  border-color: #2b3e6d;
+}
+
+html.dark input::placeholder,
+html.dark textarea::placeholder {
+  color: #64748b;
+}
+
+html.dark table thead {
+  background-color: #142040;
+  border-color: #1f2f55;
+}
+
+html.dark table tbody tr {
+  border-color: #1a274c;
+}
+
+html.dark table tbody tr:hover {
+  background-color: #162447;
 }
 
 body {
