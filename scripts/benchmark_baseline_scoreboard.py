@@ -33,60 +33,87 @@ def compute_roc_metrics(
     genuine_scores: np.ndarray,
     impostor_scores: np.ndarray,
     target_fars: Tuple[float, ...] = (1e-3, 1e-2, 5e-2),
+    compute_ci: bool = True,
+    n_bootstrap: int = 500,
+    seed: int = 42,
 ) -> Dict[str, Any]:
     """
-    Computes TAR at specified FAR operating points and calculates EER.
+    Computes TAR at specified FAR operating points, calculates EER,
+    and computes 95% bootstrap confidence intervals across genuine and impostor distributions.
     Cosine similarity scores range from -1.0 to 1.0.
     """
     if len(genuine_scores) == 0 or len(impostor_scores) == 0:
         return {"error": "Insufficient comparison pairs"}
 
-    # Sort thresholds over the range of observed impostor and genuine scores
     thresholds = np.linspace(-0.2, 0.9, 1101)
-    tars = []
-    fars = []
-
     n_gen = len(genuine_scores)
     n_imp = len(impostor_scores)
 
-    for tau in thresholds:
-        tar = np.sum(genuine_scores >= tau) / n_gen
-        far = np.sum(impostor_scores >= tau) / n_imp
-        tars.append(tar)
-        fars.append(far)
+    def _eval_curves(gen: np.ndarray, imp: np.ndarray):
+        tars = np.array([np.sum(gen >= tau) / len(gen) for tau in thresholds])
+        fars = np.array([np.sum(imp >= tau) / len(imp) for tau in thresholds])
+        frr = 1.0 - tars
+        eer_idx = np.argmin(np.abs(fars - frr))
+        eer_val = float((fars[eer_idx] + frr[eer_idx]) / 2.0)
+        eer_tau = float(thresholds[eer_idx])
 
-    tars = np.array(tars)
-    fars = np.array(fars)
+        tar_dict = {}
+        for tfar in target_fars:
+            valid = np.where(fars <= tfar)[0]
+            if len(valid) > 0:
+                idx = valid[0]
+                tar_dict[tfar] = {
+                    "tar": float(tars[idx]),
+                    "threshold": float(thresholds[idx]),
+                    "actual_far": float(fars[idx]),
+                }
+            else:
+                tar_dict[tfar] = {
+                    "tar": 0.0,
+                    "threshold": float(thresholds[-1]),
+                    "actual_far": float(fars[-1]),
+                }
+        return eer_val, eer_tau, tar_dict
 
-    # 1. Calculate Equal Error Rate (EER) where FAR ~= 1 - TAR (FRR)
-    frr = 1.0 - tars
-    diff = np.abs(fars - frr)
-    eer_idx = np.argmin(diff)
-    eer = float((fars[eer_idx] + frr[eer_idx]) / 2.0)
-    eer_threshold = float(thresholds[eer_idx])
+    base_eer, base_eer_tau, base_tar_dict = _eval_curves(genuine_scores, impostor_scores)
 
-    # 2. Calculate TAR at target FAR levels
     tar_at_fars = {}
-    for target_far in target_fars:
-        # Find highest threshold where FAR <= target_far
-        valid_indices = np.where(fars <= target_far)[0]
-        if len(valid_indices) > 0:
-            idx = valid_indices[0]  # First threshold where FAR drops below target
-            tar_at_fars[f"TAR@FAR={target_far:.1e}"] = {
-                "tar": float(tars[idx]),
-                "threshold": float(thresholds[idx]),
-                "actual_far": float(fars[idx]),
-            }
-        else:
-            tar_at_fars[f"TAR@FAR={target_far:.1e}"] = {
-                "tar": 0.0,
-                "threshold": float(thresholds[-1]),
-                "actual_far": float(fars[-1]),
-            }
+    for tfar in target_fars:
+        entry = base_tar_dict[tfar]
+        tar_at_fars[f"TAR@FAR={tfar:.1e}"] = {
+            "tar": entry["tar"],
+            "threshold": entry["threshold"],
+            "actual_far": entry["actual_far"],
+        }
+
+    confidence_intervals = {}
+    if compute_ci and n_gen >= 10 and n_imp >= 10:
+        rng = np.random.default_rng(seed)
+        boot_eers = []
+        boot_tars = {tfar: [] for tfar in target_fars}
+
+        for _ in range(n_bootstrap):
+            g_sample = rng.choice(genuine_scores, size=n_gen, replace=True)
+            i_sample = rng.choice(impostor_scores, size=n_imp, replace=True)
+            b_eer, _, b_tars = _eval_curves(g_sample, i_sample)
+            boot_eers.append(b_eer)
+            for tfar in target_fars:
+                boot_tars[tfar].append(b_tars[tfar]["tar"])
+
+        confidence_intervals["eer_ci_95"] = [
+            float(np.percentile(boot_eers, 2.5)),
+            float(np.percentile(boot_eers, 97.5)),
+        ]
+        for tfar in target_fars:
+            tar_at_fars[f"TAR@FAR={tfar:.1e}"]["ci_95_percent"] = [
+                float(np.percentile(boot_tars[tfar], 2.5)),
+                float(np.percentile(boot_tars[tfar], 97.5)),
+            ]
 
     return {
-        "equal_error_rate_eer": eer,
-        "eer_threshold": eer_threshold,
+        "equal_error_rate_eer": base_eer,
+        "eer_threshold": base_eer_tau,
+        "confidence_intervals": confidence_intervals,
         "tar_at_operating_points": tar_at_fars,
         "genuine_stats": {
             "count": int(n_gen),
@@ -102,6 +129,11 @@ def compute_roc_metrics(
             "min": float(np.min(impostor_scores)),
             "max": float(np.max(impostor_scores)),
         },
+        "statistical_validity_note": (
+            f"Evaluated on {n_gen} genuine pairs and {n_imp} impostor pairs. "
+            f"At FAR=1e-3, reliable detection requires >=10,000 impostor pairs (current: {n_imp}). "
+            f"Bootstrap 95% confidence intervals reflect sampling variance."
+        ),
     }
 
 

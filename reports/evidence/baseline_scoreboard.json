@@ -1,5 +1,5 @@
 {
-  "benchmark_timestamp": "2026-11-27 13:13:22 UTC",
+  "benchmark_timestamp": "2026-11-27 13:53:21 UTC",
   "baseline_models": {
     "detector": "face_detection_yunet_2023mar.onnx",
     "recognizer": "face_recognition_sface_2021dec.onnx",
@@ -9,21 +9,39 @@
   "accuracy_metrics": {
     "equal_error_rate_eer": 0.02399074074074075,
     "eer_threshold": 0.176,
+    "confidence_intervals": {
+      "eer_ci_95": [
+        0.01610185185185186,
+        0.03215509259259257
+      ]
+    },
     "tar_at_operating_points": {
       "TAR@FAR=1.0e-03": {
         "tar": 0.8613333333333333,
         "threshold": 0.266,
-        "actual_far": 0.0007407407407407407
+        "actual_far": 0.0007407407407407407,
+        "ci_95_percent": [
+          0.7946666666666666,
+          0.8986666666666666
+        ]
       },
       "TAR@FAR=1.0e-02": {
         "tar": 0.96,
         "threshold": 0.20600000000000002,
-        "actual_far": 0.00962962962962963
+        "actual_far": 0.00962962962962963,
+        "ci_95_percent": [
+          0.9333333333333333,
+          0.9773999999999999
+        ]
       },
       "TAR@FAR=5.0e-02": {
         "tar": 0.992,
         "threshold": 0.14400000000000002,
-        "actual_far": 0.048518518518518516
+        "actual_far": 0.048518518518518516,
+        "ci_95_percent": [
+          0.9813333333333333,
+          1.0
+        ]
       }
     },
     "genuine_stats": {
@@ -39,7 +57,8 @@
       "std": 0.08799170702695847,
       "min": -0.3126864731311798,
       "max": 0.3358457386493683
-    }
+    },
+    "statistical_validity_note": "Evaluated on 375 genuine pairs and 10800 impostor pairs. At FAR=1e-3, reliable detection requires >=10,000 impostor pairs (current: 10800). Bootstrap 95% confidence intervals reflect sampling variance."
   },
   "latency_profile_ms": {
     "detection_per_photo": {
