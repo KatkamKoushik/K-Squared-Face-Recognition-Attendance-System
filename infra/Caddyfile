@@ -1,0 +1,66 @@
+# =============================================================================
+# K² FRS — Production Caddy Reverse Proxy & Automated TLS Ingress
+# KU College of Engineering & Technology (KUCET), Warangal
+# Conforms to V8 Production Upgrade Blueprint §12.3 (R01 & R07)
+# =============================================================================
+
+{
+    email {$ACME_EMAIL:admin@kucet.ac.in}
+    admin off
+}
+
+{$APP_DOMAIN:localhost} {
+    # 1. Automated Security Headers
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        Permissions-Policy "camera=(self), microphone=(), geolocation=()"
+        -Server
+    }
+
+    # 2. API Control Plane Ingress Route
+    handle /api/* {
+        reverse_proxy backend-api:8000 {
+            header_up Host {host}
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+            header_up X-Correlation-ID {http.request.header.X-Correlation-ID}
+        }
+    }
+
+    # 3. Direct Health & Observability Routes
+    handle /health/* {
+        reverse_proxy backend-api:8000 {
+            header_up Host {host}
+            header_up X-Real-IP {remote_host}
+        }
+    }
+
+    # 4. OpenAPI Documentation
+    handle /docs* {
+        reverse_proxy backend-api:8000
+    }
+    handle /openapi.json {
+        reverse_proxy backend-api:8000
+    }
+
+    # 5. Admin Console Frontend & SSR BFF
+    handle {
+        reverse_proxy admin-console:3000 {
+            header_up Host {host}
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+        }
+    }
+
+    # 6. Global Access Logging
+    log {
+        output stdout
+        format json
+    }
+}
