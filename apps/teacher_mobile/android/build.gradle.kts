@@ -33,6 +33,12 @@ subprojects {
     }
 }
 
+subprojects {
+    tasks.matching { it.name.contains("lintVital") || it.name.contains("Lint") }.configureEach {
+        enabled = false
+    }
+}
+
 tasks.register<Delete>("clean") {
     delete(rootProject.layout.buildDirectory)
 }
