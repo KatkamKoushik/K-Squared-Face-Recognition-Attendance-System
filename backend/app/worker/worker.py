@@ -12,7 +12,7 @@ import cv2
 from PIL import Image
 
 logger = logging.getLogger("app.worker")
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload, Session
 from app.domain.enums import EvidenceState, SessionState
 from app.domain.models.session import AttendanceSession, RosterSnapshot
@@ -208,8 +208,22 @@ class VisionWorker:
 
         # 10. Update frame and session status
         frame.status = "PROCESSED"
-        if session.state in [SessionState.ROSTER_FROZEN, SessionState.CAPTURING, SessionState.PROCESSING]:
-            session.state = SessionState.IN_REVIEW
+
+        # R14: Verify batch completion: check if other sweep frames remain pending for this session
+        pending_frames_stmt = select(func.count(Frame.id)).where(
+            Frame.session_id == session.id,
+            Frame.id != frame.id,
+            Frame.status.in_(["QUEUED", "PROCESSING", "PENDING"]),
+        )
+        remaining_pending = db.execute(pending_frames_stmt).scalar() or 0
+
+        # Only transition session to IN_REVIEW when all queued sweep frames in the batch are processed
+        if remaining_pending == 0:
+            if session.state in [SessionState.ROSTER_FROZEN, SessionState.CAPTURING, SessionState.PROCESSING]:
+                session.state = SessionState.IN_REVIEW
+        else:
+            if session.state in [SessionState.ROSTER_FROZEN, SessionState.CAPTURING]:
+                session.state = SessionState.PROCESSING
 
         db.flush()
 

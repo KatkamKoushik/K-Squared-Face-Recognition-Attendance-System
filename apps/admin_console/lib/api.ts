@@ -7,7 +7,7 @@
 
 import { fallbackFromSupabase } from "./supabaseFallback";
 
-const DEFAULT_REMOTE_API = "https://straddle-deflate-footwear.ngrok-free.dev/api/v1";
+const DEFAULT_REMOTE_API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 
 export function getApiBase(): string {
   if (typeof window !== "undefined") {
@@ -248,30 +248,38 @@ export async function fetchFromApi<T>(endpoint: string, options?: RequestInit): 
       headers["Authorization"] = `Bearer ${token}`;
     }
 
-    const res = await fetch(`${getApiBase()}${endpoint}`, {
+    const fetchOptions: RequestInit = {
       ...options,
       headers,
-      next: { revalidate: 10 }, // Next.js ISR cache
-    });
+    };
+    if (token) {
+      // R06: Authenticated requests must use no-store private fetching, not shared ISR cache
+      fetchOptions.cache = "no-store";
+    }
+
+    const res = await fetch(`${getApiBase()}${endpoint}`, fetchOptions);
 
     if (!res.ok) {
       if ((res.status === 401 || res.status === 403) && token) {
         // Authenticated token actively denied authorization; fail closed
         return null;
       }
-      if (typeof window !== "undefined") {
-        try {
-          const fbRes = await fetch(`/api/fallback?endpoint=${encodeURIComponent(endpoint)}`);
-          if (fbRes.ok) {
-            return await fbRes.json() as T;
+      // R06: In production, authoritative API errors fail closed truthfully without synthetic fallback
+      if (process.env.NODE_ENV === "development") {
+        if (typeof window !== "undefined") {
+          try {
+            const fbRes = await fetch(`/api/fallback?endpoint=${encodeURIComponent(endpoint)}`);
+            if (fbRes.ok) {
+              return await fbRes.json() as T;
+            }
+          } catch {
+            // Fall through to isomorphic fallback in dev
           }
-        } catch {
-          // Fall through to isomorphic fallback
         }
-      }
-      const fallback = await fallbackFromSupabase<T>(endpoint);
-      if (fallback !== null) {
-        return fallback;
+        const fallback = await fallbackFromSupabase<T>(endpoint);
+        if (fallback !== null) {
+          return fallback;
+        }
       }
       return null;
     }
@@ -283,21 +291,22 @@ export async function fetchFromApi<T>(endpoint: string, options?: RequestInit): 
     return json as T;
   } catch (error: any) {
     const msg = error?.cause?.code || error?.message || String(error);
-    if (typeof window !== "undefined") {
-      try {
-        const fbRes = await fetch(`/api/fallback?endpoint=${encodeURIComponent(endpoint)}`);
-        if (fbRes.ok) {
-          return await fbRes.json() as T;
-        }
-      } catch {
-        // Fall through to isomorphic fallback
-      }
-    }
-    const fallback = await fallbackFromSupabase<T>(endpoint);
-    if (fallback !== null) {
-      return fallback;
-    }
+    // R06: In production, network / server failures fail closed without synthetic fallback
     if (process.env.NODE_ENV === "development") {
+      if (typeof window !== "undefined") {
+        try {
+          const fbRes = await fetch(`/api/fallback?endpoint=${encodeURIComponent(endpoint)}`);
+          if (fbRes.ok) {
+            return await fbRes.json() as T;
+          }
+        } catch {
+          // Fall through to isomorphic fallback in dev
+        }
+      }
+      const fallback = await fallbackFromSupabase<T>(endpoint);
+      if (fallback !== null) {
+        return fallback;
+      }
       console.warn(`[API Error] ${endpoint} unreachable or failed: ${msg}`);
     }
     return null;

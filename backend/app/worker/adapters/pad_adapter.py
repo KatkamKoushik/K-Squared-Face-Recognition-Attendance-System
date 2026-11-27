@@ -99,13 +99,16 @@ class PadAdapter:
             # Normal human facial skin texture under classroom lighting
             score = round(min(0.98, 0.70 + (texture_variance / 100.0) * 0.25), 4)
             status = "PASS" if score >= threshold else "UNCERTAIN"
-            reason = "PAD_TEXTURE_VERIFIED_PASS" if status == "PASS" else "PAD_INCONCLUSIVE_TEXTURE_VARIANCE"
+            reason = "FACULTY_SUPERVISED_TEXTURE_VERIFIED" if status == "PASS" else "PAD_INCONCLUSIVE_TEXTURE_VARIANCE"
 
             return SecurityResult(
                 is_live=(status == "PASS"),
                 score=score,
                 status=status,
                 reason_code=reason,
+                quality_score=score,
+                texture_suspicion_flag=False,
+                supervised_verification_required=True,
             )
         except Exception as exc:
             # STRICT FAIL-CLOSED: exceptions must never return PASS or is_live=True

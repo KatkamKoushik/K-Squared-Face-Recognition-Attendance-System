@@ -42,7 +42,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    image: ghcr.io/katkamkoushik/k-squared-face-recognition-attendance-system/backend-api:latest
+    image: ghcr.io/${IMAGE_OWNER:-katkamkoushik}/k-squared-backend-api:${IMAGE_TAG:-latest}
     container_name: frs-k2-migration-prod
     restart: "no"
     depends_on:
@@ -63,7 +63,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    image: ghcr.io/katkamkoushik/k-squared-face-recognition-attendance-system/backend-api:latest
+    image: ghcr.io/${IMAGE_OWNER:-katkamkoushik}/k-squared-backend-api:${IMAGE_TAG:-latest}
     container_name: frs-k2-backend-api-prod
     restart: always
     security_opt:
@@ -113,7 +113,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile.worker
-    image: ghcr.io/katkamkoushik/k-squared-face-recognition-attendance-system/vision-worker:latest
+    image: ghcr.io/${IMAGE_OWNER:-katkamkoushik}/k-squared-vision-worker:${IMAGE_TAG:-latest}
     container_name: frs-k2-vision-worker-prod
     restart: always
     security_opt:
@@ -154,7 +154,7 @@ services:
     build:
       context: ./apps/admin_console
       dockerfile: Dockerfile
-    image: ghcr.io/katkamkoushik/k-squared-face-recognition-attendance-system/admin-console:latest
+    image: ghcr.io/${IMAGE_OWNER:-katkamkoushik}/k-squared-admin-console:${IMAGE_TAG:-latest}
     container_name: frs-k2-admin-console-prod
     restart: always
     security_opt:

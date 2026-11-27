@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../../data/models/domain_contracts.dart';
 
@@ -30,6 +31,28 @@ class FrsApiService {
 
   String get activeUserId => currentUserId ?? 'FACULTY-KUCET';
 
+  static String _validateBaseUrl(String url) {
+    if (kReleaseMode) {
+      final uri = Uri.tryParse(url);
+      if (uri != null) {
+        if (uri.scheme == 'http') {
+          throw UnsupportedError('Production release builds strictly prohibit cleartext HTTP. Base URL must use HTTPS.');
+        }
+        if (uri.host == 'localhost' || uri.host == '127.0.0.1' || uri.host == '0.0.0.0') {
+          throw UnsupportedError('Production release builds strictly prohibit loopback hostnames.');
+        }
+      }
+    }
+    return url;
+  }
+
+  void updateBaseUrl(String newUrl) {
+    if (kReleaseMode) {
+      throw UnsupportedError('Dynamic endpoint switching is disabled in production release builds.');
+    }
+    baseUrl = _validateBaseUrl(newUrl);
+  }
+
   FrsApiService({
     String? baseUrl,
     http.Client? client,
@@ -39,15 +62,17 @@ class FrsApiService {
     this.currentUserRole,
     this.liveDemoMode = true,
     this.onSessionExpired,
-  })  : baseUrl = baseUrl ?? defaultBaseUrl,
+  })  : baseUrl = _validateBaseUrl(baseUrl ?? defaultBaseUrl),
         _client = client ?? http.Client();
 
   Map<String, String> _headers({Map<String, String>? extra}) {
     final headers = <String, String>{
       'Accept': 'application/json',
       'Content-Type': 'application/json',
-      'ngrok-skip-browser-warning': 'true',
     };
+    if (!kReleaseMode) {
+      headers['ngrok-skip-browser-warning'] = 'true';
+    }
     if (authToken != null && authToken!.isNotEmpty) {
       headers['Authorization'] = 'Bearer $authToken';
     }

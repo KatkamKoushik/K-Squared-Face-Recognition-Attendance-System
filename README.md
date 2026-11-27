@@ -393,9 +393,9 @@ frs-v7-1-k2/
 | `POST` | `/api/v1/enrollment/submissions/{id}/recapture` | `ADMIN` | Flags submission for recapture with specific quality improvement guidance. |
 | `GET` | `/api/v1/enrollment/dashboard-stats` | `ADMIN` / `FACULTY` | Live institutional KPI statistics directly from database queries. |
 | `POST` | `/api/v1/enrollment/mobile/direct-enroll` | Authenticated | Direct student biometric enrollment with Cloudinary upload and multi-model embedding generation. |
-| `GET` | `/api/v1/demo/models` | Public | Lists available local-first face recognition models and active selection. |
-| `POST` | `/api/v1/demo/models/select` | Public | Selects active face recognition model pipeline (ArcFace, SFace Zoo, Fine-Tuned). |
-| `POST` | `/api/v1/demo/analyze` | Public | Analyzes an uploaded photo frame against enrolled student templates using active model. |
+| `GET` | `/api/v1/demo/models` | Dev Only | Lists available local-first face recognition models and active selection (disabled in production). |
+| `POST` | `/api/v1/demo/models/select` | Dev Only | Selects active face recognition model pipeline (disabled in production). |
+| `POST` | `/api/v1/demo/analyze` | Dev Only | Analyzes an uploaded photo frame against enrolled student templates (disabled in production). |
 | `POST` | `/api/v1/academic/students/{id}/photo` | Authenticated | Updates a student's portrait photo in Cloudinary with multi-model re-embedding. |
 | `DELETE` | `/api/v1/academic/students/{id}/photo` | Authenticated | Deletes a student's portrait photo from Cloudinary and cleans up biometric templates. |
 | `DELETE` | `/api/v1/academic/students/{id}` | Authenticated | Deletes a student record with cascading cleanup across attendances, snapshots, and embeddings. |
@@ -404,9 +404,9 @@ frs-v7-1-k2/
 
 ## Security, Privacy & Biometric Governance
 
-1. **On-Premise Institutional Sovereignty:** Zero data is transmitted to external cloud APIs. All computation executes locally on Kakatiya University hardware.
-2. **Irreversible Vector Embeddings:** The neural network outputs 128-dimensional floating-point vectors on unit hypersphere $\mathbb{S}^{127}$. Original facial images cannot be mathematically reconstructed from these embeddings.
-3. **Digital Personal Data Protection (DPDP) Act Compliance:** Biometric template enrollment requires verified student DPDP consent. Students without consent are routed to alternative manual roll-call workflows with zero penalty.
+1. **Institutional Data Sovereignty:** Architecture supports self-hosted campus deployment with no third-party biometric transmission when configured for local or institutional storage providers.
+2. **Protected Biometric Embeddings:** The neural network outputs 128-dimensional floating-point vectors on unit hypersphere $\mathbb{S}^{127}$. In accordance with biometric security guidelines, embeddings are classified as sensitive biometric personal data and protected with encryption, access boundaries, and purge lifecycles.
+3. **Digital Personal Data Protection (DPDP) Architectural Alignment:** Software implements technical guardrails aligned with India's DPDP Act 2023, including explicit consent gating, non-biometric manual alternatives with zero academic penalty, and verifiable deletion workflows. Formal statutory compliance requires institutional legal review.
 4. **Ephemeral Storage Purge Engine:** Raw classroom sweep frames are stored ephemerally on local disk and physically unlinked via automated background tasks or administrative governance controls post-retention window (default 7 days).
 5. **Cryptographic Receipt Verification:** Attendance commitments emit an authoritative HMAC-SHA256 receipt signed with server secret key. The control plane provides tamper-evident receipt verification against the immutable attendance ledger.
 6. **Ingress Protection & Payload Guardrails:** Responses enforce `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy`, and production HSTS. Inbound requests enforce 15MB bounded `Content-Length` (`413 Payload Too Large`), prohibited MIME type filtering (`415 Unsupported Media Type`), and sliding-window rate limiting.

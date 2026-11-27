@@ -1,0 +1,33 @@
+# K² FRS V8 — Release Evidence Manifest Template
+# Reference: K2_FRS_V8_Production_Upgrade_Blueprint.md §14.3
+# Populated exclusively from authentic execution. 'null' and 'NOT_RUN' represent unverified release gates.
+
+release_id: null
+source_commit: null
+api_image_digest: null
+worker_image_digest: null
+web_image_digest: null
+apk_sha256: null
+apk_signing_certificate_sha256: null
+production_https_verified: false
+model_artifacts:
+  - task: DETECTION
+    name: face_detection_yunet_2023mar.onnx
+    sha256: null
+    status: CANDIDATE_BASELINE
+  - task: RECOGNITION
+    name: face_recognition_sface_2021dec.onnx
+    sha256: null
+    status: CANDIDATE_BASELINE
+policy_and_calibration_ids: []
+actual_worker_provider: null
+host_device_network_profile: null
+dataset_and_split_manifest_ids: []
+real_run_ids: []
+metrics_with_numerators_denominators_ci: []
+latency_p50_p95_p99: null
+laptop_off_test: NOT_RUN
+backup_restore_and_deletion: NOT_RUN
+open_blockers: []
+release_authority: null
+institutional_go_decision: NOT_APPROVED

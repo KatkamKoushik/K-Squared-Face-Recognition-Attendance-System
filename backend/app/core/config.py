@@ -7,7 +7,7 @@ from pathlib import Path
 import tempfile
 from typing import List, Literal, Optional
 from urllib.parse import urlsplit, urlunsplit
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 _default_db_path = Path(tempfile.gettempdir()) / "frs_dev.db"
@@ -35,6 +35,10 @@ class Settings(BaseSettings):
     ENVIRONMENT: Literal["development", "staging", "production", "test"] = "development"
     DEBUG: bool = False
     API_V1_STR: str = "/api/v1"
+    DEMO_ENABLED: bool = Field(
+        default=True,
+        description="Enable demo routes. Disabled by default in production; enabled only for dev/test",
+    )
 
     # Server binding
     HOST: str = "0.0.0.0"
@@ -176,6 +180,18 @@ class Settings(BaseSettings):
                 "CRITICAL SECURITY CONFIGURATION: Wildcard '*' in ALLOWED_HOSTS is strictly forbidden in production mode. Specify explicit domain hostnames."
             )
         return v
+
+    @model_validator(mode="after")
+    def validate_production_boundaries(self):
+        """Enforce production security constraints: disable demo routes and scrub dev origins."""
+        if self.ENVIRONMENT == "production":
+            self.DEMO_ENABLED = False
+            # Filter out local/dev-tunnel origins unless explicitly passed by institutional env
+            self.ALLOWED_ORIGINS = [
+                orig for orig in self.ALLOWED_ORIGINS
+                if not orig.endswith(".ngrok-free.dev") and "localhost" not in orig and "127.0.0.1" not in orig
+            ]
+        return self
 
 
 settings = Settings()

@@ -61,14 +61,19 @@ def create_application() -> FastAPI:
         lifespan=lifespan,
     )
 
-    # 1. CORS Middleware
+    # 1. CORS Middleware (R07: Strict explicit allowlist in production, no arbitrary regex reflection)
+    cors_kwargs = {
+        "allow_origins": settings.ALLOWED_ORIGINS,
+        "allow_credentials": True,
+        "allow_methods": ["*"],
+        "allow_headers": ["*"],
+    }
+    if settings.ENVIRONMENT not in ["production", "staging"]:
+        cors_kwargs["allow_origin_regex"] = r".*"
+
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=settings.ALLOWED_ORIGINS,
-        allow_origin_regex=r".*",
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
+        **cors_kwargs,
     )
 
     # 2. Security Headers Middleware (Checklist Section 11)
@@ -157,12 +162,13 @@ def create_application() -> FastAPI:
 
     def _create_error_response(request: Request, status_code: int, envelope: ErrorEnvelope) -> JSONResponse:
         origin = request.headers.get("origin")
-        headers = {
-            "Access-Control-Allow-Origin": origin if origin else "*",
-            "Access-Control-Allow-Credentials": "true",
-            "Access-Control-Allow-Methods": "*",
-            "Access-Control-Allow-Headers": "*",
-        }
+        headers = {}
+        # R07: Strict CORS origin check; do not reflect unapproved origins with credentials
+        if origin and (origin in settings.ALLOWED_ORIGINS or settings.ENVIRONMENT not in ["production", "staging"]):
+            headers["Access-Control-Allow-Origin"] = origin
+            headers["Access-Control-Allow-Credentials"] = "true"
+            headers["Access-Control-Allow-Methods"] = "*"
+            headers["Access-Control-Allow-Headers"] = "*"
         return JSONResponse(
             status_code=status_code,
             content=envelope.model_dump(mode="json"),

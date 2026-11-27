@@ -206,7 +206,7 @@ jobs:
             echo "$HOST_SSH_KEY" > ~/.ssh/id_rsa
             chmod 600 ~/.ssh/id_rsa
             ssh-keyscan -H "$HOST_SSH_IP" >> ~/.ssh/known_hosts 2>/dev/null || true
-            ssh -o StrictHostKeyChecking=accept-new "${HOST_SSH_USER:-deploy}@$HOST_SSH_IP" "echo \"$GHCR_TOKEN\" | docker login ghcr.io -u \"$ACTOR\" --password-stdin && docker compose pull backend-api vision-worker admin-console && docker compose up -d --remove-orphans"
+            ssh -o StrictHostKeyChecking=accept-new "${HOST_SSH_USER:-deploy}@$HOST_SSH_IP" "echo \"$GHCR_TOKEN\" | docker login ghcr.io -u \"$ACTOR\" --password-stdin && docker compose -f docker-compose.prod.yml pull backend-api vision-worker admin-console && docker compose -f docker-compose.prod.yml up -d --remove-orphans"
           else
             echo "HOST_SSH secrets not configured. Skipping SSH docker compose rollout."
           fi
@@ -216,4 +216,8 @@ jobs:
           echo "=== K² FRS CD Pipeline Execution Complete ==="
           echo "1. Container images pushed to ghcr.io/${{ github.repository_owner }}"
           echo "2. Android APK compiled and archived in GitHub Artifacts"
-          echo "3. Target deployment verification finished"
+          if [ -n "${{ secrets.DEPLOY_WEBHOOK_URL }}" ] || ([ -n "${{ secrets.HOST_SSH_IP }}" ] && [ -n "${{ secrets.HOST_SSH_KEY }}" ]); then
+            echo "3. Remote target host deployment rollout initiated"
+          else
+            echo "3. Remote deployment targets skipped (no target host secrets configured)"
+          fi

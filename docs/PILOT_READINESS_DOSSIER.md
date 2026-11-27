@@ -122,9 +122,9 @@ Zero GPL, AGPL, or restrictive copyleft dependencies exist within the runtime cl
 
 ---
 
-## 6. Statutory Privacy & DPDP Act Compliance
+## 6. Statutory Privacy & DPDP Act Architectural Alignment
 
-The software implementation complies with the statutory governance mandates of India's *Digital Personal Data Protection (DPDP) Act, 2023*:
+The software architecture implements technical controls designed for alignment with the statutory governance mandates of India's *Digital Personal Data Protection (DPDP) Act, 2023* (formal statutory certification remains subject to institutional legal review):
 
 1. **Informed Consent & Freedom of Choice:**
    - Biometric enrollment requires explicit signed consent.

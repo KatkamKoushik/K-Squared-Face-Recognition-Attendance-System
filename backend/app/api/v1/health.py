@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, status, Response
 from fastapi.responses import PlainTextResponse
 from sqlalchemy import select, func, text
 from sqlalchemy.orm import Session
+from app.core.config import settings
 from app.core.database import get_db
 from app.domain.models.model_registry import ModelArtifact
 from app.schemas.common import ResponseEnvelope
@@ -93,19 +94,29 @@ def readiness_probe(db: Session = Depends(get_db)):
         models_verified["error"] = str(exc)
         models_verified["runtime_ready"] = False
 
-    is_system_ready = bool(db_ready and models_verified["runtime_ready"])
-    return ResponseEnvelope(
-        data={
-            "status": "READY" if is_system_ready else "DEGRADED",
-            "api_status": "READY",
-            "database": "CONNECTED" if db_ready else "DISCONNECTED",
-            "worker_queue": "ACTIVE",
-            "model_registry": {
-                "detector_approved": detector_approved,
-                "recognizer_approved": recognizer_approved,
-            },
-            "models_runtime": models_verified,
+    is_system_ready = bool(db_ready and (models_verified["runtime_ready"] or settings.ENVIRONMENT not in ["production", "staging"]))
+
+    data = {
+        "status": "READY" if is_system_ready else "DEGRADED",
+        "api_status": "READY",
+        "database": "CONNECTED" if db_ready else "DISCONNECTED",
+        "worker_queue": "ACTIVE" if db_ready else "DISCONNECTED",
+        "model_registry": {
+            "detector_approved": detector_approved,
+            "recognizer_approved": recognizer_approved,
         },
+        "models_runtime": models_verified,
+    }
+
+    if not is_system_ready and settings.ENVIRONMENT in ["production", "staging"]:
+        return Response(
+            content=ResponseEnvelope(data=data, correlation_id="readiness-check").model_dump_json(),
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            media_type="application/json",
+        )
+
+    return ResponseEnvelope(
+        data=data,
         correlation_id="readiness-check",
     )
 

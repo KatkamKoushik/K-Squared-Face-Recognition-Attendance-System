@@ -50,7 +50,7 @@ where = ["."]
 include = ["app*"]
 
 [tool.pytest.ini_options]
-addopts = "-p no:playwright"
+addopts = "-p no:playwright -p no:anyio"
 asyncio_mode = "auto"
 testpaths = ["tests"]
 python_files = ["test_*.py"]

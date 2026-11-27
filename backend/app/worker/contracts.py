@@ -41,3 +41,6 @@ class SecurityResult(BaseModel):
     score: float
     status: str  # "PASS", "FAIL", "UNCERTAIN", "ERROR", "NOT_CONFIGURED", "SKIPPED"
     reason_code: str
+    quality_score: Optional[float] = None
+    texture_suspicion_flag: bool = False
+    supervised_verification_required: bool = True
