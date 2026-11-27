@@ -150,8 +150,11 @@ docs/operations/kucet_faculty_coordinators_list.md
 # Model Weights & Binary Artifacts (Stored outside source control per P0.2)
 # ==============================================================================
 *.onnx
+*.pt
 backend/models/*.onnx
 /models/
+checkpoints/
+research/**/checkpoints/
 
 # ==============================================================================
 # Kaggle Workspaces & Notebooks (Stored locally / untracked per user direction)

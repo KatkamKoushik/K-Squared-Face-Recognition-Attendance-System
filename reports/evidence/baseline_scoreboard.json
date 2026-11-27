@@ -1,0 +1,62 @@
+{
+  "benchmark_timestamp": "2026-11-27 13:13:22 UTC",
+  "baseline_models": {
+    "detector": "face_detection_yunet_2023mar.onnx",
+    "recognizer": "face_recognition_sface_2021dec.onnx",
+    "embedding_dimension": 128,
+    "namespace": "sface_128d_v1"
+  },
+  "accuracy_metrics": {
+    "equal_error_rate_eer": 0.02399074074074075,
+    "eer_threshold": 0.176,
+    "tar_at_operating_points": {
+      "TAR@FAR=1.0e-03": {
+        "tar": 0.8613333333333333,
+        "threshold": 0.266,
+        "actual_far": 0.0007407407407407407
+      },
+      "TAR@FAR=1.0e-02": {
+        "tar": 0.96,
+        "threshold": 0.20600000000000002,
+        "actual_far": 0.00962962962962963
+      },
+      "TAR@FAR=5.0e-02": {
+        "tar": 0.992,
+        "threshold": 0.14400000000000002,
+        "actual_far": 0.048518518518518516
+      }
+    },
+    "genuine_stats": {
+      "count": 375,
+      "mean": 0.34652450680732727,
+      "std": 0.07626624405384064,
+      "min": 0.11462869495153427,
+      "max": 0.5748922824859619
+    },
+    "impostor_stats": {
+      "count": 10800,
+      "mean": -0.0015051579102873802,
+      "std": 0.08799170702695847,
+      "min": -0.3126864731311798,
+      "max": 0.3358457386493683
+    }
+  },
+  "latency_profile_ms": {
+    "detection_per_photo": {
+      "p50": 31.644578048668123,
+      "p95": 35.672001731684865,
+      "p99": 35.874408511422686
+    },
+    "embedding_per_crop": {
+      "p50": 1.0023220822518155,
+      "p95": 1.1390500466983096,
+      "p99": 1.147811296808843
+    },
+    "whole_class_sweep_estimate_40_faces_p95_ms": 81.23
+  },
+  "promotion_gate_thresholds": {
+    "target_far": 0.001,
+    "min_acceptable_tar": 0.95,
+    "max_acceptable_sweep_latency_ms": 2500.0
+  }
+}
