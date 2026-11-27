@@ -21,14 +21,22 @@ class FrsApiService {
   String baseUrl;
   final http.Client _client;
   String? authToken;
+  String? currentUserId;
+  String? currentUserEmail;
+  String? currentUserRole;
   bool liveDemoMode;
   String? lastConnectionError;
   void Function()? onSessionExpired;
+
+  String get activeUserId => currentUserId ?? 'FACULTY-KUCET';
 
   FrsApiService({
     String? baseUrl,
     http.Client? client,
     this.authToken,
+    this.currentUserId,
+    this.currentUserEmail,
+    this.currentUserRole,
     this.liveDemoMode = true,
     this.onSessionExpired,
   })  : baseUrl = baseUrl ?? defaultBaseUrl,
@@ -112,6 +120,9 @@ class FrsApiService {
       final payload = _unwrap(res);
       if (payload is Map<String, dynamic>) {
         authToken = payload['access_token'] as String?;
+        currentUserId = payload['user_id'] as String?;
+        currentUserEmail = payload['email'] as String?;
+        currentUserRole = payload['role'] as String?;
         return payload;
       }
     }
@@ -143,6 +154,9 @@ class FrsApiService {
       final payload = _unwrap(res);
       if (payload is Map<String, dynamic>) {
         authToken = payload['access_token'] as String?;
+        currentUserId = payload['user_id'] as String?;
+        currentUserEmail = payload['email'] as String?;
+        currentUserRole = payload['role'] as String?;
         return payload;
       }
     }
@@ -170,15 +184,21 @@ class FrsApiService {
       final payload = _unwrap(res);
       if (payload is Map<String, dynamic>) {
         authToken = payload['access_token'] as String?;
+        currentUserId = payload['user_id'] as String?;
+        currentUserEmail = payload['email'] as String?;
+        currentUserRole = payload['role'] as String?;
         return payload;
       }
     }
     return null;
   }
 
-  /// Clears active JWT session token.
+  /// Clears active JWT session token and user profile context.
   void logout() {
     authToken = null;
+    currentUserId = null;
+    currentUserEmail = null;
+    currentUserRole = null;
   }
 
   /// GET /academic/offerings
@@ -292,9 +312,9 @@ class FrsApiService {
         if (res.statusCode == 200) {
           final payload = _unwrap(res);
           if (payload is Map<String, dynamic>) {
-            final bool isComplete = payload['is_processing_complete'] as bool? ?? true;
+            final bool isComplete = payload['is_processing_complete'] == true;
             final String? jobState = payload['job_state'] as String?;
-            if (isComplete || jobState == 'PROPOSAL_READY' || jobState == 'COMPLETED') {
+            if (isComplete && (jobState == 'PROPOSAL_READY' || jobState == 'COMPLETED')) {
               return payload;
             }
           }
@@ -400,7 +420,7 @@ class FrsApiService {
   }
 
   /// POST /demo/analyze
-  /// Universal demo photo analysis with visual bounding boxes, resolution-adaptive thresholding, and optional department scoping.
+  /// Universal demo photo analysis with visual bounding boxes, resolution-adaptive thresholding, and optional department/model scoping.
   Future<DemoAnalysisResponse> analyzeDemoImage({
     required List<int> imageBytes,
     required String filename,
@@ -408,6 +428,7 @@ class FrsApiService {
     double marginThreshold = 0.10,
     double blurThreshold = 50.0,
     String? departmentCode,
+    String? modelId,
   }) async {
     final uri = Uri.parse('$baseUrl/demo/analyze');
     final request = http.MultipartRequest('POST', uri);
@@ -421,6 +442,9 @@ class FrsApiService {
     request.fields['blur_threshold'] = blurThreshold.toString();
     if (departmentCode != null && departmentCode.isNotEmpty && departmentCode != 'ALL') {
       request.fields['department_code'] = departmentCode;
+    }
+    if (modelId != null && modelId.isNotEmpty) {
+      request.fields['model_id'] = modelId;
     }
     request.files.add(
       http.MultipartFile.fromBytes('file', imageBytes, filename: filename),
@@ -440,10 +464,20 @@ class FrsApiService {
   }
 
   /// GET /demo/enrolled-students
-  Future<List<Map<String, dynamic>>> getDemoEnrolledStudents({String? departmentCode}) async {
-    String url = '$baseUrl/demo/enrolled-students';
+  Future<List<Map<String, dynamic>>> getDemoEnrolledStudents({
+    String? departmentCode,
+    String? modelId,
+  }) async {
+    final params = <String>[];
     if (departmentCode != null && departmentCode.isNotEmpty && departmentCode != 'ALL') {
-      url += '?department_code=$departmentCode';
+      params.add('department_code=$departmentCode');
+    }
+    if (modelId != null && modelId.isNotEmpty) {
+      params.add('model_id=$modelId');
+    }
+    String url = '$baseUrl/demo/enrolled-students';
+    if (params.isNotEmpty) {
+      url += '?${params.join('&')}';
     }
     final res = await _client.get(
       Uri.parse(url),
@@ -459,4 +493,201 @@ class FrsApiService {
     }
     throw Exception('Failed to load demo enrolled students (HTTP ${res.statusCode}): ${res.body}');
   }
+
+  /// GET /demo/models
+  Future<Map<String, dynamic>> getDemoModels() async {
+    final res = await _client.get(
+      Uri.parse('$baseUrl/demo/models'),
+      headers: _headers(),
+    ).timeout(const Duration(seconds: 6));
+    _checkAuthError(res);
+
+    if (res.statusCode == 200) {
+      final payload = _unwrap(res);
+      if (payload is Map<String, dynamic>) {
+        return payload;
+      }
+    }
+    throw Exception('Failed to load demo recognition models (HTTP ${res.statusCode}): ${res.body}');
+  }
+
+  /// POST /demo/models/select
+  Future<void> selectDemoModel(String modelId) async {
+    final res = await _client.post(
+      Uri.parse('$baseUrl/demo/models/select'),
+      headers: _headers(),
+      body: jsonEncode({'model_id': modelId}),
+    ).timeout(const Duration(seconds: 6));
+    _checkAuthError(res);
+
+    if (res.statusCode != 200) {
+      throw Exception('Failed to set active demo model (HTTP ${res.statusCode}): ${res.body}');
+    }
+  }
+
+  /// POST /enrollment/mobile/direct-enroll
+  /// Direct student enrollment from mobile device (RMX5003).
+  /// Saves photo to Cloudinary and computes multi-model embeddings (Option 1, Option 3, Fine-Tuned).
+  Future<Map<String, dynamic>> directEnrollStudent({
+    required String rollNumber,
+    required String fullName,
+    required String department,
+    String? academicYear,
+    String? institutionalEmail,
+    required List<int> photoBytes,
+    required String filename,
+  }) async {
+    final uri = Uri.parse('$baseUrl/enrollment/mobile/direct-enroll');
+    final request = http.MultipartRequest('POST', uri);
+    request.headers['Accept'] = 'application/json';
+    request.headers['ngrok-skip-browser-warning'] = 'true';
+    if (authToken != null && authToken!.isNotEmpty) {
+      request.headers['Authorization'] = 'Bearer $authToken';
+    }
+    request.fields['roll_number'] = rollNumber.trim().toUpperCase();
+    request.fields['full_name'] = fullName.trim();
+    request.fields['department'] = department.trim().toUpperCase();
+    if (academicYear != null && academicYear.isNotEmpty) {
+      request.fields['academic_year'] = academicYear.trim();
+    }
+    if (institutionalEmail != null && institutionalEmail.isNotEmpty) {
+      request.fields['institutional_email'] = institutionalEmail.trim();
+    }
+    request.files.add(
+      http.MultipartFile.fromBytes('photo', photoBytes, filename: filename),
+    );
+
+    final streamed = await _client.send(request).timeout(const Duration(seconds: 45));
+    final res = await http.Response.fromStream(streamed);
+    _checkAuthError(res);
+
+    if (res.statusCode == 200 || res.statusCode == 201) {
+      final payload = _unwrap(res);
+      if (payload is Map<String, dynamic>) {
+        return payload;
+      }
+    }
+    throw Exception('Student direct enrollment failed (HTTP ${res.statusCode}): ${res.body}');
+  }
+
+  /// GET /academic/students
+  /// Retrieves enrolled students from the central database.
+  Future<List<Map<String, dynamic>>> getAllStudents({int limit = 200}) async {
+    final res = await _client.get(
+      Uri.parse('$baseUrl/academic/students?limit=$limit'),
+      headers: _headers(),
+    ).timeout(const Duration(seconds: 8));
+    _checkAuthError(res);
+
+    if (res.statusCode == 200) {
+      final payload = _unwrap(res);
+      if (payload is List) {
+        return payload.cast<Map<String, dynamic>>();
+      }
+    }
+    throw Exception('Failed to load students (HTTP ${res.statusCode}): ${res.body}');
+  }
+
+  /// PATCH /academic/students/{studentId}
+  /// Developer rewrite of student details (name, roll, branch/department, year, email).
+  Future<Map<String, dynamic>> updateStudentDetails({
+    required String studentId,
+    String? fullName,
+    String? rollNumber,
+    String? departmentCode,
+    String? academicYear,
+    String? institutionalEmail,
+    String? status,
+  }) async {
+    final body = <String, dynamic>{};
+    if (fullName != null) body['full_name'] = fullName.trim();
+    if (rollNumber != null) body['roll_number'] = rollNumber.trim().toUpperCase();
+    if (departmentCode != null) body['department_code'] = departmentCode.trim().toUpperCase();
+    if (academicYear != null) body['academic_year'] = academicYear.trim();
+    if (institutionalEmail != null) body['institutional_email'] = institutionalEmail.trim();
+    if (status != null) body['lifecycle_status'] = status;
+
+    final res = await _client.patch(
+      Uri.parse('$baseUrl/academic/students/$studentId'),
+      headers: _headers(),
+      body: jsonEncode(body),
+    ).timeout(const Duration(seconds: 10));
+    _checkAuthError(res);
+
+    if (res.statusCode == 200) {
+      final payload = _unwrap(res);
+      if (payload is Map<String, dynamic>) {
+        return payload;
+      }
+    }
+    throw Exception('Failed to update student details (HTTP ${res.statusCode}): ${res.body}');
+  }
+
+  /// POST /academic/students/{studentId}/photo
+  /// Developer replaces/changes student photo. Saves to Cloudinary & recalculates AI embeddings.
+  Future<Map<String, dynamic>> updateStudentPhoto({
+    required String studentId,
+    required List<int> photoBytes,
+    required String filename,
+  }) async {
+    final uri = Uri.parse('$baseUrl/academic/students/$studentId/photo');
+    final request = http.MultipartRequest('POST', uri);
+    request.headers['Accept'] = 'application/json';
+    request.headers['ngrok-skip-browser-warning'] = 'true';
+    if (authToken != null && authToken!.isNotEmpty) {
+      request.headers['Authorization'] = 'Bearer $authToken';
+    }
+    request.files.add(
+      http.MultipartFile.fromBytes('photo', photoBytes, filename: filename),
+    );
+
+    final streamed = await _client.send(request).timeout(const Duration(seconds: 45));
+    final res = await http.Response.fromStream(streamed);
+    _checkAuthError(res);
+
+    if (res.statusCode == 200) {
+      final payload = _unwrap(res);
+      if (payload is Map<String, dynamic>) {
+        return payload;
+      }
+    }
+    throw Exception('Failed to update student photo (HTTP ${res.statusCode}): ${res.body}');
+  }
+
+  /// DELETE /academic/students/{studentId}/photo
+  /// Purges student face photo and all model embeddings from database.
+  Future<Map<String, dynamic>> deleteStudentPhoto({required String studentId}) async {
+    final res = await _client.delete(
+      Uri.parse('$baseUrl/academic/students/$studentId/photo'),
+      headers: _headers(),
+    ).timeout(const Duration(seconds: 10));
+    _checkAuthError(res);
+
+    if (res.statusCode == 200) {
+      final payload = _unwrap(res);
+      if (payload is Map<String, dynamic>) {
+        return payload;
+      }
+    }
+    throw Exception('Failed to delete student photo (HTTP ${res.statusCode}): ${res.body}');
+  }
+
+  /// DELETE /academic/students/{studentId}
+  /// Permanently deletes student record from database.
+  Future<Map<String, dynamic>> deleteStudent({required String studentId}) async {
+    final res = await _client.delete(
+      Uri.parse('$baseUrl/academic/students/$studentId'),
+      headers: _headers(),
+    ).timeout(const Duration(seconds: 10));
+    _checkAuthError(res);
+
+    if (res.statusCode == 200) {
+      final payload = _unwrap(res);
+      if (payload is Map<String, dynamic>) {
+        return payload;
+      }
+    }
+    throw Exception('Failed to delete student (HTTP ${res.statusCode}): ${res.body}');
+  }
 }
+

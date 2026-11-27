@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { AdminSidebar } from "@/components/sidebar";
 import { AdminHeader } from "@/components/header";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { getStoredUser } from "@/lib/api";
 import { getStoredAdminToken } from "@/lib/session";
 
@@ -17,8 +18,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     pathname === "/admin/login" ||
     pathname === "/enroll" ||
     pathname === "/enrollment" ||
-    pathname === "/student/login" ||
-    pathname.startsWith("/student");
+    pathname === "/student" ||
+    pathname.startsWith("/student/");
 
   useEffect(() => {
     const user = getStoredUser();
@@ -35,7 +36,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   // Public views (Enrollment, Login, Student Portal): render clean page without administrative shell
   if (isPublicRoute) {
     return (
-      <div className="w-full min-h-screen bg-slate-50">
+      <div className="w-full min-h-screen bg-slate-50 dark:bg-slate-950 relative transition-colors">
+        <div className="absolute top-4 right-4 z-50">
+          <ThemeToggle />
+        </div>
         <main id="main-content" tabIndex={-1} className="outline-hidden">
           {children}
         </main>
@@ -46,10 +50,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   // If unauthenticated on a protected route, show a minimal transition state while routing to /enroll
   if (!isAuth) {
     return (
-      <div className="w-full min-h-screen bg-slate-50 flex items-center justify-center">
+      <div className="w-full min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center transition-colors">
         <div className="text-center space-y-3">
-          <div className="w-8 h-8 border-3 border-institutional-navy border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="text-xs text-slate-500 font-medium">Redirecting to Student Enrollment Portal...</p>
+          <div className="w-8 h-8 border-3 border-institutional-navy dark:border-sky-400 border-t-transparent rounded-full animate-spin mx-auto" />
+          <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Redirecting to Student Enrollment Portal...</p>
         </div>
       </div>
     );
@@ -57,7 +61,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   // Authenticated Administrative View ("Total"): render full sidebar, header, and dashboard features
   return (
-    <div className="flex w-full min-h-screen bg-slate-50">
+    <div className="flex w-full min-h-screen bg-slate-50 dark:bg-slate-950 transition-colors">
       <AdminSidebar />
       <div className="flex-1 flex flex-col min-h-screen overflow-x-hidden">
         <AdminHeader />

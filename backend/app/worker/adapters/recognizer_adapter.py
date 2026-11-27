@@ -20,6 +20,7 @@ class RecognizerAdapter:
     MODEL_HASH = "0ba9fbfa01b5270c96627c4ef784da859931e02f04419c829e83484087c34e79"
     FINETUNED_HASH = "61c33636f356cd235ac42526231ff54733985a00848a74cf0860d7ccb9617a3e"
     FINETUNED_HASH_V2 = "0d980b104c783bc4230b074d5b44b9bf329b6cc5d457ba92416b5d6b7000755f"
+    FINETUNED_HASH_V3 = "e1bf5e2fd83ac6384d562680297451823145f83025aa0e6f2fb9199184205156"
     NAMESPACE = "sface_128d_v1"
     EMBEDDING_DIM = 128
     DEFAULT_FILENAME = "face_recognition_sface_2021dec.onnx"
@@ -29,6 +30,7 @@ class RecognizerAdapter:
         MODEL_HASH: "sface_128d_v1",
         FINETUNED_HASH: "kucet_frs_sface_finetuned_v1",
         FINETUNED_HASH_V2: "kucet_frs_sface_finetuned_v2",
+        FINETUNED_HASH_V3: "kucet_frs_sface_finetuned_v3",
     }
 
     def __init__(self, model_path: Optional[Path] = None, strict_mode: Optional[bool] = None):
@@ -39,6 +41,9 @@ class RecognizerAdapter:
         self.embedding_dimension = self.EMBEDDING_DIM
         self.model_path = self._resolve_model_path(model_path)
         self._recognizer: Optional[cv2.FaceRecognizerSF] = None
+        self._ort_session = None
+        self._ort_input: str = "input"
+        self._ort_output: str = "embedding"
         self._init_recognizer()
 
     def _compute_sha256(self, path: Path) -> str:
@@ -100,6 +105,19 @@ class RecognizerAdapter:
 
         self.model_hash = actual_hash
         self.namespace = self.APPROVED_HASHES[actual_hash]
+        self.is_finetuned = actual_hash in (
+            self.FINETUNED_HASH,
+            self.FINETUNED_HASH_V2,
+            self.FINETUNED_HASH_V3,
+        )
+
+        try:
+            import onnxruntime as ort
+            self._ort_session = ort.InferenceSession(str(resolved), providers=["CPUExecutionProvider"])
+            self._ort_input = self._ort_session.get_inputs()[0].name
+            self._ort_output = self._ort_session.get_outputs()[0].name
+        except Exception:
+            self._ort_session = None
 
         try:
             self._recognizer = cv2.FaceRecognizerSF.create(
@@ -107,7 +125,7 @@ class RecognizerAdapter:
                 config="",
             )
         except Exception as exc:
-            if self.strict_mode:
+            if self.strict_mode and self._ort_session is None:
                 raise RuntimeError(f"Failed to initialize cv2.FaceRecognizerSF from {resolved}: {exc}") from exc
             self._recognizer = None
 
@@ -117,10 +135,42 @@ class RecognizerAdapter:
         raw_face: List[float],
     ) -> EmbeddingResult:
         """
-        P0-E: Mathematical 5-landmark alignment and 128-D embedding extraction.
-        Applies cv2.FaceRecognizerSF.alignCrop using YuNet's 5 facial landmarks,
-        ensuring parity between enrollment portraits and classroom query sweeps.
+        P0-E: Mathematical face alignment and 128-D embedding extraction.
+        Applies standard ArcFace pre-processing and normalized inference.
         """
+        if self._ort_session is not None and self.is_finetuned:
+            try:
+                h, w = cv_bgr_img.shape[:2]
+                face_arr = np.array(raw_face, dtype=np.float32)
+                if len(face_arr) >= 4:
+                    x1 = max(0, int(face_arr[0]))
+                    y1 = max(0, int(face_arr[1]))
+                    x2 = min(w, int(face_arr[0] + face_arr[2]))
+                    y2 = min(h, int(face_arr[1] + face_arr[3]))
+                    crop_bgr = cv_bgr_img[y1:y2, x1:x2]
+                else:
+                    crop_bgr = cv_bgr_img
+
+                if crop_bgr.size == 0:
+                    crop_bgr = cv_bgr_img
+
+                crop_resized = cv2.resize(crop_bgr, (112, 112))
+                rgb = cv2.cvtColor(crop_resized, cv2.COLOR_BGR2RGB).astype(np.float32)
+                tensor = (rgb / 127.5 - 1.0).transpose(2, 0, 1)[None, ...]
+                raw_feature = self._ort_session.run([self._ort_output], {self._ort_input: tensor})[0]
+                vec = raw_feature.flatten().astype(np.float32)
+                norm = np.linalg.norm(vec)
+                if norm > 0:
+                    vec = vec / norm
+                return EmbeddingResult(
+                    vector=vec.tolist(),
+                    dimension=128,
+                    namespace=self.namespace,
+                    recognizer_model_hash=self.model_hash,
+                )
+            except Exception as e:
+                raise RuntimeError(f"Fine-tuned SFace feature extraction failed: {e}") from e
+
         if self._recognizer is None:
             raise RuntimeError(
                 f"SFace face recognizer ONNX model is not available or failed to load from {self.model_path}."
@@ -147,6 +197,25 @@ class RecognizerAdapter:
         """
         Computes 128-D L2-normalized embedding vector on unit hypersphere S^127.
         """
+        if self._ort_session is not None and self.is_finetuned:
+            try:
+                crop = face_crop.resize((112, 112), Image.Resampling.BILINEAR)
+                rgb = np.array(crop, dtype=np.float32)
+                tensor = (rgb / 127.5 - 1.0).transpose(2, 0, 1)[None, ...]
+                raw_feature = self._ort_session.run([self._ort_output], {self._ort_input: tensor})[0]
+                vec = raw_feature.flatten().astype(np.float32)
+                norm = np.linalg.norm(vec)
+                if norm > 0:
+                    vec = vec / norm
+                return EmbeddingResult(
+                    vector=vec.tolist(),
+                    dimension=128,
+                    namespace=self.namespace,
+                    recognizer_model_hash=self.model_hash,
+                )
+            except Exception as e:
+                raise RuntimeError(f"Fine-tuned SFace feature extraction failed: {e}") from e
+
         if self._recognizer is None:
             raise RuntimeError(
                 f"SFace face recognizer ONNX model is not available or failed to load from {self.model_path}."

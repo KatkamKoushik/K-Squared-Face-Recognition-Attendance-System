@@ -19,9 +19,14 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
 from app.core.config import settings
 
+test_db_file = Path(tempfile.gettempdir()) / f"pytest_frs_{uuid.uuid4().hex[:6]}.db"
+test_db_url = f"sqlite:///{test_db_file.as_posix()}"
+os.environ["DATABASE_URL"] = test_db_url
 settings.ENVIRONMENT = "test"
+settings.DATABASE_URL = test_db_url
 
-from app.core.database import Base, get_db
+from app.core.database import Base, get_db, engine, SessionLocal
+TestSessionLocal = SessionLocal
 from app.core.security import hash_password, create_access_token
 from app.domain.enums import UserRole, AcademicTerm, EnrollmentStatus
 from app.domain.models.academic import (
@@ -36,10 +41,6 @@ from app.domain.models.academic import (
     FacultyAssignment,
 )
 from app.domain.models.student import Student, Enrollment
-
-test_db_file = Path(tempfile.gettempdir()) / f"pytest_frs_{uuid.uuid4().hex[:6]}.db"
-engine = create_engine(f"sqlite:///{test_db_file.as_posix()}", connect_args={"check_same_thread": False})
-TestSessionLocal = sessionmaker(bind=engine, expire_on_commit=False)
 
 
 @pytest.fixture(scope="function")

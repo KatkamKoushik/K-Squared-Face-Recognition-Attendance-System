@@ -234,10 +234,15 @@ export async function fetchFromApi<T>(endpoint: string, options?: RequestInit): 
   try {
     const token = getAuthToken();
     const headers: Record<string, string> = {
-      "Content-Type": "application/json",
       "ngrok-skip-browser-warning": "1",
       ...(options?.headers as Record<string, string> || {}),
     };
+
+    if (typeof FormData !== "undefined" && options?.body instanceof FormData) {
+      delete headers["Content-Type"];
+    } else if (!headers["Content-Type"]) {
+      headers["Content-Type"] = "application/json";
+    }
 
     if (token && !headers["Authorization"]) {
       headers["Authorization"] = `Bearer ${token}`;
@@ -314,6 +319,7 @@ export interface StudentListItem {
   id: string;
   roll_number: string;
   full_name: string;
+  institutional_email?: string;
   department_id: string;
   current_term: string;
   status: string;
@@ -442,6 +448,114 @@ export async function getAuditEvents(): Promise<AuditEventItem[] | null> {
 
 export async function getStudents(): Promise<StudentListItem[] | null> {
   return fetchFromApi<StudentListItem[]>("/academic/students");
+}
+
+export async function updateStudent(
+  studentId: string,
+  data: {
+    full_name?: string;
+    roll_number?: string;
+    institutional_email?: string;
+    department_code?: string;
+    academic_year?: string;
+    status?: string;
+  }
+): Promise<StudentListItem | null> {
+  return fetchFromApi<StudentListItem>(`/academic/students/${studentId}`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateStudentPhoto(
+  studentId: string,
+  file: File
+): Promise<{ success: boolean; message: string; cloudinary_photo_url: string; models_enrolled: string[] } | null> {
+  const token = getAuthToken();
+  const formData = new FormData();
+  formData.append("photo", file);
+
+  const headers: Record<string, string> = {
+    "ngrok-skip-browser-warning": "1",
+  };
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  const res = await fetch(`${getApiBase()}/academic/students/${studentId}/photo`, {
+    method: "POST",
+    headers,
+    body: formData,
+  });
+
+  if (!res.ok) {
+    let errDetail = `Server responded with status ${res.status}`;
+    try {
+      const errJson = await res.json();
+      errDetail = errJson.detail || errJson.message || errJson.error?.message || errDetail;
+    } catch {
+      // Non-JSON error
+    }
+    throw new Error(errDetail);
+  }
+
+  const json = await res.json();
+  return (json && typeof json === "object" && "data" in json) ? json.data : json;
+}
+
+export async function deleteStudent(
+  studentId: string
+): Promise<{ success: boolean; message: string } | null> {
+  const token = getAuthToken();
+  const headers: Record<string, string> = {
+    "ngrok-skip-browser-warning": "1",
+  };
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+  const res = await fetch(`${getApiBase()}/academic/students/${studentId}`, {
+    method: "DELETE",
+    headers,
+  });
+  if (!res.ok) {
+    let errDetail = `Failed to delete student (HTTP ${res.status})`;
+    try {
+      const errJson = await res.json();
+      errDetail = errJson.detail || errJson.message || errDetail;
+    } catch {}
+    throw new Error(errDetail);
+  }
+  const json = await res.json();
+  return (json && typeof json === "object" && "data" in json) ? json.data : json;
+}
+
+export async function deleteStudentPhoto(
+  studentId: string
+): Promise<{ success: boolean; message: string; profiles_deleted: number } | null> {
+  const token = getAuthToken();
+  const headers: Record<string, string> = {
+    "ngrok-skip-browser-warning": "1",
+  };
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+  const res = await fetch(`${getApiBase()}/academic/students/${studentId}/photo`, {
+    method: "DELETE",
+    headers,
+  });
+  if (!res.ok) {
+    let errDetail = `Failed to purge student photo (HTTP ${res.status})`;
+    try {
+      const errJson = await res.json();
+      errDetail = errJson.detail || errJson.message || errDetail;
+    } catch {}
+    throw new Error(errDetail);
+  }
+  const json = await res.json();
+  return (json && typeof json === "object" && "data" in json) ? json.data : json;
 }
 
 export async function getOfferingAnalytics(offeringId: string): Promise<OfferingAttendanceAnalytics | null> {
@@ -1009,11 +1123,17 @@ export async function analyzeDemoPhoto(
     formData.append("department_code", departmentCode);
   }
 
+  const token = getAuthToken();
+  const headers: Record<string, string> = {
+    "ngrok-skip-browser-warning": "1",
+  };
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
   const res = await fetch(`${getApiBase()}/demo/analyze`, {
     method: "POST",
-    headers: {
-      "ngrok-skip-browser-warning": "1",
-    },
+    headers,
     body: formData,
   });
 

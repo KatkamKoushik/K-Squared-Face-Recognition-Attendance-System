@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -6,6 +7,12 @@ import 'package:image_picker/image_picker.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/models/domain_contracts.dart';
 import '../../logic/session_provider.dart';
+import '../../core/ai/on_device_vision_service.dart';
+import '../../core/database/local_database_service.dart';
+import 'class_pack_screen.dart';
+import 'student_enrollment_screen.dart';
+import 'model_manager_screen.dart';
+import 'developer_student_manager_screen.dart';
 
 enum OverlayDisplayMode {
   clean,     // Clean focus: compact student name pill on matched, minimal ? dot on unknown
@@ -55,11 +62,253 @@ class _DemoVisualizerScreenState extends ConsumerState<DemoVisualizerScreen> wit
   String _selectedDepartment = 'ALL';
   final List<String> _departmentOptions = const ['ALL', 'CSD', 'CSE', 'ECE', 'MECH', 'EEE', 'CIVIL', 'IT'];
 
+  String _selectedModel = 'option_1';
+  final List<Map<String, String>> _modelOptions = const [
+    {
+      'id': 'option_1',
+      'title': 'Option 1',
+      'label': 'Option 1: SCRFD-500M + ArcFace (512-D)',
+      'detector': 'SCRFD-500M-KPS',
+      'recognizer': 'MobileFaceNet ArcFace',
+      'dim': '512-D',
+      'desc': '512-D normalized ArcFace embeddings, 9ms mobile inference, ultra-fast crowd detection.',
+      'badge': 'Option 1 (512-D)',
+    },
+    {
+      'id': 'option_3',
+      'title': 'Option 3',
+      'label': 'Option 3: SCRFD-2.5G + OpenCV Zoo SFace (128-D)',
+      'detector': 'SCRFD-2.5G / YuNet',
+      'recognizer': 'OpenCV Zoo SFace',
+      'dim': '128-D',
+      'desc': '128-D official OpenCV Zoo SFace embeddings with affine landmark alignment.',
+      'badge': 'Option 3 (128-D)',
+    },
+    {
+      'id': 'finetuned_v2',
+      'title': 'Fine-Tuned',
+      'label': 'Fine-Tuned SFace (128-D Domain)',
+      'detector': 'YuNet ONNX',
+      'recognizer': 'KUCET SFace v2 Fine-Tuned',
+      'dim': '128-D',
+      'desc': 'Domain fine-tuned SFace model calibrated for KUCET classroom environments.',
+      'badge': 'Fine-Tuned (128-D)',
+    },
+  ];
+
+  Map<String, String> get _currentModelOption =>
+      _modelOptions.firstWhere((m) => m['id'] == _selectedModel, orElse: () => _modelOptions[0]);
+
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
-    _loadEnrolledGalleryCount();
+    _initModels();
+  }
+
+  Future<void> _initModels() async {
+    try {
+      final res = await ref.read(apiProvider).getDemoModels();
+      final activeId = res['active_model_id'] as String?;
+      if (activeId != null && _modelOptions.any((m) => m['id'] == activeId)) {
+        if (mounted) {
+          setState(() {
+            _selectedModel = activeId;
+            _matchThreshold = activeId == 'option_1' ? 0.380 : 0.363;
+            _marginThreshold = activeId == 'finetuned_v2' ? 0.010 : 0.10;
+          });
+        }
+      }
+    } catch (_) {}
+    await _loadEnrolledGalleryCount();
+  }
+
+  Future<void> _switchModel(String modelId) async {
+    if (_selectedModel == modelId && _totalEnrolledStudents > 0) return;
+    setState(() {
+      _selectedModel = modelId;
+      _matchThreshold = modelId == 'option_1' ? 0.380 : 0.363;
+      _marginThreshold = modelId == 'finetuned_v2' ? 0.010 : 0.10;
+    });
+    try {
+      await ref.read(apiProvider).selectDemoModel(modelId);
+    } catch (_) {}
+    await _loadEnrolledGalleryCount();
+    if (_sweepFrames.isNotEmpty) {
+      await _reanalyzeAllFrames();
+    }
+  }
+
+  void _showModelPickerSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppTheme.primaryNavy.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(Icons.psychology_outlined, color: AppTheme.primaryNavy, size: 22),
+                    ),
+                    const SizedBox(width: 12),
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Select Recognition Model',
+                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.primaryNavy),
+                          ),
+                          Text(
+                            'Switch active detector & embedding architecture',
+                            style: TextStyle(fontSize: 11, color: Colors.grey),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close, size: 20),
+                      onPressed: () => Navigator.pop(ctx),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                ..._modelOptions.map((opt) {
+                  final isSelected = _selectedModel == opt['id'];
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: InkWell(
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        _switchModel(opt['id']!);
+                      },
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: isSelected ? const Color(0xFF10B981).withValues(alpha: 0.1) : Colors.grey.shade50,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: isSelected ? const Color(0xFF10B981) : Colors.grey.shade300,
+                            width: isSelected ? 1.8 : 1,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 20,
+                              height: 20,
+                              margin: const EdgeInsets.symmetric(horizontal: 4),
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: isSelected ? const Color(0xFF10B981) : Colors.transparent,
+                                border: Border.all(
+                                  color: isSelected ? const Color(0xFF10B981) : Colors.grey.shade400,
+                                  width: isSelected ? 5 : 2,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Text(
+                                        opt['title']!,
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.bold,
+                                          color: isSelected ? const Color(0xFF065F46) : Colors.black87,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: isSelected ? const Color(0xFF10B981) : Colors.grey.shade300,
+                                          borderRadius: BorderRadius.circular(4),
+                                        ),
+                                        child: Text(
+                                          opt['dim']!,
+                                          style: TextStyle(
+                                            fontSize: 9.5,
+                                            fontWeight: FontWeight.bold,
+                                            color: isSelected ? Colors.white : Colors.black87,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 3),
+                                  Text(
+                                    '${opt['detector']} + ${opt['recognizer']}',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                      color: isSelected ? const Color(0xFF047857) : Colors.grey.shade700,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    opt['desc']!,
+                                    style: TextStyle(fontSize: 10, color: Colors.grey.shade600),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                }),
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppTheme.primaryNavy,
+                      side: const BorderSide(color: AppTheme.primaryNavy),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                    icon: const Icon(Icons.tune_rounded, size: 18),
+                    label: const Text(
+                      'Manage & Download AI Model Packs',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                    ),
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const ModelManagerScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -76,10 +325,26 @@ class _DemoVisualizerScreenState extends ConsumerState<DemoVisualizerScreen> wit
     try {
       final students = await ref.read(apiProvider).getDemoEnrolledStudents(
         departmentCode: _selectedDepartment,
+        modelId: _selectedModel,
       );
       if (mounted) {
         setState(() {
           _totalEnrolledStudents = students.length;
+        });
+        return;
+      }
+    } catch (_) {}
+
+    // Fallback: Read directly from Phone Local SQLite Database in Mobile RAM
+    try {
+      final localStudents = await LocalDatabaseService().getLocalEnrolledStudents(
+        departmentCode: _selectedDepartment,
+        academicYear: 'First Year',
+        modelNamespace: OnDeviceVisionService.resolveNamespace(_selectedModel),
+      );
+      if (mounted) {
+        setState(() {
+          _totalEnrolledStudents = localStudents.length;
         });
       }
     } catch (_) {}
@@ -171,6 +436,55 @@ class _DemoVisualizerScreenState extends ConsumerState<DemoVisualizerScreen> wit
     }
   }
 
+  Future<void> _loadClassroomSweeps() async {
+    final candidatePaths = [
+      '/sdcard/Android/data/com.kucet.frs.frs_teacher_app/files/boys1.jpeg',
+      '/sdcard/Android/data/com.kucet.frs.frs_teacher_app/files/boys2.jpeg',
+      '/sdcard/DCIM/Camera/boys1.jpeg',
+      '/sdcard/DCIM/Camera/boys2.jpeg',
+    ];
+
+    final newFrames = <SweepFrame>[];
+    for (final p in candidatePaths) {
+      try {
+        final f = File(p);
+        if (await f.exists()) {
+          final bytes = await f.readAsBytes();
+          final decoded = await decodeImageFromList(bytes);
+          final size = Size(decoded.width.toDouble(), decoded.height.toDouble());
+          final name = p.contains('boys1')
+              ? 'Classroom Sweep Shot #1 (boys1.jpeg)'
+              : 'Classroom Sweep Shot #2 (boys2.jpeg)';
+          if (!newFrames.any((fr) => fr.name == name)) {
+            newFrames.add(
+              SweepFrame(
+                bytes: bytes,
+                name: name,
+                pixelSize: size,
+                isAnalyzing: true,
+              ),
+            );
+          }
+        }
+      } catch (_) {}
+    }
+
+    if (newFrames.isNotEmpty) {
+      setState(() {
+        _sweepFrames.clear();
+        _sweepFrames.addAll(newFrames);
+        _activeFrameIndex = 0;
+        _selectedFaceIndex = null;
+      });
+
+      for (final frame in newFrames) {
+        await _analyzeFrame(frame);
+      }
+    } else {
+      await _pickGalleryImages();
+    }
+  }
+
   Future<void> _analyzeFrame(SweepFrame frame) async {
     try {
       final result = await ref.read(apiProvider).analyzeDemoImage(
@@ -180,6 +494,7 @@ class _DemoVisualizerScreenState extends ConsumerState<DemoVisualizerScreen> wit
         marginThreshold: _marginThreshold,
         blurThreshold: _blurThreshold,
         departmentCode: _selectedDepartment,
+        modelId: _selectedModel,
       );
 
       if (mounted) {
@@ -190,11 +505,31 @@ class _DemoVisualizerScreenState extends ConsumerState<DemoVisualizerScreen> wit
         });
       }
     } catch (e) {
-      if (mounted) {
-        setState(() {
-          frame.error = e.toString().replaceFirst("Exception: ", "");
-          frame.isAnalyzing = false;
-        });
+      // Laptop backend is offline -> Run 100% on-device vision pipeline on mobile processors and RAM
+      try {
+        final localResult = await OnDeviceVisionService().analyzeFrameLocally(
+          imageBytes: frame.bytes,
+          filename: frame.name,
+          modelId: _selectedModel,
+          matchThreshold: _matchThreshold,
+          marginThreshold: _marginThreshold,
+          departmentCode: _selectedDepartment,
+        );
+
+        if (mounted) {
+          setState(() {
+            frame.analysis = localResult;
+            frame.isAnalyzing = false;
+            _totalEnrolledStudents = localResult.totalEnrolledStudents;
+          });
+        }
+      } catch (localError) {
+        if (mounted) {
+          setState(() {
+            frame.error = localError.toString().replaceFirst("Exception: ", "");
+            frame.isAnalyzing = false;
+          });
+        }
       }
     }
   }
@@ -258,7 +593,7 @@ class _DemoVisualizerScreenState extends ConsumerState<DemoVisualizerScreen> wit
   }
 
   Widget _buildBase64Thumbnail(String? dataUri, {double size = 52, double radius = 8}) {
-    if (dataUri == null || !dataUri.contains(',')) {
+    if (dataUri == null || dataUri.isEmpty) {
       return Container(
         width: size,
         height: size,
@@ -270,8 +605,8 @@ class _DemoVisualizerScreenState extends ConsumerState<DemoVisualizerScreen> wit
       );
     }
     try {
-      final base64Str = dataUri.split(',').last;
-      final bytes = base64Decode(base64Str);
+      final base64Str = dataUri.contains(',') ? dataUri.split(',').last : dataUri;
+      final bytes = base64Decode(base64Str.trim());
       return ClipRRect(
         borderRadius: BorderRadius.circular(radius),
         child: Image.memory(
@@ -320,6 +655,36 @@ class _DemoVisualizerScreenState extends ConsumerState<DemoVisualizerScreen> wit
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.primaryNavy),
                   ),
                   const SizedBox(height: 14),
+                  const Text('Recognition Model Architecture:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 6),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: _modelOptions.map((opt) {
+                        final isSelected = _selectedModel == opt['id'];
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 6),
+                          child: ChoiceChip(
+                            label: Text(opt['label']!),
+                            selected: isSelected,
+                            selectedColor: const Color(0xFF10B981).withValues(alpha: 0.15),
+                            labelStyle: TextStyle(
+                              fontSize: 11,
+                              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                              color: isSelected ? const Color(0xFF065F46) : Colors.black87,
+                            ),
+                            onSelected: (selected) {
+                              if (selected) {
+                                setModalState(() => _selectedModel = opt['id']!);
+                                _switchModel(opt['id']!);
+                              }
+                            },
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
                   const Text('Roster Department Scope:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
                   const SizedBox(height: 6),
                   SingleChildScrollView(
@@ -363,13 +728,13 @@ class _DemoVisualizerScreenState extends ConsumerState<DemoVisualizerScreen> wit
                       setState(() => _matchThreshold = v);
                     },
                   ),
-                  Text('Separation Margin (\u0394s): ${_marginThreshold.toStringAsFixed(2)}'),
+                  Text('Separation Margin (\u0394s): ${_marginThreshold.toStringAsFixed(3)}'),
                   Slider(
-                    value: _marginThreshold,
-                    min: 0.05,
+                    value: _marginThreshold.clamp(0.005, 0.25),
+                    min: 0.005,
                     max: 0.25,
-                    divisions: 20,
-                    label: _marginThreshold.toStringAsFixed(2),
+                    divisions: 49,
+                    label: _marginThreshold.toStringAsFixed(3),
                     onChanged: (v) {
                       setModalState(() => _marginThreshold = v);
                       setState(() => _marginThreshold = v);
@@ -412,27 +777,112 @@ class _DemoVisualizerScreenState extends ConsumerState<DemoVisualizerScreen> wit
     return Scaffold(
       backgroundColor: Colors.grey.shade50,
       appBar: AppBar(
-        title: const Text('Face Visualizer', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        leadingWidth: 40,
+        titleSpacing: 4,
+        title: InkWell(
+          onTap: _showModelPickerSheet,
+          borderRadius: BorderRadius.circular(8),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: const [
+                  Flexible(
+                    child: Text(
+                      'Face Visualizer',
+                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  SizedBox(width: 2),
+                  Icon(Icons.arrow_drop_down, size: 16, color: Colors.white70),
+                ],
+              ),
+              Text(
+                '${_currentModelOption['title']} (${_currentModelOption['dim']})',
+                style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600, color: Color(0xFF34D399)),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        ),
         actions: [
-          if (_sweepFrames.isNotEmpty)
-            IconButton(
-              icon: const Icon(Icons.add_photo_alternate_outlined),
-              tooltip: 'Add Sweep Shot',
-              onPressed: () => _pickGalleryImages(),
-            ),
           IconButton(
-            icon: const Icon(Icons.refresh),
+            icon: const Icon(Icons.badge_outlined, color: Color(0xFF10B981), size: 21),
+            tooltip: 'Student Directory & Profiles',
+            visualDensity: VisualDensity.compact,
+            padding: const EdgeInsets.all(6),
+            constraints: const BoxConstraints(),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const DeveloperStudentManagerScreen(),
+                ),
+              ).then((_) {
+                _loadEnrolledGalleryCount();
+                _reanalyzeAllFrames();
+              });
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.person_add_alt_1_rounded, size: 21),
+            tooltip: 'Direct Student Enrollment',
+            visualDensity: VisualDensity.compact,
+            padding: const EdgeInsets.all(6),
+            constraints: const BoxConstraints(),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const StudentEnrollmentScreen(),
+                ),
+              ).then((_) {
+                _loadEnrolledGalleryCount();
+              });
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.folder_shared_outlined, size: 21, color: Color(0xFF34D399)),
+            tooltip: 'Offline Database Packs',
+            visualDensity: VisualDensity.compact,
+            padding: const EdgeInsets.all(6),
+            constraints: const BoxConstraints(),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const ClassPackScreen(),
+                ),
+              ).then((_) {
+                _loadEnrolledGalleryCount();
+                _reanalyzeAllFrames();
+              });
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.refresh, size: 21),
             tooltip: 'Refresh Gallery & Re-Analyze',
+            visualDensity: VisualDensity.compact,
+            padding: const EdgeInsets.all(6),
+            constraints: const BoxConstraints(),
             onPressed: () {
               _loadEnrolledGalleryCount();
               _reanalyzeAllFrames();
             },
           ),
           IconButton(
-            icon: const Icon(Icons.tune),
+            icon: const Icon(Icons.tune, size: 21),
             tooltip: 'Calibration Settings',
+            visualDensity: VisualDensity.compact,
+            padding: const EdgeInsets.all(6),
+            constraints: const BoxConstraints(),
             onPressed: _showSettingsModal,
           ),
+          const SizedBox(width: 4),
         ],
       ),
       body: _buildBody(),
@@ -579,17 +1029,17 @@ class _DemoVisualizerScreenState extends ConsumerState<DemoVisualizerScreen> wit
                           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
-                            children: const [
-                              CircularProgressIndicator(),
-                              SizedBox(height: 16),
+                            children: [
+                              const CircularProgressIndicator(),
+                              const SizedBox(height: 16),
                               Text(
-                                'YuNet & SFace Inference in Progress...',
-                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                '${_currentModelOption['recognizer']} Inference in Progress...',
+                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                               ),
-                              SizedBox(height: 4),
+                              const SizedBox(height: 4),
                               Text(
-                                'Extracting 128-D embeddings and matching against PostgreSQL',
-                                style: TextStyle(fontSize: 11, color: Colors.grey),
+                                'Extracting ${_currentModelOption['dim']} embeddings using ${_currentModelOption['detector']}',
+                                style: const TextStyle(fontSize: 11, color: Colors.grey),
                                 textAlign: TextAlign.center,
                               ),
                             ],
@@ -600,6 +1050,50 @@ class _DemoVisualizerScreenState extends ConsumerState<DemoVisualizerScreen> wit
                   ),
               ],
             ),
+          ),
+        ),
+
+        // Direct 1-Tap Model Switcher Strip
+        Container(
+          color: Colors.white,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          child: Row(
+            children: [
+              const Icon(Icons.memory, size: 16, color: AppTheme.primaryNavy),
+              const SizedBox(width: 6),
+              const Text(
+                'Model:',
+                style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: AppTheme.primaryNavy),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: _modelOptions.map((opt) {
+                      final isSelected = _selectedModel == opt['id'];
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 6),
+                        child: ChoiceChip(
+                          label: Text('${opt['title']} (${opt['dim']})'),
+                          selected: isSelected,
+                          selectedColor: const Color(0xFF10B981).withValues(alpha: 0.2),
+                          backgroundColor: Colors.grey.shade100,
+                          labelStyle: TextStyle(
+                            fontSize: 10.5,
+                            fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                            color: isSelected ? const Color(0xFF065F46) : Colors.black87,
+                          ),
+                          visualDensity: VisualDensity.compact,
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 0),
+                          onSelected: (_) => _switchModel(opt['id']!),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
 
@@ -914,13 +1408,64 @@ class _DemoVisualizerScreenState extends ConsumerState<DemoVisualizerScreen> wit
             ),
             const SizedBox(height: 8),
             Text(
-              'Capture a group photo or multi-photo sweep burst. The system detects faces with YuNet ONNX, extracts 128-D SFace embeddings, and matches against live PostgreSQL registered student identities.',
+              'Capture a group photo or multi-photo sweep burst. The system detects faces, extracts normalized embeddings, and matches against live PostgreSQL student identities.',
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 13, color: Colors.grey.shade700, height: 1.4),
             ),
             const SizedBox(height: 16),
+            // Model Selector Segmented Control
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade200,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: _modelOptions.map((opt) {
+                    final isSelected = _selectedModel == opt['id'];
+                    return GestureDetector(
+                      onTap: () => _switchModel(opt['id']!),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: isSelected ? AppTheme.primaryNavy : Colors.transparent,
+                          borderRadius: BorderRadius.circular(9),
+                          boxShadow: isSelected
+                              ? [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.1),
+                                    blurRadius: 4,
+                                    offset: const Offset(0, 2),
+                                  )
+                                ]
+                              : null,
+                        ),
+                        child: Text(
+                          opt['title']!,
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                            color: isSelected ? Colors.white : Colors.grey.shade700,
+                          ),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              '${_currentModelOption['detector']} + ${_currentModelOption['recognizer']}',
+              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: Colors.grey.shade600),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
                 color: const Color(0xFFECFDF5),
                 borderRadius: BorderRadius.circular(8),
@@ -928,12 +1473,17 @@ class _DemoVisualizerScreenState extends ConsumerState<DemoVisualizerScreen> wit
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.verified_user_outlined, size: 18, color: Color(0xFF10B981)),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Active Gallery: $_totalEnrolledStudents Enrolled Identities',
-                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF065F46)),
+                  const Icon(Icons.verified_user_outlined, size: 16, color: Color(0xFF10B981)),
+                  const SizedBox(width: 6),
+                  Flexible(
+                    child: Text(
+                      'Active Gallery: $_totalEnrolledStudents Enrolled Identities (${_currentModelOption['dim']})',
+                      style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Color(0xFF065F46)),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
                 ],
               ),
@@ -960,6 +1510,16 @@ class _DemoVisualizerScreenState extends ConsumerState<DemoVisualizerScreen> wit
                     padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
                   ),
                 ),
+                ElevatedButton.icon(
+                  onPressed: _loadClassroomSweeps,
+                  icon: const Icon(Icons.groups_rounded),
+                  label: const Text('Test Sweeps (boys1 / boys2)'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF10B981),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                  ),
+                ),
               ],
             ),
           ],
@@ -981,6 +1541,36 @@ class _DemoVisualizerScreenState extends ConsumerState<DemoVisualizerScreen> wit
         scrollDirection: Axis.horizontal,
         child: Row(
           children: [
+            InkWell(
+              onTap: _showModelPickerSheet,
+              borderRadius: BorderRadius.circular(8),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF10B981).withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.4)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.memory, size: 13, color: Color(0xFF065F46)),
+                    const SizedBox(width: 4),
+                    Text(
+                      _currentModelOption['badge']!,
+                      style: const TextStyle(
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF065F46),
+                      ),
+                    ),
+                    const SizedBox(width: 2),
+                    const Icon(Icons.arrow_drop_down, size: 14, color: Color(0xFF065F46)),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
             if (_sweepFrames.length > 1) ...[
               _MetricPill(label: 'Sweep Frames', count: _sweepFrames.length, color: AppTheme.primaryNavy),
               const SizedBox(width: 8),
@@ -1278,7 +1868,7 @@ class _FaceBoxesPainter extends CustomPainter {
 
       final color = _parseHex(face.colorHex);
       final isSelected = selectedFaceIndex == face.faceIndex;
-      final isMatched = face.status == 'MATCHED';
+      final isMatched = face.attendanceGranted || face.status == 'MATCHED' || face.status == 'PRESENT' || face.badgeLabel == 'MATCHED';
 
       // 1. Draw rounded bounding box
       final paint = Paint()

@@ -204,7 +204,32 @@ class ModelRegistryService:
             db.add(finetuned_v2)
             db.flush()
 
-        # 5. Default Institutional Policy
+        # 5. KUCET Fine-Tuned Multi-Dataset ArcFace Model Artifact V3 (Hugging Face Hub)
+        finetuned_v3_hash = "e1bf5e2fd83ac6384d562680297451823145f83025aa0e6f2fb9199184205156"
+        finetuned_v3 = db.execute(
+            select(ModelArtifact).where(ModelArtifact.sha256_hash == finetuned_v3_hash)
+        ).scalar_one_or_none()
+        if not finetuned_v3:
+            finetuned_v3 = ModelArtifact(
+                name="kucet_frs_sface_finetuned_v3",
+                task="RECOGNITION",
+                format="ONNX",
+                source_uri="https://huggingface.co/Koushik-Katkam/kucet-frs-face-recognition/resolve/main/kucet_frs_sface_finetuned.onnx",
+                source_revision="7.2.0",
+                sha256_hash=finetuned_v3_hash,
+                code_license="Apache-2.0",
+                weight_license="Apache-2.0",
+                data_provenance="KUCET Indian-Faces + Authentic Enrolled Multi-Dataset 3000-Step Fine-Tuned Model (Hugging Face Hub)",
+                approval_status="APPROVED",
+                input_width=112,
+                input_height=112,
+                color_order="RGB",
+                embedding_dimension=128,
+            )
+            db.add(finetuned_v3)
+            db.flush()
+
+        # 6. Default Institutional Policy
         policy = db.get(PolicyVersion, ModelRegistryService.DEFAULT_POLICY_ID)
         if not policy:
             policy = PolicyVersion(

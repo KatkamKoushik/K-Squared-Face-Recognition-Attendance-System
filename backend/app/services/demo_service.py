@@ -22,16 +22,126 @@ from app.domain.enums import EnrollmentSubmissionStatus
 from app.services.storage_service import CloudinaryStorageService
 from app.worker.adapters.detector_adapter import DetectorAdapter
 from app.worker.adapters.recognizer_adapter import RecognizerAdapter
+from app.worker.adapters.arcface_adapter import SCRFD500MDetector, ArcFaceMobileNetRecognizer
 from app.worker.preprocessor import Preprocessor
 from app.schemas.demo import (
     DemoFaceBox,
     DemoStudentResult,
     DemoEnrolledStudentSummary,
     DemoAnalysisResponse,
+    DemoModelOption,
+    DemoModelsResponse,
+    DemoSelectModelRequest,
 )
+
+MODEL_REGISTRY: Dict[str, Dict[str, Any]] = {
+    "option_1": {
+        "id": "option_1",
+        "name": "Option 1: SCRFD-500M + ArcFace MobileFaceNet",
+        "short_name": "Option 1 (512-D ArcFace)",
+        "dimension": 512,
+        "detector": "SCRFD-500M-KPS",
+        "recognizer": "MobileFaceNet ArcFace",
+        "default_threshold": 0.380,
+        "default_margin_threshold": 0.080,
+        "namespace": "mobilefacenet_512d_v1",
+        "badge": "512-D High Speed",
+        "description": "512-D normalized ArcFace embeddings with SCRFD 5-keypoint affine alignment.",
+    },
+    "option_3": {
+        "id": "option_3",
+        "name": "Option 3: SCRFD-2.5G + OpenCV Zoo SFace",
+        "short_name": "Option 3 (128-D SFace)",
+        "dimension": 128,
+        "detector": "SCRFD-2.5G-KPS",
+        "recognizer": "OpenCV Zoo SFace",
+        "default_threshold": 0.363,
+        "default_margin_threshold": 0.045,
+        "namespace": "sface_128d_v1",
+        "badge": "128-D OpenCV Zoo",
+        "description": "128-D official OpenCV Zoo SFace embeddings with SCRFD-2.5G face detection.",
+    },
+    "finetuned_v2": {
+        "id": "finetuned_v2",
+        "name": "Fine-Tuned: YuNet + KUCET Multi-Dataset SFace",
+        "short_name": "Fine-Tuned SFace (128-D)",
+        "dimension": 128,
+        "detector": "YuNet ONNX",
+        "recognizer": "KUCET SFace Fine-Tuned (42.88 MB)",
+        "default_threshold": 0.482,
+        "default_margin_threshold": 0.10,
+        "namespace": "kucet_frs_sface_finetuned_v2",
+        "badge": "128-D Indian-Face Tuned",
+        "description": "Multi-dataset fine-tuned SFace model calibrated on Indian face datasets and authenticated KUCET enrollment portraits.",
+    },
+}
 
 
 class DemoService:
+    _ACTIVE_MODEL_ID: str = os.getenv("FRS_ACTIVE_MODEL", "finetuned_v2")
+
+    @classmethod
+    def get_active_model_id(cls) -> str:
+        return cls._ACTIVE_MODEL_ID
+
+    @classmethod
+    def set_active_model(cls, model_id: str) -> DemoModelsResponse:
+        clean_id = model_id.strip().lower()
+        aliases = {
+            "option1": "option_1",
+            "1": "option_1",
+            "option_a": "option_1",
+            "optiona": "option_1",
+            "option3": "option_3",
+            "3": "option_3",
+            "option_c": "option_3",
+            "optionc": "option_3",
+            "finetuned": "finetuned_v2",
+            "finetuned_v1": "finetuned_v2",
+            "finetuned_v3": "finetuned_v2",
+            "v3": "finetuned_v2",
+            "previous": "finetuned_v2",
+        }
+        clean_id = aliases.get(clean_id, clean_id)
+        if clean_id not in MODEL_REGISTRY:
+            raise ValueError(f"Unknown model option '{model_id}'. Available: {list(MODEL_REGISTRY.keys())}")
+        cls._ACTIVE_MODEL_ID = clean_id
+        return cls.get_models_info()
+
+    @classmethod
+    def get_models_info(cls) -> DemoModelsResponse:
+        options = [
+            DemoModelOption(**m) for m in MODEL_REGISTRY.values()
+        ]
+        return DemoModelsResponse(
+            active_model_id=cls._ACTIVE_MODEL_ID,
+            models=options,
+        )
+
+    @classmethod
+    def resolve_model_info(cls, model_id: Optional[str] = None) -> Dict[str, Any]:
+        if model_id:
+            clean_id = model_id.strip().lower()
+            aliases = {
+                "option1": "option_1",
+                "1": "option_1",
+                "option_a": "option_1",
+                "optiona": "option_1",
+                "option3": "option_3",
+                "3": "option_3",
+                "option_c": "option_3",
+                "optionc": "option_3",
+                "finetuned": "finetuned_v2",
+                "finetuned_v1": "finetuned_v2",
+                "finetuned_v3": "finetuned_v2",
+                "v3": "finetuned_v2",
+                "previous": "finetuned_v2",
+            }
+            clean_id = aliases.get(clean_id, clean_id)
+            if clean_id in MODEL_REGISTRY:
+                return MODEL_REGISTRY[clean_id]
+        return MODEL_REGISTRY.get(cls._ACTIVE_MODEL_ID, MODEL_REGISTRY["option_1"])
+
     @staticmethod
     def _pil_to_base64_jpeg(pil_img: Image.Image, quality: int = 90) -> str:
         """Encodes PIL Image into a base64 JPEG data URI."""
@@ -78,6 +188,7 @@ class DemoService:
         db: Session,
         department_code: Optional[str] = None,
         is_authorized: bool = True,
+        model_id: Optional[str] = None,
     ) -> List[DemoEnrolledStudentSummary]:
         """
         Lists real enrolled students with active face profiles from PostgreSQL.
@@ -93,8 +204,14 @@ class DemoService:
                 (Student.roll_number == EnrollmentSubmission.roll_number)
                 & (EnrollmentSubmission.status == EnrollmentSubmissionStatus.APPROVED),
             )
-            .where(Student.is_active == True, EnrollmentProfile.is_active == True)
+            .where(Student.is_active == True)
         )
+        if model_id:
+            model_info = DemoService.resolve_model_info(model_id)
+            stmt = stmt.where(EnrollmentProfile.embedding_namespace == model_info["namespace"])
+        else:
+            stmt = stmt.where(EnrollmentProfile.is_active == True)
+
         if department_code and department_code.strip().upper() not in ("ALL", ""):
             stmt = stmt.where(Department.code == department_code.strip().upper())
 
@@ -127,6 +244,8 @@ class DemoService:
             )
         return results
 
+    get_demo_enrolled_students = list_enrolled_demo_students
+
     @staticmethod
     def analyze_demo_photo(
         db: Session,
@@ -136,18 +255,33 @@ class DemoService:
         blur_threshold: float = 25.0,
         department_code: Optional[str] = None,
         is_authorized: bool = True,
+        model_id: Optional[str] = None,
     ) -> DemoAnalysisResponse:
         """
         Processes a group or individual classroom photograph for ground-truth inspection:
         1. Decodes and transposes EXIF orientation so pixel coordinates match visual upright display.
-        2. Detects all faces using OpenCV Zoo YuNet ONNX.
+        2. Detects all faces using model-specific detector (SCRFD-500M / YuNet).
         3. Assesses per-face image quality (Laplacian variance and size).
         4. Calculates face pixel resolution and applies resolution-adaptive cosine thresholding.
-        5. Extracts 128-D SFace embeddings with 5-landmark alignment.
+        5. Extracts 512-D ArcFace or 128-D SFace embeddings with 5-landmark alignment.
         6. Matches against enrolled student profiles in PostgreSQL (optionally filtered by department).
         7. Enforces two-pass mutual exclusivity to eliminate duplicate face collisions.
         8. Computes attendance breakdown: Granted, Not Granted (Absent), and Unidentified Strangers.
         """
+        if model_id:
+            model_info = DemoService.resolve_model_info(model_id)
+            target_namespace = model_info["namespace"]
+            target_dim = model_info["dimension"]
+            target_model_id = model_info["id"]
+        else:
+            model_info = None
+            target_namespace = None
+            target_dim = None
+            target_model_id = None
+
+        calibrated_margin = model_info.get("default_margin_threshold", 0.10) if model_info else 0.10
+        eff_margin = calibrated_margin if (margin_threshold == 0.10 or margin_threshold is None) else margin_threshold
+
         # 1. Decode image and apply EXIF rotation
         try:
             pil_raw = Image.open(io.BytesIO(image_bytes))
@@ -174,18 +308,36 @@ class DemoService:
                 (Student.roll_number == EnrollmentSubmission.roll_number)
                 & (EnrollmentSubmission.status == EnrollmentSubmissionStatus.APPROVED),
             )
-            .where(Student.is_active == True, EnrollmentProfile.is_active == True)
+            .where(Student.is_active == True)
         )
+        if target_namespace:
+            stmt = stmt.where(EnrollmentProfile.embedding_namespace == target_namespace)
+        else:
+            stmt = stmt.where(EnrollmentProfile.is_active == True)
+
         if normalized_dept:
             stmt = stmt.where(Department.code == normalized_dept)
 
         enrolled_rows = db.execute(stmt).all()
 
+        if target_dim is None:
+            target_dim = 128
+            for _, profile, _, _ in enrolled_rows:
+                if profile.vector_data:
+                    target_dim = len(profile.vector_data)
+                    break
+            if target_dim == 512:
+                model_info = MODEL_REGISTRY["option_1"]
+                target_model_id = "option_1"
+            else:
+                model_info = MODEL_REGISTRY["option_3"]
+                target_model_id = "option_3"
+
         enrolled_gallery: Dict[str, List[float]] = {}
         student_metadata: Dict[str, Dict[str, Any]] = {}
 
         for student, profile, photo_path, dept_code in enrolled_rows:
-            if profile.vector_data and len(profile.vector_data) == 128:
+            if profile.vector_data and len(profile.vector_data) == target_dim:
                 enrolled_gallery[student.id] = profile.vector_data
                 student_metadata[student.id] = {
                     "roll_number": student.roll_number,
@@ -194,69 +346,199 @@ class DemoService:
                     "department_code": dept_code,
                 }
 
-        # 3. Detect faces with YuNet
-        detector = DetectorAdapter(strict_mode=True)
-        recognizer = RecognizerAdapter(strict_mode=True)
+        # 3. Detect and extract faces
+        recognizer = RecognizerAdapter(strict_mode=False)
         cv_img = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
 
-        detections = detector.detect_faces(image)
+        class SimpleDet:
+            def __init__(self, box: Tuple[float, float, float, float], score: float):
+                self.box = box
+                self.score = score
 
-        # Pass 1: Extract all embeddings and evaluate candidate matches individually
         extracted_faces: List[Dict[str, Any]] = []
-        for idx, det in enumerate(detections, start=1):
-            crop = Preprocessor.extract_face_crop(image, det.box)
-            crop_base64 = DemoService._pil_to_base64_jpeg(crop, quality=85)
-            quality = recognizer.assess_quality(crop, min_variance=blur_threshold, min_size=16)
 
-            face_w_px = max(1, int((det.box[2] - det.box[0]) * w))
-            face_h_px = max(1, int((det.box[3] - det.box[1]) * h))
+        if target_model_id == "option_1":
+            # Option 1: SCRFD-500M-KPS + ArcFace MobileFaceNet 512-D
+            scrfd_detector = SCRFD500MDetector()
+            arcface_recognizer = ArcFaceMobileNetRecognizer()
 
-            # Calibrated thresholding for classroom group sweeps
-            if face_w_px < 25:
-                eff_threshold = max(match_threshold, 0.370)
-            else:
-                eff_threshold = match_threshold
+            raw_boxes, raw_scores, raw_kpss, _ = scrfd_detector.detect(cv_img, target_size=640, score_thresh=0.30)
+            if len(raw_boxes) == 0:
+                raw_boxes, raw_scores, raw_kpss, _ = scrfd_detector.detect(cv_img, target_size=1280, score_thresh=0.25)
 
-            if not quality.is_usable:
+            for idx in range(len(raw_boxes)):
+                bx = raw_boxes[idx]
+                kps = raw_kpss[idx]
+                det_score = float(raw_scores[idx])
+
+                norm_box = (
+                    float(max(0.0, bx[0] / w)),
+                    float(max(0.0, bx[1] / h)),
+                    float(min(1.0, bx[2] / w)),
+                    float(min(1.0, bx[3] / h)),
+                )
+                crop = Preprocessor.extract_face_crop(image, norm_box)
+                crop_base64 = DemoService._pil_to_base64_jpeg(crop, quality=85)
+                quality = recognizer.assess_quality(crop, min_variance=blur_threshold, min_size=16)
+
+                face_w_px = max(1, int(bx[2] - bx[0]))
+                face_h_px = max(1, int(bx[3] - bx[1]))
+
+                eff_threshold = max(match_threshold, 0.400) if face_w_px < 30 else max(match_threshold, 0.380)
+
+                det_obj = SimpleDet(box=norm_box, score=det_score)
+
+                if not quality.is_usable:
+                    extracted_faces.append({
+                        "idx": idx + 1,
+                        "det": det_obj,
+                        "quality": quality,
+                        "crop_base64": crop_base64,
+                        "is_quality_usable": False,
+                        "candidate": None,
+                        "eff_threshold": eff_threshold,
+                        "face_w_px": face_w_px,
+                        "face_h_px": face_h_px,
+                    })
+                    continue
+
+                emb_vec = arcface_recognizer.align_and_extract(cv_img, kps)
+                candidate = recognizer.search_exact_roster(
+                    query_vector=emb_vec.tolist(),
+                    enrolled_profiles=enrolled_gallery,
+                    match_threshold=eff_threshold,
+                    margin_threshold=eff_margin,
+                )
+
+                extracted_faces.append({
+                    "idx": idx + 1,
+                    "det": det_obj,
+                    "quality": quality,
+                    "crop_base64": crop_base64,
+                    "is_quality_usable": True,
+                    "candidate": candidate,
+                    "eff_threshold": eff_threshold,
+                    "face_w_px": face_w_px,
+                    "face_h_px": face_h_px,
+                })
+        elif target_model_id == "finetuned_v2":
+            # Domain Fine-Tuned SFace (kucet_frs_sface_finetuned_v2)
+            detector = DetectorAdapter(strict_mode=True)
+            ft_candidates = [
+                Path(__file__).resolve().parent.parent.parent / "models" / "kucet_frs_sface_finetuned.onnx",
+                Path("backend/models/kucet_frs_sface_finetuned.onnx").resolve(),
+                Path("models/kucet_frs_sface_finetuned.onnx").resolve(),
+            ]
+            finetuned_path = next((p for p in ft_candidates if p.exists()), ft_candidates[0])
+            sface_recognizer = RecognizerAdapter(model_path=finetuned_path, strict_mode=False)
+            detections = detector.detect_faces(image)
+
+            for idx, det in enumerate(detections, start=1):
+                crop = Preprocessor.extract_face_crop(image, det.box)
+                crop_base64 = DemoService._pil_to_base64_jpeg(crop, quality=85)
+                quality = sface_recognizer.assess_quality(crop, min_variance=blur_threshold, min_size=16)
+
+                face_w_px = max(1, int((det.box[2] - det.box[0]) * w))
+                face_h_px = max(1, int((det.box[3] - det.box[1]) * h))
+
+                if face_w_px < 25:
+                    eff_threshold = max(match_threshold, 0.370)
+                else:
+                    eff_threshold = match_threshold
+
+                if not quality.is_usable:
+                    extracted_faces.append({
+                        "idx": idx,
+                        "det": det,
+                        "quality": quality,
+                        "crop_base64": crop_base64,
+                        "is_quality_usable": False,
+                        "candidate": None,
+                        "eff_threshold": eff_threshold,
+                        "face_w_px": face_w_px,
+                        "face_h_px": face_h_px,
+                    })
+                    continue
+
+                if getattr(det, "raw_face", None) is not None:
+                    emb = sface_recognizer.align_and_compute_embedding(cv_img, det.raw_face)
+                else:
+                    emb = sface_recognizer.compute_embedding(crop)
+
+                candidate = sface_recognizer.search_exact_roster(
+                    query_vector=emb.vector,
+                    enrolled_profiles=enrolled_gallery,
+                    match_threshold=eff_threshold,
+                    margin_threshold=eff_margin,
+                )
+
                 extracted_faces.append({
                     "idx": idx,
                     "det": det,
                     "quality": quality,
                     "crop_base64": crop_base64,
-                    "is_quality_usable": False,
-                    "candidate": None,
+                    "is_quality_usable": True,
+                    "candidate": candidate,
                     "eff_threshold": eff_threshold,
                     "face_w_px": face_w_px,
                     "face_h_px": face_h_px,
                 })
-                continue
+        else:
+            # Option 3: Official OpenCV Zoo SFace 128-D + YuNet / SCRFD
+            detector = DetectorAdapter(strict_mode=True)
+            sface_recognizer = RecognizerAdapter(strict_mode=False)
+            detections = detector.detect_faces(image)
 
-            if det.raw_face is not None:
-                try:
-                    emb = recognizer.align_and_compute_embedding(cv_img, det.raw_face)
-                except Exception:
-                    emb = recognizer.compute_embedding(crop)
-            else:
-                emb = recognizer.compute_embedding(crop)
+            for idx, det in enumerate(detections, start=1):
+                crop = Preprocessor.extract_face_crop(image, det.box)
+                crop_base64 = DemoService._pil_to_base64_jpeg(crop, quality=85)
+                quality = sface_recognizer.assess_quality(crop, min_variance=blur_threshold, min_size=16)
 
-            candidate = recognizer.search_exact_roster(
-                query_vector=emb.vector,
-                enrolled_profiles=enrolled_gallery,
-                match_threshold=eff_threshold,
-                margin_threshold=margin_threshold,
-            )
+                face_w_px = max(1, int((det.box[2] - det.box[0]) * w))
+                face_h_px = max(1, int((det.box[3] - det.box[1]) * h))
 
-            extracted_faces.append({
-                "idx": idx,
-                "det": det,
-                "quality": quality,
-                "crop_base64": crop_base64,
-                "is_quality_usable": True,
-                "candidate": candidate,
-                "eff_threshold": eff_threshold,
-                "face_w_px": face_w_px,
-                "face_h_px": face_h_px,
-            })
+                if face_w_px < 25:
+                    eff_threshold = max(match_threshold, 0.370)
+                else:
+                    eff_threshold = match_threshold
+
+                if not quality.is_usable:
+                    extracted_faces.append({
+                        "idx": idx,
+                        "det": det,
+                        "quality": quality,
+                        "crop_base64": crop_base64,
+                        "is_quality_usable": False,
+                        "candidate": None,
+                        "eff_threshold": eff_threshold,
+                        "face_w_px": face_w_px,
+                        "face_h_px": face_h_px,
+                    })
+                    continue
+
+                if getattr(det, "raw_face", None) is not None:
+                    emb = sface_recognizer.align_and_compute_embedding(cv_img, det.raw_face)
+                else:
+                    emb = sface_recognizer.compute_embedding(crop)
+
+                candidate = sface_recognizer.search_exact_roster(
+                    query_vector=emb.vector,
+                    enrolled_profiles=enrolled_gallery,
+                    match_threshold=eff_threshold,
+                    margin_threshold=eff_margin,
+                )
+
+                extracted_faces.append({
+                    "idx": idx,
+                    "det": det,
+                    "quality": quality,
+                    "crop_base64": crop_base64,
+                    "is_quality_usable": True,
+                    "candidate": candidate,
+                    "eff_threshold": eff_threshold,
+                    "face_w_px": face_w_px,
+                    "face_h_px": face_h_px,
+                })
 
         # Pass 2: Mutual Exclusivity - A single physical student identity can only be assigned to AT MOST ONE face.
         claimed_students: Dict[str, List[int]] = {}
@@ -396,7 +678,7 @@ class DemoService:
                     similarity_score=candidate.similarity_score,
                     margin=candidate.margin_to_second,
                     color_hex="#F59E0B",  # Amber orange
-                    badge_label=f"Ambiguous Lookalike (Margin < {margin_threshold})",
+                    badge_label=f"Ambiguous Lookalike (Margin < {eff_margin})",
                     face_width_px=face_w,
                     face_height_px=face_h,
                     effective_threshold=eff_thresh,
@@ -477,7 +759,7 @@ class DemoService:
         attendance_not_granted_list.sort(key=lambda s: s.roll_number)
 
         return DemoAnalysisResponse(
-            total_detected_faces=len(detections),
+            total_detected_faces=len(extracted_faces),
             total_enrolled_students=len(student_metadata),
             present_count=len(attendance_granted_list),
             absent_count=len(attendance_not_granted_list),
@@ -489,4 +771,10 @@ class DemoService:
             attendance_granted=attendance_granted_list,
             attendance_not_granted=attendance_not_granted_list,
             unidentified_faces=unidentified_boxes,
+            model_id=target_model_id,
+            model_name=model_info["name"],
+            embedding_dimension=target_dim,
         )
+
+    analyze_demo_photograph = analyze_demo_photo
+

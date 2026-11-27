@@ -329,3 +329,39 @@ def test_adjudicate_session_proposal_audit_logging(db_session, review_setup):
     assert audit_row is not None
     assert audit_row.actor_id == faculty_user.id
     assert audit_row.correlation_id == "corr-adj-123"
+
+
+def test_proposal_processing_completion_contract(db_session, review_setup):
+    """
+    P1 Contract: If frames are in 'RECEIVED' or 'PROCESSING' status,
+    generate_session_proposal returns is_processing_complete=False and job_state='PROCESSING'.
+    Once all frames are 'PROCESSED', returns is_processing_complete=True and job_state='PROPOSAL_READY'.
+    """
+    session = review_setup["session"]
+    batch = CaptureBatch(session_id=session.id)
+    db_session.add(batch)
+    db_session.flush()
+
+    f1 = Frame(
+        batch_id=batch.id,
+        frame_index=1,
+        content_sha256="hash_pending_1",
+        width=1920,
+        height=1080,
+        storage_path="/tmp/f1.jpg",
+        status="RECEIVED",
+    )
+    db_session.add(f1)
+    db_session.commit()
+
+    proposal_pending = ReviewService.generate_session_proposal(db_session, session.id)
+    assert proposal_pending.is_processing_complete is False
+    assert proposal_pending.job_state == "PROCESSING"
+
+    # Worker marks frame as PROCESSED
+    f1.status = "PROCESSED"
+    db_session.commit()
+
+    proposal_done = ReviewService.generate_session_proposal(db_session, session.id)
+    assert proposal_done.is_processing_complete is True
+    assert proposal_done.job_state == "PROPOSAL_READY"

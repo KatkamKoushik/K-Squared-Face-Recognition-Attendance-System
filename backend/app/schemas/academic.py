@@ -183,6 +183,17 @@ class StudentLifecycleUpdate(BaseModel):
     reason: str = Field(..., min_length=5, max_length=500)
 
 
+class StudentUpdate(BaseModel):
+    full_name: Optional[str] = Field(None, max_length=100)
+    roll_number: Optional[str] = Field(None, max_length=50)
+    institutional_email: Optional[str] = None
+    cohort_id: Optional[str] = None
+    department_code: Optional[str] = None
+    academic_year: Optional[str] = None
+    lifecycle_status: Optional[StudentLifecycleStatus] = None
+    is_active: Optional[bool] = None
+
+
 class CohortRolloverRequest(BaseModel):
     from_cohort_id: str
     to_cohort_id: str

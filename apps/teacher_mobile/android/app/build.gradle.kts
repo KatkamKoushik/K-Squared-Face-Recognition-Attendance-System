@@ -79,6 +79,10 @@ flutter {
     source = "../.."
 }
 
+dependencies {
+    implementation("com.google.mlkit:face-detection:16.1.7")
+}
+
 tasks.matching { it.name.contains("AarMetadata") }.configureEach {
     enabled = false
 }

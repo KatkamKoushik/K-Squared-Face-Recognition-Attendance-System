@@ -1,6 +1,8 @@
 name: K² FRS Security & Supply Chain Audit
 
 on:
+  push:
+    branches: [main, master, develop, "feat/**", "fix/**"]
   schedule:
     - cron: '0 0 * * 0'  # Weekly on Sunday 00:00 UTC
   workflow_dispatch:

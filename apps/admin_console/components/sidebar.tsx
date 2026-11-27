@@ -20,6 +20,7 @@ import {
   LogIn,
   FileText,
   Camera,
+  Database,
 } from "lucide-react";
 import { logout, getStoredUser, StoredAuthUser } from "@/lib/api";
 
@@ -32,11 +33,11 @@ interface NavItem {
 
 const allNavigationItems: NavItem[] = [
   { name: "Executive Overview", href: "/", icon: LayoutDashboard, allowedRoles: ["DEVELOPER", "SUPER_ADMIN", "ADMIN"] },
+  { name: "Developer Database Control", href: "/students", icon: Database, allowedRoles: ["DEVELOPER", "SUPER_ADMIN", "ADMIN"] },
   { name: "Demo Visualizer", href: "/demo", icon: Camera, allowedRoles: ["DEVELOPER", "SUPER_ADMIN", "ADMIN", "SUB_ADMIN", "FACULTY"] },
   { name: "Biometric Queue", href: "/admin/enrollment", icon: ShieldAlert, allowedRoles: ["DEVELOPER", "SUPER_ADMIN", "ADMIN"] },
   { name: "Attendance Appeals", href: "/admin/appeals", icon: FileText, allowedRoles: ["DEVELOPER", "SUPER_ADMIN", "ADMIN"] },
   { name: "Academic Structure", href: "/academic/structure", icon: Building2, allowedRoles: ["DEVELOPER", "SUPER_ADMIN"] },
-  { name: "Student Enrolment", href: "/students", icon: Users, allowedRoles: ["DEVELOPER", "SUPER_ADMIN", "ADMIN"] },
   { name: "Course Offerings", href: "/academic/offerings", icon: BookOpen, allowedRoles: ["DEVELOPER", "SUPER_ADMIN", "ADMIN", "SUB_ADMIN", "FACULTY"] },
   { name: "Joint-Class Groups", href: "/academic/joint-groups", icon: GitMerge, allowedRoles: ["DEVELOPER", "SUPER_ADMIN", "ADMIN"] },
   { name: "Live Roster Preview", href: "/roster-preview", icon: Eye, allowedRoles: ["DEVELOPER", "SUPER_ADMIN", "ADMIN", "SUB_ADMIN", "FACULTY"] },
@@ -81,8 +82,8 @@ export function AdminSidebar() {
     pathname === "/admin/login" ||
     pathname === "/enroll" ||
     pathname === "/enrollment" ||
-    pathname === "/student/login" ||
-    pathname.startsWith("/student")
+    pathname === "/student" ||
+    pathname.startsWith("/student/")
   ) {
     return null;
   }

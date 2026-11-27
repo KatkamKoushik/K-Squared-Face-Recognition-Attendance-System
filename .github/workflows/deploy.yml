@@ -110,7 +110,6 @@ jobs:
       - name: Setup Flutter SDK
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: "3.27.x"
           channel: "stable"
           cache: true
 

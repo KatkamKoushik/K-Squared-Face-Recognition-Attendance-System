@@ -62,7 +62,11 @@ class SessionWorkflowState {
 }
 
 final apiProvider = Provider<FrsApiService>((ref) => FrsApiService());
-final offlineSyncJournalProvider = ChangeNotifierProvider<OfflineSyncJournal>((ref) => OfflineSyncJournal());
+final offlineSyncJournalProvider = ChangeNotifierProvider<OfflineSyncJournal>((ref) {
+  final file = OfflineSyncJournal.defaultJournalFile();
+  final storage = EncryptedFileJournalStorage(file);
+  return OfflineSyncJournal(storage: storage);
+});
 
 class SessionNotifier extends Notifier<SessionWorkflowState> {
   FrsApiService get _api => ref.read(apiProvider);
@@ -346,16 +350,20 @@ class SessionNotifier extends Notifier<SessionWorkflowState> {
       }
     } catch (e) {
       final err = e.toString().replaceFirst('Exception: ', '');
+      final activeAccountId = _api.currentUserId ?? 'FACULTY-KUCET';
+      final candidatesPayload = state.candidates.map((c) => c.toJson()).toList();
+
       _journal.enqueueMutation(
         QueuedMutation(
           id: 'MUT-${uuid.v4().substring(0, 8).toUpperCase()}',
           mutationType: 'SESSION_COMMIT',
-          accountId: 'FACULTY-KUCET',
+          accountId: activeAccountId,
           sessionId: state.sessionId,
           idempotencyKey: idempotencyKey,
           payload: {
             'session_id': state.sessionId,
             'conducted_units_count': state.conductedUnitsCount,
+            'candidates': candidatesPayload,
           },
           createdAt: DateTime.now(),
         ),
@@ -367,16 +375,20 @@ class SessionNotifier extends Notifier<SessionWorkflowState> {
       return null;
     }
 
+    final activeAccountId = _api.currentUserId ?? 'FACULTY-KUCET';
+    final candidatesPayload = state.candidates.map((c) => c.toJson()).toList();
+
     _journal.enqueueMutation(
       QueuedMutation(
         id: 'MUT-${uuid.v4().substring(0, 8).toUpperCase()}',
         mutationType: 'SESSION_COMMIT',
-        accountId: 'FACULTY-KUCET',
+        accountId: activeAccountId,
         sessionId: state.sessionId,
         idempotencyKey: idempotencyKey,
         payload: {
           'session_id': state.sessionId,
           'conducted_units_count': state.conductedUnitsCount,
+          'candidates': candidatesPayload,
         },
         createdAt: DateTime.now(),
       ),
@@ -390,16 +402,25 @@ class SessionNotifier extends Notifier<SessionWorkflowState> {
   }
 
   Future<int> syncOfflineJournal() async {
-    final pending = _journal.getPendingMutationsForAccount('FACULTY-KUCET');
+    final activeAccountId = _api.currentUserId ?? 'FACULTY-KUCET';
+    final pending = _journal.getPendingMutationsForAccount(activeAccountId);
     int syncedCount = 0;
     for (final mutation in pending) {
       if (mutation.mutationType == 'SESSION_COMMIT') {
         try {
+          List<CandidateProposalItem> commitCandidates = state.candidates;
+          if (mutation.payload['candidates'] is List) {
+            final rawList = mutation.payload['candidates'] as List;
+            commitCandidates = rawList
+                .map((item) => CandidateProposalItem.fromJson(item as Map<String, dynamic>))
+                .toList();
+          }
+
           final serverReceipt = await _api.commitSession(
             sessionId: mutation.sessionId,
             idempotencyKey: mutation.idempotencyKey,
             conductedUnitsCount: mutation.payload['conducted_units_count'] as int? ?? state.conductedUnitsCount,
-            candidates: state.candidates,
+            candidates: commitCandidates,
           );
           if (serverReceipt != null) {
             _journal.markSynced(mutation.id);

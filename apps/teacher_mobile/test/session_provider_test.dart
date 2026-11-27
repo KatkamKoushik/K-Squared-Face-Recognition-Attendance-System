@@ -1,6 +1,8 @@
+import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:frs_teacher_app/core/network/api_service.dart';
+import 'package:frs_teacher_app/core/network/offline_sync_journal.dart';
 import 'package:frs_teacher_app/logic/session_provider.dart';
 import 'package:frs_teacher_app/data/models/domain_contracts.dart';
 import 'fixtures/mock_test_candidates.dart';
@@ -97,8 +99,42 @@ class MockServerOfflineCommitFailureApiService extends MockServerSuccessApiServi
   }
 }
 
+class MockRecordingCommitApiService extends MockServerSuccessApiService {
+  List<CandidateProposalItem>? capturedCandidates;
+
+  @override
+  Future<CommitReceiptResponse?> commitSession({
+    required String sessionId,
+    required String idempotencyKey,
+    required int conductedUnitsCount,
+    required List<CandidateProposalItem> candidates,
+  }) async {
+    capturedCandidates = List.from(candidates);
+    return super.commitSession(
+      sessionId: sessionId,
+      idempotencyKey: idempotencyKey,
+      conductedUnitsCount: conductedUnitsCount,
+      candidates: candidates,
+    );
+  }
+}
+
 void main() {
   group('Session Workflow Riverpod State Machine', () {
+    setUp(() {
+      final defaultFile = OfflineSyncJournal.defaultJournalFile();
+      if (defaultFile.existsSync()) {
+        defaultFile.deleteSync();
+      }
+    });
+
+    tearDown(() {
+      final defaultFile = OfflineSyncJournal.defaultJournalFile();
+      if (defaultFile.existsSync()) {
+        defaultFile.deleteSync();
+      }
+    });
+
     test('Initial state is draft with 2 conducted units default', () {
       final container = ProviderContainer();
       addTearDown(container.dispose);
@@ -344,6 +380,70 @@ void main() {
       await notifier.syncAdjudications();
       final state = container.read(sessionProvider);
       expect(state.errorMessage, isNull);
+    });
+
+    test('P0: syncOfflineJournal restores candidates from mutation payload across restart/kill', () async {
+      final tempDir = await Directory.systemTemp.createTemp('session_journal_restart_');
+      final journalFile = File('${tempDir.path}/offline_queue.enc');
+      final storage1 = EncryptedFileJournalStorage(journalFile);
+
+      final failingApi = MockServerOfflineCommitFailureApiService();
+
+      try {
+        // 1. Initial app run: capture, review, adjudicate, then fail commit offline
+        final container1 = ProviderContainer(
+          overrides: [
+            apiProvider.overrideWithValue(failingApi),
+            offlineSyncJournalProvider.overrideWith((ref) => OfflineSyncJournal(storage: storage1)),
+          ],
+        );
+
+        final notifier1 = container1.read(sessionProvider.notifier);
+        await notifier1.selectOffering({'id': 'OFF-CS401-2026'});
+        notifier1.addCapturedFrame(
+          frameId: 'FRM-01',
+          hash: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+          bytes: [1, 2, 3],
+        );
+        await notifier1.submitBatchForProcessing();
+        notifier1.markAllUnadjudicatedAsAbsent();
+
+        // Trigger offline commit -> mutation queued with candidates
+        final failedReceipt = await notifier1.commitFinalAttendance();
+        expect(failedReceipt, isNull);
+
+        container1.dispose();
+
+        // 2. Simulate complete app restart / memory wipe: fresh container with EMPTY in-memory session state
+        // and new OfflineSyncJournal reading from the encrypted journal file
+        final storage2 = EncryptedFileJournalStorage(journalFile);
+        final recordingApi = MockRecordingCommitApiService();
+        final container2 = ProviderContainer(
+          overrides: [
+            apiProvider.overrideWithValue(recordingApi),
+            offlineSyncJournalProvider.overrideWith((ref) => OfflineSyncJournal(storage: storage2)),
+          ],
+        );
+        addTearDown(container2.dispose);
+
+        final notifier2 = container2.read(sessionProvider.notifier);
+        // State in container2 is brand new and has ZERO candidates
+        final initialRestartState = container2.read(sessionProvider);
+        expect(initialRestartState.candidates, isEmpty);
+
+        // 3. Perform background offline synchronization on restart
+        final syncedCount = await notifier2.syncOfflineJournal();
+        expect(syncedCount, 1);
+
+        // Verify server received restored candidates from queued payload, NOT empty in-memory list
+        expect(recordingApi.capturedCandidates, isNotNull);
+        expect(recordingApi.capturedCandidates!.length, greaterThan(0));
+        expect(recordingApi.capturedCandidates!.first.studentId, isNotEmpty);
+      } finally {
+        if (tempDir.existsSync()) {
+          tempDir.deleteSync(recursive: true);
+        }
+      }
     });
   });
 }

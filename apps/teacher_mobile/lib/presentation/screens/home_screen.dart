@@ -5,6 +5,10 @@ import '../../data/kucet_faculty_directory.dart';
 import '../../logic/auth_provider.dart';
 import '../../logic/session_provider.dart';
 import 'session_setup_screen.dart';
+import 'student_enrollment_screen.dart';
+import 'model_manager_screen.dart';
+import 'class_pack_screen.dart';
+import 'developer_student_manager_screen.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -30,6 +34,30 @@ class HomeScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('KUCET Faculty Portal'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.badge_outlined, color: AppTheme.accentGold),
+            tooltip: 'Student Directory & Profiles',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const DeveloperStudentManagerScreen(),
+                ),
+              );
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.person_add_alt_1_rounded),
+            tooltip: 'Direct Student Enrollment',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const StudentEnrollmentScreen(),
+                ),
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.refresh),
             tooltip: 'Refresh Offerings',
@@ -150,6 +178,242 @@ class HomeScreen extends ConsumerWidget {
                       ),
                     ],
                   ),
+                ),
+
+                const SizedBox(height: 16),
+
+                // Student Directory & Profiles Card
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppTheme.accentGold.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppTheme.accentGold.withValues(alpha: 0.4), width: 1.5),
+                  ),
+                  child: Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 24,
+                        backgroundColor: AppTheme.primaryNavy,
+                        child: const Icon(Icons.school_rounded, color: AppTheme.accentGold, size: 26),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                const Flexible(
+                                  child: Text(
+                                    'Class Directory & Student Profiles',
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.5, color: AppTheme.primaryNavy),
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                                  decoration: BoxDecoration(
+                                    color: AppTheme.primaryNavy,
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: const Text(
+                                    'OFFLINE DB',
+                                    style: TextStyle(color: AppTheme.accentGold, fontSize: 9, fontWeight: FontWeight.bold),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 3),
+                            const Text(
+                              'Local SQLite Database & Cloud Sync · Manage student identities, portraits, and cohort records.',
+                              style: TextStyle(fontSize: 11.5, color: AppTheme.textMainLight),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.primaryNavy,
+                          foregroundColor: AppTheme.accentGold,
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        ),
+                        icon: const Icon(Icons.tune_rounded, size: 16),
+                        label: const Text('Manage', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const DeveloperStudentManagerScreen(),
+                            ),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 12),
+
+                // Student Direct Enrollment Quick Action Card
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppTheme.surfaceLight,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppTheme.borderLight),
+                  ),
+                  child: Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 24,
+                        backgroundColor: AppTheme.secondaryBlue.withValues(alpha: 0.1),
+                        child: const Icon(Icons.person_add_rounded, color: AppTheme.secondaryBlue, size: 26),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Student Direct Enrollment',
+                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: AppTheme.textMainLight),
+                            ),
+                            const SizedBox(height: 2),
+                            const Text(
+                              'Capture & enroll directly to Cloudinary with Option 1, Option 3 & Fine-Tuned AI.',
+                              style: TextStyle(fontSize: 12, color: AppTheme.textMutedLight),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.primaryNavy,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        ),
+                        icon: const Icon(Icons.add, size: 16),
+                        label: const Text('Enroll', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const StudentEnrollmentScreen(),
+                            ),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 12),
+
+                // AI Model Manager & Class Packs Quick Row
+                Row(
+                  children: [
+                    Expanded(
+                      child: InkWell(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const ModelManagerScreen(),
+                            ),
+                          );
+                        },
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: AppTheme.surfaceLight,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: AppTheme.borderLight),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  CircleAvatar(
+                                    radius: 16,
+                                    backgroundColor: AppTheme.primaryNavy.withValues(alpha: 0.1),
+                                    child: const Icon(Icons.memory_rounded, color: AppTheme.primaryNavy, size: 18),
+                                  ),
+                                  const Spacer(),
+                                  const Icon(Icons.arrow_forward_ios, size: 12, color: AppTheme.textMutedLight),
+                                ],
+                              ),
+                              const SizedBox(height: 10),
+                              const Text(
+                                'AI Model Manager',
+                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                              ),
+                              const SizedBox(height: 2),
+                              const Text(
+                                'Packs & Auto-Cascade',
+                                style: TextStyle(fontSize: 11, color: AppTheme.textMutedLight),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: InkWell(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const ClassPackScreen(),
+                            ),
+                          );
+                        },
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: AppTheme.surfaceLight,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: AppTheme.borderLight),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  CircleAvatar(
+                                    radius: 16,
+                                    backgroundColor: AppTheme.statusMatched.withValues(alpha: 0.1),
+                                    child: const Icon(Icons.folder_shared_outlined, color: AppTheme.statusMatched, size: 18),
+                                  ),
+                                  const Spacer(),
+                                  const Icon(Icons.arrow_forward_ios, size: 12, color: AppTheme.textMutedLight),
+                                ],
+                              ),
+                              const SizedBox(height: 10),
+                              const Text(
+                                'Class Data Packs',
+                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                              ),
+                              const SizedBox(height: 2),
+                              const Text(
+                                'Authorized Offline Rosters',
+                                style: TextStyle(fontSize: 11, color: AppTheme.textMutedLight),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
 
                 // Offline Sync Pending Banner

@@ -67,3 +67,18 @@ class AdminDashboardStatsResponse(BaseModel):
     active_cohorts_count: int = 0
     recent_sessions: List[RecentSessionItem] = []
     system_readiness: str
+
+
+class MobileDirectEnrollmentResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    success: bool = True
+    message: str
+    student_id: str
+    roll_number: str
+    full_name: str
+    department: str
+    cloudinary_photo_url: str
+    models_enrolled: List[str]
+    namespaces: List[str]
+

@@ -59,6 +59,8 @@ apps/admin_console/dist/
 .packages
 .pub-cache/
 .pub/
+.kucet_offline/
+*.enc
 /build/
 **/build/
 *.dill
@@ -155,6 +157,16 @@ backend/models/*.onnx
 # Kaggle Workspaces & Notebooks (Stored locally / untracked per user direction)
 # ==============================================================================
 kaggle/
+
+# ==============================================================================
+# Local Private Galleries & Readonly Research Notes
+# ==============================================================================
+students/
+README only.md
+README\ only.md
+K2_FRS_V8_Production_Upgrade_Blueprint.md
+scratch_real_detections.json
+
 
 
 

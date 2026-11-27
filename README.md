@@ -96,6 +96,21 @@ flowchart TD
     style FS fill:#fafafa,stroke:#a1a1aa,color:#3f3f46
 ```
 
+### Architectural Topologies: Cloud/Server vs. Mobile Local-First
+
+K² FRS supports two complementary execution topologies designed for diverse institutional network realities:
+
+1. **Server-Side Asynchronous Proposal Engine:**
+   - Client captures multi-photo sweep bursts and streams SHA-256 authenticated image frames to the FastAPI control plane.
+   - Asynchronous vision worker daemons lease jobs from PostgreSQL and execute detection and SFace feature extraction.
+   - Proposed present candidate rosters are delivered back to the faculty mobile client for human review and atomic commit.
+
+2. **Mobile Local-First Edge Attendance Engine:**
+   - Client devices (Android tablets and phones) run embedded ONNX Runtime inference directly on device hardware (CPU/NNAPI).
+   - Local encrypted storage backed by SQLCipher AES-256 stores class rosters, cryptographic hashes, and student embedding templates.
+   - Faculty can complete full classroom detection, gallery matching, and roll-call adjudication in 100% offline environments.
+   - Offline commits are journaled in an encrypted append-only queue (`EncryptedOfflineJournal`) and relayed to the authoritative central ledger via a transactional outbox once connectivity resumes.
+
 ---
 
 ## End-to-End Operational Workflow
@@ -179,6 +194,51 @@ The system never automatically marks a student absent because of a computer visi
 
 ---
 
+## Mobile Local-First Offline Attendance Engine
+
+### 1. Embedded ONNX Runtime Inference & Multi-Model Architecture
+The edge inference engine runs locally on mobile hardware without requiring server network access during attendance sessions. It supports dynamic switching between three distinct computer vision model pipelines:
+
+| Model Pipeline | Detector | Recognizer | Vector Space | Primary Purpose |
+| :--- | :--- | :--- | :---: | :--- |
+| **Option 1 (ArcFace)** | SCRFD-500M / YuNet | MobileFaceNet (`w600k_mbf.onnx`) | 512-D L2-normalized | Ultra-high discriminability for challenging multi-angle classroom sweeps. |
+| **Option 3 (SFace Zoo)** | OpenCV YuNet | OpenCV Zoo SFace (`face_recognition_sface_2021dec.onnx`) | 128-D L2-normalized | Lightweight, standard CPU-efficient benchmark model for rapid edge inference. |
+| **Fine-Tuned SFace** | OpenCV YuNet | KUCET SFace Fine-Tuned (`kucet_frs_sface_finetuned.onnx`) | 128-D L2-normalized | Domain-adapted model calibrated specifically on KUCET student demographics. |
+
+### 2. Class Data Pack & Model Pack Management
+To ensure safe offline operation, faculty mobile clients synchronize self-contained, cryptographically signed data packages prior to conducting classes:
+- **Class Data Pack (`ClassDataPackManager`):** Bundles frozen course metadata, student roster identifiers, and active biometric templates into an encrypted archive. Integrity is verified with client-side SHA-256 validation.
+- **AI Model Pack (`AiModelPackManager`):** Manages local ONNX model artifact lifecycles, verifies binary checksums, and coordinates runtime allocation across GPU, NPU, and CPU execution providers.
+
+### 3. Encrypted Offline Journal & Transactional Outbox
+Offline classroom sessions are governed by zero-data-loss guarantees:
+- **Encrypted Local Storage:** Local SQLite database encrypted at rest using SQLCipher with AES-256-CBC.
+- **Append-Only Journal (`EncryptedOfflineJournal`):** Every attendance unit confirmation, manual override, and faculty timestamp is serialized into an encrypted journal before acknowledgement.
+- **Transactional Outbox Sync:** When network connectivity is re-established, the mobile synchronization worker streams idempotent commit requests to `/api/v1/sessions/{id}/commit` with exponential backoff and replay protection.
+
+---
+
+## Direct Biometric Enrollment & Cloud Storage Integration
+
+### 1. Mobile Direct Enrollment Pipeline
+Students and administrators can enroll biometric portraits directly through the mobile interface or administrative portal:
+- **EXIF Auto-Transpose:** Automatically corrects orientation metadata across varied mobile camera sensors.
+- **Dual-Detector Quality Gate:** Validates the presence of a clear, upright frontal human face using both SCRFD-500M and YuNet. Images lacking detectable faces or exhibiting severe occlusion are rejected immediately at the client boundary.
+- **Multi-Model Template Extraction:** A single verified portrait triggers simultaneous embedding generation across all three active vector spaces (512-D ArcFace, 128-D SFace, and 128-D Fine-Tuned SFace). Vector templates are versioned and stored with recognizer SHA-256 provenance hashes.
+
+### 2. Cloudinary Authenticated Object Storage
+Student portraits are stored securely in Cloudinary authenticated storage (`k2_frs/enrollments/`):
+- Raw portrait bytes are uploaded over TLS and assigned authenticated access URLs with HMAC signatures.
+- Database records store durable CDN storage paths and SHA-256 image checksums, enabling zero raw image retention in local database blobs.
+- Direct streaming endpoints provide role-based access for administrative verification while preventing unauthorized external enumeration.
+
+### 3. Departmental Batch Enrollment Automation
+For institutional onboarding of entire departmental cohorts, the backend provides an automated batch enrollment script:
+- Located at [backend/scripts/batch_enroll_civil_first_years.py](file:///d:/k^2/backend/scripts/batch_enroll_civil_first_years.py).
+- Automates cohort resolution, portrait validation, Cloudinary upload, and 3-model embedding generation for large student rosters with structured progress reporting and duplicate skip-guards.
+
+---
+
 ## Repository Map
 
 ```text
@@ -249,6 +309,9 @@ frs-v7-1-k2/
 │   │   ├── services/                  # Business logic (session, roster, ACID commit, enrollment, governance, review)
 │   │   └── worker/                    # ONNX background worker (leasing queue, YOLOv8n-Face detector, SFace recognizer, PAD)
 │   ├── tests/                         # Pytest automated test suite (102 unit/security/persistence/eval + Playwright E2E)
+│   ├── scripts/                       # Operational & batch enrollment automation tools
+│   │   ├── batch_enroll_civil_first_years.py # Batch enrollment script for departmental cohorts
+│   │   └── delete_first_year_students.py     # Administrative cohort maintenance utility
 │   ├── verify_backend.py              # 5-suite mathematical invariant & acceptance test runner
 │   ├── alembic.ini                    # Alembic environment and driver configuration
 │   ├── Dockerfile                     # Multi-stage production API image
@@ -329,6 +392,13 @@ frs-v7-1-k2/
 | `POST` | `/api/v1/enrollment/submissions/{id}/reject` | `ADMIN` | Rejects enrollment application with structured audit rationale. |
 | `POST` | `/api/v1/enrollment/submissions/{id}/recapture` | `ADMIN` | Flags submission for recapture with specific quality improvement guidance. |
 | `GET` | `/api/v1/enrollment/dashboard-stats` | `ADMIN` / `FACULTY` | Live institutional KPI statistics directly from database queries. |
+| `POST` | `/api/v1/enrollment/mobile/direct-enroll` | Authenticated | Direct student biometric enrollment with Cloudinary upload and multi-model embedding generation. |
+| `GET` | `/api/v1/demo/models` | Public | Lists available local-first face recognition models and active selection. |
+| `POST` | `/api/v1/demo/models/select` | Public | Selects active face recognition model pipeline (ArcFace, SFace Zoo, Fine-Tuned). |
+| `POST` | `/api/v1/demo/analyze` | Public | Analyzes an uploaded photo frame against enrolled student templates using active model. |
+| `POST` | `/api/v1/academic/students/{id}/photo` | Authenticated | Updates a student's portrait photo in Cloudinary with multi-model re-embedding. |
+| `DELETE` | `/api/v1/academic/students/{id}/photo` | Authenticated | Deletes a student's portrait photo from Cloudinary and cleans up biometric templates. |
+| `DELETE` | `/api/v1/academic/students/{id}` | Authenticated | Deletes a student record with cascading cleanup across attendances, snapshots, and embeddings. |
 
 ---
 

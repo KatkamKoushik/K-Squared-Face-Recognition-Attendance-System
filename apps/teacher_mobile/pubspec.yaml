@@ -39,6 +39,13 @@ dependencies:
   uuid: ^4.5.1
   crypto: ^3.0.6
   image_picker: ^1.1.2
+  onnxruntime: ^1.4.1
+  google_mlkit_face_detection: ^1.0.3
+  image: ^4.3.0
+  sqflite_sqlcipher: ">=3.2.0 <3.4.0"
+  flutter_secure_storage: ">=9.2.0 <11.0.0"
+  path_provider: ">=2.1.0 <2.1.6"
+  path: ^1.9.0
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -60,6 +67,9 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
+
+  assets:
+    - assets/packs/
 
   # To add assets to your application, add an assets section, like this:
   # assets:

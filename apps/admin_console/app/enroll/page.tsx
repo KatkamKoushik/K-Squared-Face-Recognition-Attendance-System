@@ -21,6 +21,8 @@ import {
   SwitchCamera,
   X,
   LogIn,
+  ShieldCheck,
+  Database,
 } from "lucide-react";
 import { submitStudentEnrollment, EnrollmentSubmissionItem, getStoredUser } from "@/lib/api";
 import { getStoredAdminToken } from "@/lib/session";
@@ -362,21 +364,39 @@ export default function StudentEnrollmentPage() {
           </div>
           <div className="flex items-center space-x-3">
             {isLoggedIn ? (
-              <Link
-                href="/"
-                className="inline-flex items-center space-x-2 px-4 py-2 text-xs font-bold rounded-xl text-white bg-institutional-navy hover:bg-institutional-blue transition-all shadow-sm"
-              >
-                <span>Admin Dashboard</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </Link>
+              <div className="flex items-center space-x-2">
+                <Link
+                  href="/students"
+                  className="inline-flex items-center space-x-1.5 px-3 py-1.5 text-xs font-bold rounded-xl text-emerald-800 bg-emerald-100 border border-emerald-300 hover:bg-emerald-200 transition-all shadow-2xs"
+                >
+                  <Database className="w-3.5 h-3.5 text-emerald-700" />
+                  <span>Developer Database Control</span>
+                </Link>
+                <Link
+                  href="/"
+                  className="inline-flex items-center space-x-2 px-3 py-1.5 text-xs font-bold rounded-xl text-white bg-institutional-navy hover:bg-institutional-blue transition-all shadow-sm"
+                >
+                  <span>Admin Dashboard</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
+              </div>
             ) : (
-              <Link
-                href="/login"
-                className="inline-flex items-center space-x-2 px-4 py-2 text-xs font-bold rounded-xl text-white bg-institutional-navy hover:bg-institutional-blue transition-all shadow-sm"
-              >
-                <Lock className="w-3.5 h-3.5" />
-                <span>Faculty / Admin Login</span>
-              </Link>
+              <div className="flex items-center space-x-2">
+                <Link
+                  href="/login"
+                  className="inline-flex items-center space-x-1.5 px-3 py-1.5 text-xs font-bold rounded-xl text-emerald-800 bg-emerald-100 border border-emerald-300 hover:bg-emerald-200 transition-all shadow-2xs"
+                >
+                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-700" />
+                  <span>Developer (koushikkatkam@gmail.com)</span>
+                </Link>
+                <Link
+                  href="/login"
+                  className="inline-flex items-center space-x-2 px-3.5 py-1.5 text-xs font-bold rounded-xl text-white bg-institutional-navy hover:bg-institutional-blue transition-all shadow-sm"
+                >
+                  <Lock className="w-3.5 h-3.5" />
+                  <span>Faculty / Admin Login</span>
+                </Link>
+              </div>
             )}
           </div>
         </div>

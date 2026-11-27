@@ -1,0 +1,44 @@
+[
+  {
+    "id": "pack_cse_2026",
+    "title": "CSE Department — Final Year (Class of 2026)",
+    "department": "CSE",
+    "academic_year": "Final Year",
+    "section": "Section A",
+    "subject_code": "CS401",
+    "subject_name": "Distributed Cloud Architectures & AI",
+    "enrolled_student_count": 49,
+    "embeddings_count": 196,
+    "size_bytes": 612147,
+    "is_bundled": true,
+    "asset_path": "assets/packs/pack_cse_2026.json"
+  },
+  {
+    "id": "pack_ece_4a",
+    "title": "ECE Department — 4th Year · Section A",
+    "department": "ECE",
+    "academic_year": "4th Year",
+    "section": "Section A",
+    "subject_code": "EC401",
+    "subject_name": "Embedded Systems & IoT Architectures",
+    "enrolled_student_count": 42,
+    "embeddings_count": 84,
+    "size_bytes": 524288,
+    "is_bundled": false,
+    "asset_path": null
+  },
+  {
+    "id": "pack_it_3a",
+    "title": "IT Department — 3rd Year · Section A",
+    "department": "IT",
+    "academic_year": "3rd Year",
+    "section": "Section A",
+    "subject_code": "IT302",
+    "subject_name": "Cloud Computing & Distributed Systems",
+    "enrolled_student_count": 48,
+    "embeddings_count": 96,
+    "size_bytes": 589824,
+    "is_bundled": false,
+    "asset_path": null
+  }
+]
