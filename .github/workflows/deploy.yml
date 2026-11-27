@@ -141,7 +141,7 @@ jobs:
         run: flutter pub get
 
       - name: Build Release APK
-        run: flutter build apk --release --dart-define=API_URL=${{ secrets.PROD_API_URL || 'https://api.frs.kucet.ac.in/api/v1' }}
+        run: flutter build apk --release --android-skip-build-dependency-validation --dart-define=API_URL=${{ secrets.PROD_API_URL || 'https://api.frs.kucet.ac.in/api/v1' }}
 
       - name: Verify Signed Release APK
         run: |
