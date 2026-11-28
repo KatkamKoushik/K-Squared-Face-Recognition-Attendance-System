@@ -339,7 +339,7 @@ class _DemoVisualizerScreenState extends ConsumerState<DemoVisualizerScreen> wit
     try {
       final localStudents = await LocalDatabaseService().getLocalEnrolledStudents(
         departmentCode: _selectedDepartment,
-        academicYear: 'First Year',
+        academicYear: 'ALL',
         modelNamespace: OnDeviceVisionService.resolveNamespace(_selectedModel),
       );
       if (mounted) {

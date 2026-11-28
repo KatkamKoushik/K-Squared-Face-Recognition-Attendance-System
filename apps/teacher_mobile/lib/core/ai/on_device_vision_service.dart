@@ -5,18 +5,66 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 import 'package:image/image.dart' as img;
+import 'package:onnxruntime/onnxruntime.dart';
 import 'package:path_provider/path_provider.dart';
 import '../../data/models/domain_contracts.dart';
 import '../database/local_database_service.dart';
 
 /// On-Device Vision & Vector Search Engine for K² FRS Mobile.
-/// Runs 100% locally on mobile ARM processors and RAM without requiring a laptop backend.
+/// Executes genuine ONNXRuntime neural inference on ARM64 CPUs against
+/// local SQLite biometric templates without requiring a laptop backend.
 class OnDeviceVisionService {
   static final OnDeviceVisionService _instance = OnDeviceVisionService._internal();
   factory OnDeviceVisionService() => _instance;
   OnDeviceVisionService._internal();
 
   final LocalDatabaseService _localDb = LocalDatabaseService();
+
+  bool _ortInitialized = false;
+  OrtSession? _cachedSession;
+  String? _cachedModelId;
+
+  static String _resolveModelAsset(String modelId) {
+    switch (modelId) {
+      case 'option_1':
+        return 'assets/models/mobilefacenet_w600k.onnx';
+      case 'option_3':
+        return 'assets/models/face_recognition_sface_2021dec.onnx';
+      case 'finetuned_v2':
+      default:
+        return 'assets/models/kucet_frs_sface_finetuned.onnx';
+    }
+  }
+
+  Future<OrtSession?> _getSession(String modelId) async {
+    if (_cachedSession != null && _cachedModelId == modelId) {
+      return _cachedSession;
+    }
+
+    try {
+      if (!_ortInitialized) {
+        OrtEnv.instance.init();
+        _ortInitialized = true;
+      }
+      _cachedSession?.release();
+      _cachedSession = null;
+      _cachedModelId = null;
+
+      final assetPath = _resolveModelAsset(modelId);
+      final rawBytes = await rootBundle.load(assetPath);
+      final opts = OrtSessionOptions();
+      final session = OrtSession.fromBuffer(rawBytes.buffer.asUint8List(), opts);
+      opts.release();
+
+      _cachedSession = session;
+      _cachedModelId = modelId;
+      debugPrint('[OnDeviceVisionService] Loaded ONNXRuntime session: $assetPath (inputs=${session.inputNames}, outputs=${session.outputNames})');
+      return session;
+    } catch (e) {
+      debugPrint('[OnDeviceVisionService] ONNXRuntime load error for $modelId: $e');
+      return null;
+    }
+  }
 
   /// Resolves the model namespace for a given model ID.
   static String resolveNamespace(String modelId) {
@@ -60,10 +108,10 @@ class OnDeviceVisionService {
     await _localDb.init();
     final namespace = resolveNamespace(modelId);
 
-    // 2. Fetch all local enrolled students from SQLite for First Year
+    // 2. Fetch all local enrolled students from SQLite
     final enrolledList = await _localDb.getLocalEnrolledStudents(
       departmentCode: departmentCode,
-      academicYear: 'First Year',
+      academicYear: 'ALL',
       modelNamespace: namespace,
     );
     final totalEnrolled = enrolledList.length;
@@ -83,7 +131,7 @@ class OnDeviceVisionService {
       );
     }
 
-    // 4. Real-time On-Device Face Detection for Any Uploaded / Captured Image
+    // 4. Real-time On-Device Face Detection & ONNX Inference
     return await _processRealtimeUploadedImage(
       imageBytes: imageBytes,
       filename: filename,
@@ -93,10 +141,11 @@ class OnDeviceVisionService {
       namespace: namespace,
       matchThreshold: matchThreshold,
       marginThreshold: marginThreshold,
+      departmentCode: departmentCode,
     );
   }
 
-  /// Real-time on-device ML Kit Face Detection & Matching for arbitrary uploaded/captured photos.
+  /// Real-time on-device ML Kit Face Detection + ONNXRuntime Recognition.
   Future<DemoAnalysisResponse> _processRealtimeUploadedImage({
     required Uint8List imageBytes,
     required String filename,
@@ -106,6 +155,7 @@ class OnDeviceVisionService {
     required String namespace,
     required double matchThreshold,
     required double marginThreshold,
+    String? departmentCode,
   }) async {
     final List<DemoFaceBox> detectedFaces = [];
     final List<DemoStudentResult> grantedStudents = [];
@@ -135,10 +185,13 @@ class OnDeviceVisionService {
       debugPrint('[OnDeviceVisionService] ML Kit Face Detection note: $e');
     }
 
-    // 2. Decode image for sub-cropping and dimensions
+    // 2. Decode image and bake EXIF orientation so ML Kit coordinates align 1:1
     img.Image? decoded;
     try {
-      decoded = img.decodeImage(imageBytes);
+      final rawDecoded = img.decodeImage(imageBytes);
+      if (rawDecoded != null) {
+        decoded = img.bakeOrientation(rawDecoded);
+      }
     } catch (e) {
       debugPrint('[OnDeviceVisionService] Image decode note: $e');
     }
@@ -173,14 +226,43 @@ class OnDeviceVisionService {
       );
     }
 
-    // 4. Query enrolled student profiles from SQLite
-    final rows = await _localDb.db.rawQuery('''
+    // 4. Query enrolled student embeddings from SQLite
+    String sql = '''
       SELECT e.student_id, e.vector_json, s.roll_number, s.full_name, s.portrait_base64, s.department
       FROM student_embeddings e
       JOIN enrolled_students s ON e.student_id = s.student_id
-      WHERE e.namespace = ? AND s.academic_year = 'First Year' AND s.is_active = 1
-      ORDER BY s.roll_number ASC
-    ''', [namespace]);
+      WHERE e.namespace = ? AND s.is_active = 1
+    ''';
+    final List<dynamic> args = [namespace];
+    if (departmentCode != null && departmentCode.isNotEmpty && departmentCode != 'ALL') {
+      sql += ' AND s.department = ?';
+      args.add(departmentCode);
+    }
+    sql += ' ORDER BY s.roll_number ASC';
+
+    final rawRows = await _localDb.db.rawQuery(sql, args);
+
+    // Pre-parse normalized gallery vectors once for sub-millisecond matching
+    final List<Map<String, dynamic>> gallery = [];
+    for (final row in rawRows) {
+      try {
+        final decodedVec = (json.decode(row['vector_json'] as String) as List)
+            .map((v) => (v as num).toDouble())
+            .toList();
+        final normVec = _l2Normalize(decodedVec);
+        gallery.add({
+          'student_id': row['student_id'],
+          'roll_number': row['roll_number'],
+          'full_name': row['full_name'],
+          'portrait_base64': row['portrait_base64'],
+          'department': row['department'],
+          'vec': normVec,
+        });
+      } catch (_) {}
+    }
+
+    // Load ONNX neural inference session for active pipeline
+    final ortSession = await _getSession(modelId);
 
     int faceIdx = 1;
 
@@ -191,7 +273,7 @@ class OnDeviceVisionService {
       final x2 = (rect.right / imgWidth).clamp(0.0, 1.0);
       final y2 = (rect.bottom / imgHeight).clamp(0.0, 1.0);
 
-      // Crop face
+      // Crop raw face for UI display card
       String faceCropBase64 = '';
       img.Image? cropImage;
       if (decoded != null) {
@@ -204,15 +286,37 @@ class OnDeviceVisionService {
         faceCropBase64 = 'data:image/jpeg;base64,${base64Encode(cropBytes)}';
       }
 
-      // Match face against enrolled students
+      // Match face against enrolled students using real ONNXRuntime inference
       Map<String, dynamic>? bestStudent;
-      double bestScore = 0.0;
-      double secondScore = 0.0;
+      double bestScore = -1.0;
+      double secondScore = -1.0;
 
-      if (cropImage != null) {
+      if (decoded != null && ortSession != null && gallery.isNotEmpty) {
+        final List<double>? probeVec = _extractEmbeddingOnnx(
+          session: ortSession,
+          modelId: modelId,
+          fullImage: decoded,
+          bboxCrop: cropImage,
+          face: mlFace,
+        );
+
+        if (probeVec != null) {
+          for (final g in gallery) {
+            final sim = _dotNormalized(probeVec, g['vec'] as List<double>);
+            if (sim > bestScore) {
+              secondScore = bestScore;
+              bestScore = sim;
+              bestStudent = g;
+            } else if (sim > secondScore) {
+              secondScore = sim;
+            }
+          }
+        }
+      } else if (cropImage != null && gallery.isNotEmpty) {
+        // Fallback only if ONNX runtime cannot load (e.g. headless test)
         final cropThumb = _computeLuminanceVector(cropImage, 16);
-        for (final row in rows) {
-          final pBase64 = row['portrait_base64'] as String?;
+        for (final g in gallery) {
+          final pBase64 = g['portrait_base64'] as String?;
           if (pBase64 != null && pBase64.isNotEmpty) {
             try {
               final rawBytes = base64Decode(pBase64.contains(',') ? pBase64.split(',').last : pBase64);
@@ -223,7 +327,7 @@ class OnDeviceVisionService {
                 if (sim > bestScore) {
                   secondScore = bestScore;
                   bestScore = sim;
-                  bestStudent = row;
+                  bestStudent = g;
                 } else if (sim > secondScore) {
                   secondScore = sim;
                 }
@@ -233,31 +337,33 @@ class OnDeviceVisionService {
         }
       }
 
-      // Calibrated similarity for single portrait
-      final isSinglePortrait = mlFaces.length == 1 && (x2 - x1) > 0.22;
-      double calibratedSim = isSinglePortrait ? max(bestScore, 0.885) : bestScore;
-      double margin = (secondScore > 0) ? (calibratedSim - secondScore) : 0.25;
+      final double clampedSim = bestScore.clamp(0.0, 1.0);
+      final double margin = (secondScore > -1.0) ? max(0.0, clampedSim - secondScore) : 1.0;
+      final bool isGranted = bestStudent != null &&
+          clampedSim >= matchThreshold &&
+          margin >= (marginThreshold * 0.5);
 
-      final bool isGranted = calibratedSim >= 0.35 && bestStudent != null;
-      final roll = bestStudent != null ? (bestStudent['roll_number'] as String) : 'UNKNOWN';
-      final name = bestStudent != null ? (bestStudent['full_name'] as String) : 'Stranger';
-      final sid = bestStudent != null ? (bestStudent['student_id'] as String) : 'stranger_$faceIdx';
-      final portraitB64 = bestStudent != null ? (bestStudent['portrait_base64'] as String?) : null;
-      final dept = bestStudent != null ? (bestStudent['department'] as String?) : null;
+      final roll = isGranted ? (bestStudent['roll_number'] as String) : 'UNKNOWN';
+      final name = isGranted ? (bestStudent['full_name'] as String) : 'Stranger';
+      final sid = isGranted ? (bestStudent['student_id'] as String) : 'stranger_$faceIdx';
+      final portraitB64 = isGranted ? (bestStudent['portrait_base64'] as String?) : null;
+      final dept = isGranted ? (bestStudent['department'] as String?) : null;
 
       final faceBox = DemoFaceBox(
         faceIndex: faceIdx,
         box: [x1, y1, x2, y2],
         detectionScore: 0.95,
         qualityScore: 88.0,
-        qualityReason: 'Realtime On-Device ML Kit Face Detection',
+        qualityReason: ortSession != null
+            ? 'On-Device ONNXRuntime Neural Inference'
+            : 'On-Device Fallback Detector',
         faceCropBase64: faceCropBase64,
         status: isGranted ? 'MATCHED' : 'STRANGER',
         attendanceGranted: isGranted,
         studentId: sid,
         rollNumber: roll,
         fullName: name,
-        similarityScore: calibratedSim,
+        similarityScore: clampedSim,
         margin: margin,
         referencePhotoBase64: portraitB64,
         colorHex: isGranted ? '#10B981' : '#EF4444',
@@ -268,7 +374,7 @@ class OnDeviceVisionService {
 
       detectedFaces.add(faceBox);
 
-      if (isGranted) {
+      if (isGranted && !matchedRolls.contains(roll)) {
         matchedRolls.add(roll);
         grantedStudents.add(
           DemoStudentResult(
@@ -277,7 +383,7 @@ class OnDeviceVisionService {
             fullName: name,
             attendanceGranted: true,
             status: 'PRESENT',
-            similarityScore: calibratedSim,
+            similarityScore: clampedSim,
             faceCropBase64: faceCropBase64,
             referencePhotoBase64: portraitB64,
             departmentCode: dept,
@@ -452,6 +558,204 @@ class OnDeviceVisionService {
       modelName: resolveModelName(modelId),
       embeddingDimension: modelId == 'option_1' ? 512 : 128,
     );
+  }
+
+  /// Aligns face to 112x112 and runs ONNXRuntime embedding extraction.
+  List<double>? _extractEmbeddingOnnx({
+    required OrtSession session,
+    required String modelId,
+    required img.Image fullImage,
+    required img.Image? bboxCrop,
+    required Face face,
+  }) {
+    try {
+      img.Image? face112;
+      if (modelId == 'finetuned_v2') {
+        // Fine-tuned SFace expects bounding-box crop resized to 112x112
+        if (bboxCrop != null) {
+          face112 = img.copyResize(bboxCrop, width: 112, height: 112, interpolation: img.Interpolation.linear);
+        }
+      } else {
+        // Option 1 (MobileFaceNet) & Option 3 (OpenCV SFace) expect 5-point ArcFace affine alignment
+        face112 = _alignFace5Point(fullImage, face);
+        if (face112 == null && bboxCrop != null) {
+          face112 = img.copyResize(bboxCrop, width: 112, height: 112, interpolation: img.Interpolation.linear);
+        }
+      }
+
+      if (face112 == null) return null;
+
+      // Build NCHW [1, 3, 112, 112] float32 buffer
+      const int planeSize = 112 * 112;
+      final Float32List inputFloats = Float32List(3 * planeSize);
+      final bool normalizeZeroCenter = (modelId != 'option_3');
+
+      for (int y = 0; y < 112; y++) {
+        for (int x = 0; x < 112; x++) {
+          final p = face112.getPixel(x, y);
+          final idx = y * 112 + x;
+          if (normalizeZeroCenter) {
+            inputFloats[idx] = (p.r.toDouble() / 127.5) - 1.0;
+            inputFloats[planeSize + idx] = (p.g.toDouble() / 127.5) - 1.0;
+            inputFloats[2 * planeSize + idx] = (p.b.toDouble() / 127.5) - 1.0;
+          } else {
+            inputFloats[idx] = p.r.toDouble();
+            inputFloats[planeSize + idx] = p.g.toDouble();
+            inputFloats[2 * planeSize + idx] = p.b.toDouble();
+          }
+        }
+      }
+
+      final inputName = session.inputNames.first;
+      final inputTensor = OrtValueTensor.createTensorWithDataList(inputFloats, [1, 3, 112, 112]);
+      final runOptions = OrtRunOptions();
+      final outputs = session.run(runOptions, {inputName: inputTensor});
+
+      inputTensor.release();
+      runOptions.release();
+
+      final outVal = outputs.first?.value;
+      for (final o in outputs) {
+        o?.release();
+      }
+
+      if (outVal is List && outVal.isNotEmpty) {
+        final rawList = outVal[0] is List
+            ? (outVal[0] as List).map((v) => (v as num).toDouble()).toList()
+            : outVal.map((v) => (v as num).toDouble()).toList();
+        return _l2Normalize(rawList);
+      }
+      return null;
+    } catch (e) {
+      debugPrint('[OnDeviceVisionService] ONNX inference error: $e');
+      return null;
+    }
+  }
+
+  /// Computes a 4-DOF 2D Similarity Transform from ML Kit landmarks to standard
+  /// 112x112 ArcFace template coordinates and warps via bilinear sampling.
+  img.Image? _alignFace5Point(img.Image src, Face face) {
+    final leftEye = face.landmarks[FaceLandmarkType.leftEye];
+    final rightEye = face.landmarks[FaceLandmarkType.rightEye];
+    if (leftEye == null || rightEye == null) return null;
+
+    // Sort eyes by image X coordinate so image-left maps to 38.29 and image-right to 73.53
+    final List<Point<double>> srcPts = [];
+    final List<Point<double>> dstPts = [];
+
+    if (leftEye.position.x <= rightEye.position.x) {
+      srcPts.add(Point(leftEye.position.x.toDouble(), leftEye.position.y.toDouble()));
+      srcPts.add(Point(rightEye.position.x.toDouble(), rightEye.position.y.toDouble()));
+    } else {
+      srcPts.add(Point(rightEye.position.x.toDouble(), rightEye.position.y.toDouble()));
+      srcPts.add(Point(leftEye.position.x.toDouble(), leftEye.position.y.toDouble()));
+    }
+    dstPts.add(const Point(38.2946, 51.6963));
+    dstPts.add(const Point(73.5318, 51.5014));
+
+    final nose = face.landmarks[FaceLandmarkType.noseBase];
+    if (nose != null) {
+      srcPts.add(Point(nose.position.x.toDouble(), nose.position.y.toDouble()));
+      dstPts.add(const Point(56.0252, 71.7366));
+    }
+
+    final leftMouth = face.landmarks[FaceLandmarkType.leftMouth];
+    final rightMouth = face.landmarks[FaceLandmarkType.rightMouth];
+    if (leftMouth != null && rightMouth != null) {
+      if (leftMouth.position.x <= rightMouth.position.x) {
+        srcPts.add(Point(leftMouth.position.x.toDouble(), leftMouth.position.y.toDouble()));
+        srcPts.add(Point(rightMouth.position.x.toDouble(), rightMouth.position.y.toDouble()));
+      } else {
+        srcPts.add(Point(rightMouth.position.x.toDouble(), rightMouth.position.y.toDouble()));
+        srcPts.add(Point(leftMouth.position.x.toDouble(), leftMouth.position.y.toDouble()));
+      }
+      dstPts.add(const Point(41.5493, 92.3655));
+      dstPts.add(const Point(70.7299, 92.2041));
+    }
+
+    final int n = srcPts.length;
+    double meanSx = 0, meanSy = 0, meanDx = 0, meanDy = 0;
+    for (int i = 0; i < n; i++) {
+      meanSx += srcPts[i].x;
+      meanSy += srcPts[i].y;
+      meanDx += dstPts[i].x;
+      meanDy += dstPts[i].y;
+    }
+    meanSx /= n;
+    meanSy /= n;
+    meanDx /= n;
+    meanDy /= n;
+
+    double denom = 0, numA = 0, numB = 0;
+    for (int i = 0; i < n; i++) {
+      final sx = srcPts[i].x - meanSx;
+      final sy = srcPts[i].y - meanSy;
+      final dx = dstPts[i].x - meanDx;
+      final dy = dstPts[i].y - meanDy;
+      denom += sx * sx + sy * sy;
+      numA += sx * dx + sy * dy;
+      numB += sx * dy - sy * dx;
+    }
+    if (denom < 1e-6) return null;
+
+    final a = numA / denom;
+    final b = numB / denom;
+    final det = a * a + b * b;
+    if (det < 1e-8) return null;
+
+    final invA = a / det;
+    final invB = b / det;
+
+    final out = img.Image(width: 112, height: 112);
+    final int maxX = src.width - 1;
+    final int maxY = src.height - 1;
+
+    for (int v = 0; v < 112; v++) {
+      final dv = v - meanDy;
+      for (int u = 0; u < 112; u++) {
+        final du = u - meanDx;
+        final sx = meanSx + invA * du + invB * dv;
+        final sy = meanSy - invB * du + invA * dv;
+
+        final x0 = sx.floor().clamp(0, maxX);
+        final y0 = sy.floor().clamp(0, maxY);
+        final x1 = (x0 + 1).clamp(0, maxX);
+        final y1 = (y0 + 1).clamp(0, maxY);
+        final wx = (sx - x0).clamp(0.0, 1.0);
+        final wy = (sy - y0).clamp(0.0, 1.0);
+
+        final p00 = src.getPixel(x0, y0);
+        final p10 = src.getPixel(x1, y0);
+        final p01 = src.getPixel(x0, y1);
+        final p11 = src.getPixel(x1, y1);
+
+        final r = ((p00.r * (1 - wx) + p10.r * wx) * (1 - wy) + (p01.r * (1 - wx) + p11.r * wx) * wy).round().clamp(0, 255);
+        final g = ((p00.g * (1 - wx) + p10.g * wx) * (1 - wy) + (p01.g * (1 - wx) + p11.g * wx) * wy).round().clamp(0, 255);
+        final bl = ((p00.b * (1 - wx) + p10.b * wx) * (1 - wy) + (p01.b * (1 - wx) + p11.b * wx) * wy).round().clamp(0, 255);
+
+        out.setPixelRgb(u, v, r, g, bl);
+      }
+    }
+    return out;
+  }
+
+  List<double> _l2Normalize(List<double> vec) {
+    double sumSq = 0.0;
+    for (final v in vec) {
+      sumSq += v * v;
+    }
+    final norm = sqrt(sumSq);
+    if (norm < 1e-8) return vec;
+    return vec.map((v) => v / norm).toList();
+  }
+
+  double _dotNormalized(List<double> a, List<double> b) {
+    if (a.length != b.length) return -1.0;
+    double dot = 0.0;
+    for (int i = 0; i < a.length; i++) {
+      dot += a[i] * b[i];
+    }
+    return dot;
   }
 
   List<double> _computeLuminanceVector(img.Image image, int size) {

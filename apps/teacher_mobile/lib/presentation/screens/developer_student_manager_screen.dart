@@ -20,17 +20,17 @@ class _DeveloperStudentManagerScreenState extends ConsumerState<DeveloperStudent
   String? _errorMessage;
   String _searchQuery = '';
   String _selectedDepartment = 'ALL';
-  String _selectedCohort = 'First Year';
+  String _selectedCohort = 'ALL';
 
   final List<String> _departments = const [
     'ALL',
+    'CIVIL',
     'CSE',
+    'CSD',
+    'MECH',
     'ECE',
     'EEE',
-    'MECH',
-    'CIVIL',
     'IT',
-    'CSD',
   ];
 
   final List<String> _academicYears = const [
@@ -196,7 +196,7 @@ class _DeveloperStudentManagerScreenState extends ConsumerState<DeveloperStudent
                         ),
                         SizedBox(height: 2),
                         Text(
-                          'B.Tech Computer Science & Engineering • Local SQLite database active in mobile RAM.',
+                          'All KUCET Departments (CIVIL, CSE, CSD, MECH) • Local SQLite & Cloud Sync.',
                           style: TextStyle(fontSize: 11, color: AppTheme.textMutedLight),
                         ),
                       ],
@@ -214,7 +214,24 @@ class _DeveloperStudentManagerScreenState extends ConsumerState<DeveloperStudent
                 child: Row(
                   children: [
                     ChoiceChip(
-                      label: const Text('First Year (Class of 2030)'),
+                      label: const Text('All Cohorts'),
+                      selected: _selectedCohort == 'ALL',
+                      selectedColor: AppTheme.primaryNavy,
+                      labelStyle: TextStyle(
+                        color: _selectedCohort == 'ALL' ? Colors.white : AppTheme.textMainLight,
+                        fontWeight: _selectedCohort == 'ALL' ? FontWeight.bold : FontWeight.normal,
+                        fontSize: 12,
+                      ),
+                      onSelected: (val) {
+                        if (val) {
+                          setState(() => _selectedCohort = 'ALL');
+                          _loadStudents();
+                        }
+                      },
+                    ),
+                    const SizedBox(width: 8),
+                    ChoiceChip(
+                      label: const Text('First Year (2030)'),
                       selected: _selectedCohort == 'First Year',
                       selectedColor: AppTheme.primaryNavy,
                       labelStyle: TextStyle(
@@ -231,7 +248,7 @@ class _DeveloperStudentManagerScreenState extends ConsumerState<DeveloperStudent
                     ),
                     const SizedBox(width: 8),
                     ChoiceChip(
-                      label: const Text('Third Year (Class of 2027)'),
+                      label: const Text('Third Year (2027)'),
                       selected: _selectedCohort == 'Third Year',
                       selectedColor: AppTheme.primaryNavy,
                       labelStyle: TextStyle(
@@ -248,17 +265,17 @@ class _DeveloperStudentManagerScreenState extends ConsumerState<DeveloperStudent
                     ),
                     const SizedBox(width: 8),
                     ChoiceChip(
-                      label: const Text('All Cohorts'),
-                      selected: _selectedCohort == 'ALL',
+                      label: const Text('Final Year (2026)'),
+                      selected: _selectedCohort == 'Final Year',
                       selectedColor: AppTheme.primaryNavy,
                       labelStyle: TextStyle(
-                        color: _selectedCohort == 'ALL' ? Colors.white : AppTheme.textMainLight,
-                        fontWeight: _selectedCohort == 'ALL' ? FontWeight.bold : FontWeight.normal,
+                        color: _selectedCohort == 'Final Year' ? Colors.white : AppTheme.textMainLight,
+                        fontWeight: _selectedCohort == 'Final Year' ? FontWeight.bold : FontWeight.normal,
                         fontSize: 12,
                       ),
                       onSelected: (val) {
                         if (val) {
-                          setState(() => _selectedCohort = 'ALL');
+                          setState(() => _selectedCohort = 'Final Year');
                           _loadStudents();
                         }
                       },
@@ -377,7 +394,8 @@ class _DeveloperStudentManagerScreenState extends ConsumerState<DeveloperStudent
                                 final s = filtered[index];
                                 final roll = s['roll_number'] as String? ?? 'ROLL';
                                 final name = s['full_name'] as String? ?? 'Student';
-                                final dept = s['department_code'] as String? ?? 'CSE';
+                                final dept = s['department_code'] as String? ?? 'CIVIL';
+                                final cohortYr = s['academic_year'] as String? ?? 'First Year';
                                 final photoB64 = s['reference_photo_base64'] as String?;
                                 final hasPhoto = s['has_reference_photo'] as bool? ?? false;
 
@@ -438,6 +456,18 @@ class _DeveloperStudentManagerScreenState extends ConsumerState<DeveloperStudent
                                                       child: Text(
                                                         dept,
                                                         style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 10.5, color: AppTheme.primaryNavy),
+                                                      ),
+                                                    ),
+                                                    const SizedBox(width: 6),
+                                                    Container(
+                                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                      decoration: BoxDecoration(
+                                                        color: AppTheme.accentGold.withValues(alpha: 0.14),
+                                                        borderRadius: BorderRadius.circular(4),
+                                                      ),
+                                                      child: Text(
+                                                        cohortYr,
+                                                        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 10, color: AppTheme.primaryNavy),
                                                       ),
                                                     ),
                                                   ],

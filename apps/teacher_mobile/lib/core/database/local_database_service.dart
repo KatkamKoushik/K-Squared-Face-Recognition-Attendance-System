@@ -33,12 +33,12 @@ class LocalDatabaseService {
 
     _db = await openDatabase(
       path,
-      version: 2,
+      version: 3,
       onCreate: (db, version) async {
         await _createTables(db);
       },
       onUpgrade: (db, oldVersion, newVersion) async {
-        if (oldVersion < 2) {
+        if (oldVersion < 3) {
           await db.execute('DROP TABLE IF EXISTS student_embeddings');
           await db.execute('DROP TABLE IF EXISTS enrolled_students');
           await db.execute('DROP TABLE IF EXISTS class_packs');
@@ -50,7 +50,7 @@ class LocalDatabaseService {
     _isInitialized = true;
     debugPrint('[LocalDatabaseService] SQLite database opened at: $path');
 
-    // Auto-seed bundled authentic First Year CSE pack
+    // Auto-seed authentic bundled institutional packs matching Supabase
     await _autoSeedBundledPack();
   }
 
@@ -102,27 +102,25 @@ class LocalDatabaseService {
   }
 
   Future<void> _autoSeedBundledPack() async {
-    try {
-      final firstYearCount = Sqflite.firstIntValue(
-        await _db!.rawQuery('SELECT COUNT(*) FROM class_packs WHERE id = "pack_cse_first_year" AND is_downloaded = 1'),
-      );
-      if (firstYearCount == null || firstYearCount == 0) {
-        debugPrint('[LocalDatabaseService] Seeding authentic First Year CSE pack (Class of 2030)...');
-        final jsonStr = await rootBundle.loadString('assets/packs/pack_cse_first_year.json');
-        final data = json.decode(jsonStr) as Map<String, dynamic>;
-        await installPackFromJson(data);
-        debugPrint('[LocalDatabaseService] Authentic First Year CSE pack seeded successfully.');
-      }
+    const bundledPacks = [
+      ('pack_civil_first_year', 'assets/packs/pack_civil_first_year.json'),
+      ('pack_cse_final_year', 'assets/packs/pack_cse_final_year.json'),
+      ('pack_csd_third_year', 'assets/packs/pack_csd_third_year.json'),
+      ('pack_civil_final_year', 'assets/packs/pack_civil_final_year.json'),
+      ('pack_mech_final_year', 'assets/packs/pack_mech_final_year.json'),
+    ];
 
-      final thirdYearCount = Sqflite.firstIntValue(
-        await _db!.rawQuery('SELECT COUNT(*) FROM class_packs WHERE id = "pack_cse_third_year" AND is_downloaded = 1'),
-      );
-      if (thirdYearCount == null || thirdYearCount == 0) {
-        debugPrint('[LocalDatabaseService] Seeding authentic Third Year CSE pack (Class of 2027)...');
-        final jsonStr = await rootBundle.loadString('assets/packs/pack_cse_third_year.json');
-        final data = json.decode(jsonStr) as Map<String, dynamic>;
-        await installPackFromJson(data);
-        debugPrint('[LocalDatabaseService] Authentic Third Year CSE pack seeded successfully.');
+    try {
+      for (final (packId, assetPath) in bundledPacks) {
+        final count = Sqflite.firstIntValue(
+          await _db!.rawQuery('SELECT COUNT(*) FROM class_packs WHERE id = ? AND is_downloaded = 1', [packId]),
+        );
+        if (count == null || count == 0) {
+          debugPrint('[LocalDatabaseService] Seeding authentic pack $packId...');
+          final jsonStr = await rootBundle.loadString(assetPath);
+          final data = json.decode(jsonStr) as Map<String, dynamic>;
+          await installPackFromJson(data);
+        }
       }
     } catch (e) {
       debugPrint('[LocalDatabaseService] Auto-seed note: $e');
@@ -261,9 +259,7 @@ class LocalDatabaseService {
       }
       // If academicYear == 'ALL', do not filter by academic_year
     } else {
-      // Default to First Year so 3rd year students never mix into First Year sweeps
-      query += ' AND s.academic_year = ?';
-      args.add('First Year');
+      // Return all active cohorts when no filter specified
     }
 
     if (departmentCode != null && departmentCode.isNotEmpty && departmentCode != 'ALL') {
